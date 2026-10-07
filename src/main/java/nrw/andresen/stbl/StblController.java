@@ -11,9 +11,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * Main rest-controller
@@ -23,9 +25,19 @@ public class StblController {
 
     private static final Logger logger = LoggerFactory.getLogger(StblController.class);
 
-    // Course shown when a value on the status page is clicked
-    private static final Duration HISTORY_RANGE = Duration.ofHours(24);
-    private static final Duration HISTORY_WINDOW = Duration.ofMinutes(2);
+    /**
+     * Selectable ranges of the course shown when a value on the status page is clicked, the mean window keeps it at
+     * about 360 to 730 points
+     */
+    record HistoryRange(Duration range, Duration window) {
+    }
+
+    private static final Map<String, HistoryRange> HISTORY_RANGES = Map.of(
+            "6h", new HistoryRange(Duration.ofHours(6), Duration.ofMinutes(1)),
+            "24h", new HistoryRange(Duration.ofHours(24), Duration.ofMinutes(2)),
+            "7d", new HistoryRange(Duration.ofDays(7), Duration.ofMinutes(15)),
+            "30d", new HistoryRange(Duration.ofDays(30), Duration.ofHours(1)),
+            "1y", new HistoryRange(Duration.ofDays(365), Duration.ofHours(12)));
 
     @Autowired
     private StblService stblService;
@@ -55,11 +67,21 @@ public class StblController {
     }
 
     /**
-     * Course of a stored value over the last 24 hours as 2 minute means, name as in InfluxDB without WP_
+     * Course of a stored value as means, name as in InfluxDB without WP_, range 6h, 24h (default), 7d, 30d or 1y
      */
     @RequestMapping("/history/{name}")
-    public InfluxController.History history(@PathVariable String name) {
-        return influxController.history(name, HISTORY_RANGE, HISTORY_WINDOW);
+    public InfluxController.History history(@PathVariable String name,
+                                            @RequestParam(defaultValue = "24h") String range) {
+        HistoryRange historyRange = historyRange(range);
+        return influxController.history(name, historyRange.range(), historyRange.window());
+    }
+
+    static HistoryRange historyRange(String range) {
+        HistoryRange historyRange = HISTORY_RANGES.get(range);
+        if (historyRange == null) {
+            throw new IllegalArgumentException("Unbekannter Zeitbereich: " + range);
+        }
+        return historyRange;
     }
 
     @RequestMapping("/aufnahmeLeistung")

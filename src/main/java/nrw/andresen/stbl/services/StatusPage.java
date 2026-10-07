@@ -225,8 +225,13 @@ public class StatusPage {
 
     private static final String HISTORY_DIALOG = """
             <dialog id="verlauf" aria-labelledby="v-title">
-              <div class="v-head"><div><h3 id="v-title"></h3><p class="sub">Letzte 24 Stunden, Mittel über 2 min</p></div>
+              <div class="v-head"><div><h3 id="v-title"></h3><p class="sub" id="v-sub"></p></div>
               <button type="button" class="v-close" aria-label="Schließen">×</button></div>
+              <div class="v-ranges" role="group" aria-label="Zeitbereich">
+                <button type="button" data-range="6h">6 h</button><button type="button" data-range="24h">24 h</button>
+                <button type="button" data-range="7d">7 Tage</button><button type="button" data-range="30d">30 Tage</button>
+                <button type="button" data-range="1y">1 Jahr</button>
+              </div>
               <div id="v-chart" class="v-chart"></div>
               <div id="v-stats" class="v-stats"></div>
             </dialog>""";
@@ -244,6 +249,14 @@ public class StatusPage {
             .v-head h3 { margin: 0; font-size: 18px; }
             .v-close { border: 0; background: var(--off-bg); color: var(--text); width: 32px; height: 32px;
               border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; flex: none; }
+            .v-ranges { display: inline-flex; flex-wrap: wrap; gap: 2px; margin-top: 10px; padding: 3px;
+              border-radius: 10px; background: var(--off-bg); }
+            .v-ranges button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px;
+              padding: 5px 12px; border-radius: 8px; cursor: pointer; }
+            .v-ranges button:hover { color: var(--text); }
+            .v-ranges button[aria-pressed="true"] { background: var(--card); color: var(--text); font-weight: 600;
+              box-shadow: 0 1px 3px rgb(0 0 0 / 0.15); }
+            .v-ranges button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
             .v-chart { position: relative; margin-top: 10px; min-height: 260px; }
             .v-chart svg { display: block; width: 100%; height: 260px; touch-action: none; }
             .v-chart .msg { display: grid; place-items: center; height: 260px; color: var(--muted); }
@@ -266,15 +279,41 @@ public class StatusPage {
               const dlg = document.getElementById('verlauf');
               const chart = document.getElementById('v-chart');
               const stats = document.getElementById('v-stats');
-              const NS = 'http://www.w3.org/2000/svg';
+              const NS = 'http://www.w3.org/2000/svg', H_MS = 3600e3, D_MS = 24 * H_MS;
+              // Same ranges and mean windows as StblController.HISTORY_RANGES
+              const RANGES = {
+                '6h':  { ms: 6 * H_MS,   text: 'Letzte 6 Stunden, Mittel über 1 min',  axis: 'hours', step: 1, narrow: 2 },
+                '24h': { ms: D_MS,       text: 'Letzte 24 Stunden, Mittel über 2 min', axis: 'hours', step: 3, narrow: 6 },
+                '7d':  { ms: 7 * D_MS,   text: 'Letzte 7 Tage, Mittel über 15 min',    axis: 'days', step: 1, narrow: 2 },
+                '30d': { ms: 30 * D_MS,  text: 'Letzte 30 Tage, Stundenmittel',         axis: 'days', step: 5, narrow: 10 },
+                '1y':  { ms: 365 * D_MS, text: 'Letztes Jahr, Mittel über 12 h',        axis: 'months', step: 1, narrow: 2 }
+              };
+              let current = null, range = '24h', request = 0;
+              try { if (RANGES[localStorage.getItem('verlaufBereich')]) range = localStorage.getItem('verlaufBereich'); }
+              catch (e) { }
+
               let reloadDue = false;
               setTimeout(() => { reloadDue = true; if (!dlg.open) location.reload(); }, 20000);
               dlg.addEventListener('close', () => { if (reloadDue) location.reload(); });
               dlg.querySelector('.v-close').addEventListener('click', () => dlg.close());
               dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+              dlg.querySelectorAll('.v-ranges button').forEach(b => b.addEventListener('click', () => {
+                range = b.dataset.range;
+                try { localStorage.setItem('verlaufBereich', range); } catch (e) { }
+                load();
+              }));
 
               const fmt = d => new Intl.NumberFormat('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
-              const hhmm = t => new Date(t).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+              const pad = n => String(n).padStart(2, '0');
+              const hhmm = d => pad(d.getHours()) + ':' + pad(d.getMinutes());
+              const ddmm = d => pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.';
+              const MONTHS = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
+              const tipTime = (ms, r) => {
+                const d = new Date(ms);
+                if (r.axis === 'hours') return hhmm(d) + ' Uhr';
+                if (r.axis === 'days') return ddmm(d) + ' ' + hhmm(d);
+                return ddmm(d) + String(d.getFullYear()).slice(2);
+              };
               const el = (name, attrs, parent) => {
                 const e = document.createElementNS(NS, name);
                 for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -283,16 +322,38 @@ public class StatusPage {
               };
               const message = text => { chart.innerHTML = '<div class="msg"></div>'; chart.firstChild.textContent = text; };
 
-              function niceStep(range) {
-                const raw = range / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+              function niceStep(span) {
+                const raw = span / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
                 return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
               }
 
-              function draw(data, unit, decimals) {
+              // Time axis: full hours, local midnights or first days of a month
+              function ticks(r, start, end, narrow) {
+                const step = narrow ? r.narrow : r.step, out = [], d = new Date(start);
+                if (r.axis === 'hours') {
+                  d.setMinutes(0, 0, 0);
+                  while (d.getTime() < start || d.getHours() % step) d.setHours(d.getHours() + 1);
+                  for (; d.getTime() <= end; d.setHours(d.getHours() + step)) out.push([d.getTime(), hhmm(d)]);
+                } else if (r.axis === 'days') {
+                  d.setHours(0, 0, 0, 0);
+                  if (d.getTime() < start) d.setDate(d.getDate() + 1);
+                  // Count back from today so the newest day is always labelled
+                  const days = Math.floor((new Date(end).setHours(0, 0, 0, 0) - d.getTime()) / D_MS + 0.5);
+                  d.setDate(d.getDate() + days % step);
+                  for (; d.getTime() <= end; d.setDate(d.getDate() + step)) out.push([d.getTime(), ddmm(d)]);
+                } else {
+                  d.setHours(0, 0, 0, 0); d.setDate(1);
+                  if (d.getTime() < start) d.setMonth(d.getMonth() + 1);
+                  for (; d.getTime() <= end; d.setMonth(d.getMonth() + step)) out.push([d.getTime(), MONTHS[d.getMonth()]]);
+                }
+                return out;
+              }
+
+              function draw(data, unit, decimals, r) {
                 const t = data.time, v = data.value, n = t.length;
-                if (!n) { message('Keine Daten in den letzten 24 Stunden.'); stats.textContent = ''; return; }
+                if (!n) { message('Keine Daten in diesem Zeitraum.'); stats.textContent = ''; return; }
                 const W = Math.max(chart.clientWidth, 280), H = 260, L = 52, R = 12, T = 12, B = 26;
-                const end = Date.now(), start = end - 24 * 3600e3;
+                const end = Date.now(), start = end - r.ms;
                 let lo = Math.min(...v), hi = Math.max(...v);
                 if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
                 const step = niceStep(hi - lo);
@@ -307,19 +368,16 @@ public class StatusPage {
                   el('text', { x: L - 6, y: y(val) + 4, 'text-anchor': 'end', class: 'axis' }, svg)
                     .textContent = fmt(tickDec).format(val);
                 }
-                // Time axis every 3 hours, on narrow phones every 6 hours
-                const hours = W < 480 ? 6 : 3, tick = new Date(start); tick.setMinutes(0, 0, 0);
-                while (tick.getTime() < start || tick.getHours() % hours) tick.setHours(tick.getHours() + 1);
-                for (; tick.getTime() <= end; tick.setHours(tick.getHours() + hours)) {
-                  const tx = x(tick.getTime());
+                for (const [ms, label] of ticks(r, start, end, W < 480)) {
+                  const tx = x(ms);
                   el('line', { x1: tx, x2: tx, y1: T, y2: H - B, class: 'grid' }, svg);
-                  el('text', { x: tx, y: H - 8, 'text-anchor': 'middle', class: 'axis' }, svg).textContent = hhmm(tick);
+                  el('text', { x: tx, y: H - 8, 'text-anchor': 'middle', class: 'axis' }, svg).textContent = label;
                 }
                 // Gap in the line where values are missing, settings are stored only once per hour
                 const gaps = [];
                 for (let i = 1; i < n; i++) gaps.push(t[i] - t[i - 1]);
                 gaps.sort((a, b) => a - b);
-                const maxGap = Math.max(10 * 60e3, 3 * (gaps.length ? gaps[gaps.length >> 1] : 0));
+                const maxGap = Math.max(r.ms / 144, 3 * (gaps.length ? gaps[gaps.length >> 1] : 0));
                 let d = '';
                 for (let i = 0; i < n; i++) {
                   d += (i === 0 || t[i] - t[i - 1] > maxGap ? 'M' : 'L') + x(t[i]).toFixed(1) + ' ' + y(v[i]).toFixed(1);
@@ -339,7 +397,7 @@ public class StatusPage {
                   const cx = x(t[i]), cy = y(v[i]);
                   cursor.setAttribute('x1', cx); cursor.setAttribute('x2', cx); cursor.setAttribute('visibility', 'visible');
                   dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
-                  tip.textContent = hhmm(t[i]) + ' Uhr · ' + fmt(decimals).format(v[i]) + u;
+                  tip.textContent = tipTime(t[i], r) + ' · ' + fmt(decimals).format(v[i]) + u;
                   tip.hidden = false;
                   const left = cx / W * box.width;
                   tip.style.left = Math.min(Math.max(left - tip.offsetWidth / 2, 0), box.width - tip.offsetWidth) + 'px';
@@ -357,19 +415,31 @@ public class StatusPage {
                   });
               }
 
-              async function open(row) {
-                const { series, label, unit } = row.dataset, decimals = +row.dataset.decimals;
-                document.getElementById('v-title').textContent = label;
+              async function load() {
+                const { series, unit } = current.dataset, decimals = +current.dataset.decimals, r = RANGES[range];
+                const id = ++request;
+                document.getElementById('v-sub').textContent = r.text;
+                dlg.querySelectorAll('.v-ranges button')
+                  .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === range)));
                 stats.textContent = '';
-                if (!dlg.open) dlg.showModal();
                 message('Lade Verlauf …');
                 try {
-                  const res = await fetch('history/' + encodeURIComponent(series), { headers: { Accept: 'application/json' } });
+                  const res = await fetch('history/' + encodeURIComponent(series) + '?range=' + range,
+                    { headers: { Accept: 'application/json' } });
                   if (!res.ok) throw new Error((await res.text()) || ('HTTP ' + res.status));
-                  draw(await res.json(), unit, decimals);
+                  const data = await res.json();
+                  // Ignore an older answer if the range was changed in the meantime
+                  if (id === request) draw(data, unit, decimals, r);
                 } catch (e) {
-                  message('Verlauf nicht verfügbar: ' + e.message);
+                  if (id === request) message('Verlauf nicht verfügbar: ' + e.message);
                 }
+              }
+
+              function open(row) {
+                current = row;
+                document.getElementById('v-title').textContent = row.dataset.label;
+                if (!dlg.open) dlg.showModal();
+                load();
               }
 
               document.querySelectorAll('[data-series]').forEach(row => {
