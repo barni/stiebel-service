@@ -78,9 +78,10 @@ public class CanStatistikTest {
     public void testAdapter() {
         CanStatistik statistik = new CanStatistik();
         assertFalse(statistik.isVerbunden());
-        statistik.verbunden("v1.9", "v1.0", "AB12", START);
+        statistik.verbunden("0108", "0100", "AB12", START);
         assertTrue(statistik.isVerbunden());
-        assertEquals("v1.9", statistik.getFirmware());
+        assertEquals("1.8", statistik.getFirmware());
+        assertEquals("1.0", statistik.getHardware());
         assertEquals(START, statistik.getVerbundenSeit());
         statistik.neustart(START.plusSeconds(600));
         statistik.getrennt();
@@ -104,5 +105,14 @@ public class CanStatistikTest {
         assertThrows(NullPointerException.class, () -> usbtin.send(new CANMessage(0x680, new byte[]{0x31, 0x00})));
         statistik.minuteAbschliessen(START.plusSeconds(60), BITRATE);
         assertEquals(0, statistik.getLetzteMinute().gesendet(), 1e-9);
+    }
+
+    @Test
+    public void testVersion() {
+        assertEquals("1.8", CanStatistik.version("0108"));
+        assertEquals("1.10", CanStatistik.version("0110"));
+        assertEquals("2.0", CanStatistik.version("0200"));
+        assertEquals("v1.8", CanStatistik.version("v1.8"));
+        assertEquals(null, CanStatistik.version(null));
     }
 }

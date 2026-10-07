@@ -103,8 +103,8 @@ public class CanStatistik {
     }
 
     public void verbunden(String firmware, String hardware, String seriennummer, Instant zeit) {
-        this.firmware = firmware;
-        this.hardware = hardware;
+        this.firmware = version(firmware);
+        this.hardware = version(hardware);
         this.seriennummer = seriennummer;
         this.verbundenSeit = zeit;
         this.verbunden = true;
@@ -163,6 +163,16 @@ public class CanStatistik {
         knoten.forEach((id, k) -> liste.add(new KnotenStatus(id, knotenName(id), k.proMinute, k.zuletzt)));
         liste.sort(Comparator.comparingInt(KnotenStatus::id));
         return liste;
+    }
+
+    /**
+     * The USBtin reports versions as XXYY, e.g. 0108 for firmware 1.8. Other texts are kept.
+     */
+    static String version(String roh) {
+        if (roh == null || !roh.matches("\\d{4}")) {
+            return roh;
+        }
+        return Integer.parseInt(roh.substring(0, 2)) + "." + Integer.parseInt(roh.substring(2));
     }
 
     public static String knotenName(int id) {
