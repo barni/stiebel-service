@@ -84,6 +84,14 @@ public class StblController {
         return historyRange;
     }
 
+    /**
+     * State of the USBtin adapter and the CAN bus: version, restarts, messages per minute, answer rate, bus load
+     */
+    @RequestMapping("/verbindung")
+    public StblService.Verbindung verbindung() {
+        return stblService.getVerbindung();
+    }
+
     @RequestMapping("/aufnahmeLeistung")
     public ValueContainer<Double> aufnahmeLeistung() throws Exception{
         return stblService.getAufnahmeLeistung();

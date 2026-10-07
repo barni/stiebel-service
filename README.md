@@ -26,6 +26,10 @@ before you rely on it.
   as chart, selectable for 6 h, 24 h, 7 days, 30 days or 1 year (from `/history/<name>?range=6h|24h|7d|30d|1y`,
   name as in InfluxDB without `WP_`, e.g. `/history/VorlaufIstTemp?range=7d`; means over 1 min to 12 h, default
   24h). The InfluxDB token then also needs read access to the bucket.
+- **Connection**: the status page shows the USBtin adapter (port, firmware, connected since, restarts by the
+  watchdog) and the CAN bus of the last full minute (received messages, answers, sent requests, answer rate, answers
+  "not available", estimated bus load, messages per node). Stored every minute as `WP_CAN_*`, e.g.
+  `WP_CAN_Antwortquote`, `WP_CAN_Buslast`, `WP_CAN_Knoten_480`, and as JSON from `/verbindung`.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the

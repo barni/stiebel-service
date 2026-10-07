@@ -17,9 +17,25 @@ public class SynchronizedUSBtin extends USBtin {
 
     private static final Logger logger = LoggerFactory.getLogger(SynchronizedUSBtin.class);
 
+    private final CanStatistik statistik;
+
+    public SynchronizedUSBtin() {
+        this(null);
+    }
+
+    /**
+     * Counts every sent message in statistik
+     */
+    public SynchronizedUSBtin(CanStatistik statistik) {
+        this.statistik = statistik;
+    }
+
     @Override
     public synchronized void send(CANMessage canmsg) throws USBtinException {
         super.send(canmsg);
+        if (statistik != null) {
+            statistik.gesendet(canmsg.getData().length);
+        }
     }
 
     /**

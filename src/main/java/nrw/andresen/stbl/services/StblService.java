@@ -8,6 +8,7 @@ import de.fischl.usbtin.USBtin;
 import de.fischl.usbtin.USBtinException;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterBetriebsstatus;
 import nrw.andresen.stbl.services.can.ElsterMessage;
 import nrw.andresen.stbl.services.can.SynchronizedUSBtin;
@@ -25,6 +26,8 @@ import java.text.DecimalFormatSymbols;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,6 +39,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.ToDoubleFunction;
 
 import static nrw.andresen.stbl.services.can.ElsterTable.*;
 
@@ -166,6 +170,8 @@ public class StblService {
     // Highest energy per counter (key: index of the MWh counter), the reported sum may fall, see getEnergie
     private Map<Short, Double> hoechsteEnergie = new ConcurrentHashMap<>();
     private volatile LocalDateTime lastMsgReceived;
+    // Messages on the bus and state of the USBtin adapter, kept over USB restarts
+    private final CanStatistik canStatistik = new CanStatistik();
     private String usbPort;
     private int usbSpeed;
     private boolean logall;
@@ -184,7 +190,7 @@ public class StblService {
             Thread consumer = new Thread(new Consumer(concurrentLinkedQueue));
             consumer.start();
 
-            usbtin = new SynchronizedUSBtin();
+            usbtin = new SynchronizedUSBtin(canStatistik);
             usbtin.connect(usbPort);
             if (!logall) {
                 usbtin.setFilter(new FilterChain[]{
@@ -202,12 +208,16 @@ public class StblService {
 
             usbtin.addMessageListener(canmsg -> {
                 try {
+                    Instant jetzt = Instant.now();
+                    canStatistik.empfangen(canmsg.getId(), canmsg.getData().length, jetzt);
                     ElsterMessage elsterMessage = new ElsterMessage(canmsg);
                     short index = elsterMessage.getElsterIndex().getIndex();
                     if (REQUESTED_INDICES.contains(index) && elsterMessage.isResponse()
                             && elsterMessage.getReceiverId() == CAN_SENDER_ID) {
                         lastMsgReceived = LocalDateTime.now();
                         Short rawValue = elsterMessage.getRawValue();
+                        canStatistik.antwort(rawValue != null && index != BETRIEBS_STATUS
+                                && rawValue == VALUE_NOT_AVAILABLE, jetzt);
                         // 0x8000 is a valid Betriebsstatus (EVU Sperre), for all other values it means not available
                         if (rawValue != null && (index == BETRIEBS_STATUS || rawValue != VALUE_NOT_AVAILABLE)) {
                             concurrentLinkedQueue.add(elsterMessage);
@@ -230,7 +240,10 @@ public class StblService {
             logger.info("FirmwareVersion: " + usbtin.getFirmwareVersion());
             logger.info("HardwareVersion: " + usbtin.getHardwareVersion());
             logger.info("SerialNumber: " + usbtin.getSerialNumber());
+            canStatistik.verbunden(usbtin.getFirmwareVersion(), usbtin.getHardwareVersion(),
+                    usbtin.getSerialNumber(), Instant.now());
         } catch (Exception e) {
+            canStatistik.getrennt();
             logger.error("ERROR During initialization: ", e);
         }
     }
@@ -238,6 +251,7 @@ public class StblService {
     public void stopUsbTin(){
         try {
             running.set(false);
+            canStatistik.getrennt();
             logger.info("Shutting down StblService");
             usbtin.closeCANChannel();
             usbtin.disconnect();
@@ -923,6 +937,7 @@ public class StblService {
         } catch (Exception e) {
             logger.error("Rquest failiure: ", e);
         }
+        canStatistik.minuteAbschliessen(Instant.now(), usbSpeed);
         storeValues60();
 
     }
@@ -949,6 +964,7 @@ public class StblService {
         if (duration.getSeconds() < - 120){
             logger.error("Restarting USB, no messgage received for: "+ duration.getSeconds());
             emailService.sendAlert("Restarting USB", "Restarting USB, no messgage received for: "+ duration.getSeconds());
+            canStatistik.neustart(Instant.now());
             stopUsbTin();
             try {
                 Thread.sleep(100);
@@ -1040,6 +1056,17 @@ public class StblService {
             addPoint(points, "LuefterLeistung", this::getLuefterLeistung, MAX_AGE_60);
             addPoint(points, "UmgebungstempInverter", this::getUmgebungstempInverter, MAX_AGE_60);
             addPoint(points, "TempInverterVerdichter", this::getTempInverterVerdichter, MAX_AGE_60);
+            addPoint(points, "CAN_Empfangen", () -> canMinute(CanStatistik.Minute::empfangen), MAX_AGE_60);
+            addPoint(points, "CAN_Antworten", () -> canMinute(CanStatistik.Minute::antworten), MAX_AGE_60);
+            addPoint(points, "CAN_Gesendet", () -> canMinute(CanStatistik.Minute::gesendet), MAX_AGE_60);
+            addPoint(points, "CAN_NichtVerfuegbar", () -> canMinute(CanStatistik.Minute::nichtVerfuegbar),
+                    MAX_AGE_60);
+            addPoint(points, "CAN_Antwortquote", () -> canMinute(CanStatistik.Minute::antwortquote), MAX_AGE_60);
+            addPoint(points, "CAN_Buslast", () -> canMinute(CanStatistik.Minute::buslast), MAX_AGE_60);
+            addPoint(points, "CAN_UsbNeustarts", this::getUsbNeustarts, MAX_AGE_60);
+            for (CanStatistik.KnotenStatus knoten : canStatistik.getKnoten()) {
+                addPoint(points, knotenSerie(knoten.id()), () -> canMinute(m -> knoten.proMinute()), MAX_AGE_60);
+            }
             addCounterPoints(points,
                     EL_AUFNAHMELEISTUNG_HEIZ_SUM_MWH, EL_AUFNAHMELEISTUNG_HEIZ_SUM_KWH,
                     EL_AUFNAHMELEISTUNG_HEIZ_TAG_KWH, EL_AUFNAHMELEISTUNG_HEIZ_TAG_WH,
@@ -1074,6 +1101,63 @@ public class StblService {
 
     }
 
+
+    /**
+     * Value of the last complete minute of the CAN statistics
+     */
+    private ValueContainer<Double> canMinute(ToDoubleFunction<CanStatistik.Minute> wert) throws Exception {
+        CanStatistik.Minute minute = canStatistik.getLetzteMinute();
+        if (minute == null) {
+            throw new Exception("NO_VALUES_REVEIVED");
+        }
+        return new ValueContainer<>(wert.applyAsDouble(minute), minute.ende());
+    }
+
+    private ValueContainer<Double> getUsbNeustarts() {
+        return new ValueContainer<>((double) canStatistik.getNeustarts(), Instant.now());
+    }
+
+    /**
+     * Seconds since the last answer to a request of this service
+     */
+    private ValueContainer<Double> getSekundenSeitAntwort() throws Exception {
+        Instant letzteAntwort = canStatistik.getLetzteAntwort();
+        if (letzteAntwort == null) {
+            throw new Exception("NO_VALUES_REVEIVED");
+        }
+        Instant jetzt = Instant.now();
+        return new ValueContainer<>((double) Duration.between(letzteAntwort, jetzt).toSeconds(), jetzt);
+    }
+
+    private ValueContainer<Boolean> isAdapterVerbunden() {
+        return new ValueContainer<>(canStatistik.isVerbunden(), Instant.now());
+    }
+
+    static String knotenSerie(int id) {
+        return String.format("CAN_Knoten_%03X", id);
+    }
+
+    private static String zeitpunkt(Instant zeit) {
+        return zeit == null ? null : ZEITPUNKT.format(zeit.atZone(ZoneId.systemDefault()));
+    }
+
+    /**
+     * State of the USBtin adapter and the CAN bus for the REST API
+     */
+    public record Verbindung(boolean verbunden, String port, int bitrate, String firmware, String hardware,
+                             String seriennummer, Instant verbundenSeit, long usbNeustarts, Instant letzterNeustart,
+                             Instant letzteNachricht, Instant letzteAntwort, CanStatistik.Minute letzteMinute,
+                             List<CanStatistik.KnotenStatus> knoten) {
+    }
+
+    public Verbindung getVerbindung() {
+        return new Verbindung(canStatistik.isVerbunden(), usbPort, usbSpeed, canStatistik.getFirmware(),
+                canStatistik.getHardware(), canStatistik.getSeriennummer(), canStatistik.getVerbundenSeit(),
+                canStatistik.getNeustarts(), canStatistik.getLetzterNeustart(), canStatistik.getLetzteNachricht(),
+                canStatistik.getLetzteAntwort(), canStatistik.getLetzteMinute(), canStatistik.getKnoten());
+    }
+
+    private static final DateTimeFormatter ZEITPUNKT = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm:ss");
 
     private static final String FORMEL_SCHEINLEISTUNG = "Spannung × Strom des Inverters, ohne Leistungsfaktor";
 
@@ -1111,7 +1195,7 @@ public class StblService {
      * @return HTML page
      */
     public synchronized String getStatus() {
-        return new StatusPage()
+        StatusPage page = new StatusPage()
                 .badge("Verdichter läuft", "Verdichter aus", this::isVerdichterOn)
                 .kpi("Außentemperatur", "°C", 1, "Aussentemp", this::getAussentemp)
                 .kpi("Vorlauf", "°C", 1, "VorlaufIstTemp", this::getVorlaufIstTemp)
@@ -1195,6 +1279,37 @@ public class StblService {
                 .row("Silent Leistung", "%", 0, "Einstellung_SilentLeistung", this::getSilentLeistung, MAX_AGE_3600)
                 .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", this::getSilentLuefter, MAX_AGE_3600)
                 .note("Heizlast bei Auslegungstemperatur und weitere Einstellungen, stündlich abgefragt.")
+                .card("USB-Adapter")
+                .pill("Verbindung", this::isAdapterVerbunden)
+                .text("Port", usbPort + " · " + usbSpeed / 1000 + " kbit/s")
+                .text("Firmware / Hardware", canStatistik.getFirmware() == null ? null
+                        : canStatistik.getFirmware() + " / " + canStatistik.getHardware())
+                .text("Seriennummer", canStatistik.getSeriennummer())
+                .text("Verbunden seit", zeitpunkt(canStatistik.getVerbundenSeit()))
+                .row("USB-Neustarts", "", 0, "CAN_UsbNeustarts", this::getUsbNeustarts)
+                .text("Letzter Neustart", zeitpunkt(canStatistik.getLetzterNeustart()))
+                .note("Neustarts durch die Überwachung (keine Antwort für 2 min), gezählt seit dem Start des "
+                        + "Dienstes.")
+                .card("CAN-Bus")
+                .row("Letzte Antwort vor", "s", 0, this::getSekundenSeitAntwort)
+                .row("Empfangen", "/min", 0, "CAN_Empfangen", () -> canMinute(CanStatistik.Minute::empfangen))
+                .row("davon Antworten", "/min", 0, "CAN_Antworten", () -> canMinute(CanStatistik.Minute::antworten))
+                .row("Anfragen gesendet", "/min", 0, "CAN_Gesendet", () -> canMinute(CanStatistik.Minute::gesendet))
+                .row("Antwortquote (berechnet)", "%", 0, "CAN_Antwortquote",
+                        () -> canMinute(CanStatistik.Minute::antwortquote))
+                .formula("Antworten ÷ gesendete Anfragen der letzten Minute, höchstens 100 %")
+                .row("Antwort „nicht verfügbar“", "/min", 0, "CAN_NichtVerfuegbar",
+                        () -> canMinute(CanStatistik.Minute::nichtVerfuegbar))
+                .row("Buslast (berechnet)", "%", 1, "CAN_Buslast", () -> canMinute(CanStatistik.Minute::buslast))
+                .formula("Summe (47 + 8 × Datenbytes) Bit aller empfangenen und gesendeten Nachrichten der letzten "
+                        + "Minute ÷ 60 s ÷ " + usbSpeed + " bit/s. Ohne Bit-Stuffing, also eher etwas zu niedrig");
+        for (CanStatistik.KnotenStatus knoten : canStatistik.getKnoten()) {
+            page.row(knoten.name(), "/min", 0, knotenSerie(knoten.id()),
+                    () -> new ValueContainer<>(knoten.proMinute(), knoten.zuletzt()));
+        }
+        return page
+                .note("Werte der letzten vollen Minute, je Gerät die Nachrichten pro Minute. Mit can.logall=false "
+                        + "kommen nur die Antworten an diesen Dienst an.")
                 .render();
     }
 }
