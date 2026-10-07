@@ -67,6 +67,8 @@ public class StatusPage {
         ValueContainer<Boolean> state;
         Duration maxAge;
         String formula;
+        // Text instead of a number, e.g. the firmware version
+        String text;
     }
 
     private Card current() {
@@ -135,6 +137,18 @@ public class StatusPage {
         return this;
     }
 
+    /**
+     * Row with a text, e.g. a version or a time, "–" if the text is missing
+     */
+    public StatusPage text(String label, String text) {
+        Item item = new Item();
+        item.label = label;
+        item.text = text == null || text.isBlank() ? "–" : text;
+        current().content.add(item);
+        last = item;
+        return this;
+    }
+
     public StatusPage pill(String label, Callable<ValueContainer<Boolean>> value) {
         Item pill = new Item();
         pill.label = label;
@@ -183,6 +197,10 @@ public class StatusPage {
     }
 
     private String renderRow(Item row) {
+        if (row.text != null) {
+            return "<div class=\"row\"><span class=\"label\">" + label(row) + "</span><span class=\"value\">"
+                    + attr(row.text) + "</span></div>";
+        }
         return "<div class=\"row\"" + history(row) + "><span class=\"label\">" + label(row) + "</span>"
                 + "<span class=\"value\"><span class=\"num\">" + number(row.value, row.decimals)
                 + unit(row.value, row.unit) + "</span>" + age(row.value, row.maxAge) + "</span></div>";

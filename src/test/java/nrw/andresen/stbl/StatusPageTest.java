@@ -183,4 +183,16 @@ public class StatusPageTest {
     public void testFormulaWithoutValue() {
         assertThrows(IllegalStateException.class, () -> new StatusPage(clock).formula("x"));
     }
+
+    @Test
+    public void testText() {
+        String html = new StatusPage(clock)
+                .card("USB-Adapter")
+                .text("Firmware / Hardware", "v1.9 / <v1.0>")
+                .text("Seriennummer", null)
+                .render();
+        assertTrue(html.contains("<span class=\"label\">Firmware / Hardware</span>"
+                + "<span class=\"value\">v1.9 / &lt;v1.0&gt;</span>"));
+        assertTrue(html.contains("<span class=\"label\">Seriennummer</span><span class=\"value\">–</span>"));
+    }
 }
