@@ -2,14 +2,18 @@ package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.StblService;
 import nrw.andresen.stbl.services.can.ValueContainer;
+import nrw.andresen.stbl.services.influx.InfluxController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
 
 /**
  * Main rest-controller
@@ -19,8 +23,14 @@ public class StblController {
 
     private static final Logger logger = LoggerFactory.getLogger(StblController.class);
 
+    // Course shown when a value on the status page is clicked
+    private static final Duration HISTORY_RANGE = Duration.ofHours(24);
+    private static final Duration HISTORY_WINDOW = Duration.ofMinutes(2);
+
     @Autowired
     private StblService stblService;
+    @Autowired
+    private InfluxController influxController;
 
     /**
      * The getters throw an exception if no current value is available, e.g. VERDICHTER_AUS or NO_VALUES_REVEIVED.
@@ -32,11 +42,24 @@ public class StblController {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(e.getMessage());
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> ungueltig(IllegalArgumentException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
+
 
 
     @RequestMapping(value = "/status", produces = "text/html;charset=UTF-8")
     public String status() throws Exception{
         return stblService.getStatus();
+    }
+
+    /**
+     * Course of a stored value over the last 24 hours as 2 minute means, name as in InfluxDB without WP_
+     */
+    @RequestMapping("/history/{name}")
+    public InfluxController.History history(@PathVariable String name) {
+        return influxController.history(name, HISTORY_RANGE, HISTORY_WINDOW);
     }
 
     @RequestMapping("/aufnahmeLeistung")

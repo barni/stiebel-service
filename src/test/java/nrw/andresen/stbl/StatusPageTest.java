@@ -31,7 +31,7 @@ public class StatusPageTest {
         String html = new StatusPage(clock)
                 .badge("Verdichter läuft", "Verdichter aus", () -> state(true))
                 .kpi("Außentemperatur", "°C", 1, () -> value(18.2))
-                .kpi("Vorlauf", "°C", 1, () -> value(29.8))
+                .kpi("Vorlauf", "°C", 1, "VorlaufIstTemp", () -> value(29.8))
                 .kpi("Rücklauf", "°C", 1, () -> value(23.1))
                 .kpi("Verdichter", "Hz", 0, () -> value(24))
                 .kpi("Inverter", "VA", 0, () -> value(595.89))
@@ -54,7 +54,7 @@ public class StatusPageTest {
                 .row("Heizungsdruck", "bar", 2, () -> value(1.56))
                 .card("Kältekreis")
                 .row("Verdichter-Drehzahl", "Hz", 0, () -> value(24))
-                .row("Hochdruck", "bar", 2, () -> value(18.44))
+                .row("Hochdruck", "bar", 2, "Hochdruck", () -> value(18.44))
                 .row("Niederdruck", "bar", 2, () -> value(11.37))
                 .row("Heißgas", "°C", 1, () -> value(42.7))
                 .row("Verdichter-Eintritt", "°C", 1, () -> value(18.0))
@@ -128,5 +128,30 @@ public class StatusPageTest {
         String html = render();
         assertTrue(html.contains("Stand 13.09.26, 19:48:00"));
         assertTrue(html.contains("badge on"));
+    }
+
+    @Test
+    public void testHistoryLinks() throws Exception {
+        String html = render();
+        assertTrue(html.contains("data-series=\"VorlaufIstTemp\" data-label=\"Vorlauf\" data-unit=\"°C\" "
+                + "data-decimals=\"1\""));
+        assertTrue(html.contains("data-series=\"Hochdruck\""));
+        // Rows without a stored series are not clickable
+        assertFalse(html.contains("data-series=\"Spreizung\""));
+        assertTrue(html.contains("<dialog id=\"verlauf\""));
+        assertTrue(html.contains("fetch('history/'"));
+        // The page is reloaded by the script, not while the dialog is open
+        assertTrue(html.contains("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"));
+    }
+
+    @Test
+    public void testWithoutHistory() {
+        String html = new StatusPage(clock)
+                .card("Heizkreis")
+                .row("Spreizung", "K", 1, () -> value(6.7))
+                .render();
+        assertFalse(html.contains("data-series"));
+        assertFalse(html.contains("<dialog"));
+        assertTrue(html.contains("<meta http-equiv=\"refresh\" content=\"20\">"));
     }
 }
