@@ -28,9 +28,12 @@ public class StatusPage {
     private final Clock clock;
     private final ZoneId zone;
     private final List<String> headerBadges = new ArrayList<>();
-    private final List<String> kpis = new ArrayList<>();
+    private final List<Item> kpis = new ArrayList<>();
     private final List<Card> cards = new ArrayList<>();
+    // Last added KPI, row or pill, formula() refers to it
+    private Item last;
     private boolean hasHistory;
+    private boolean hasFormula;
 
     public StatusPage() {
         this(Clock.systemDefaultZone());
@@ -43,12 +46,27 @@ public class StatusPage {
 
     private static class Card {
         final String title;
-        final StringBuilder content = new StringBuilder();
-        final StringBuilder pills = new StringBuilder();
+        // Rows and notes in their order
+        final List<Object> content = new ArrayList<>();
+        final List<Item> pills = new ArrayList<>();
 
         Card(String title) {
             this.title = title;
         }
+    }
+
+    /**
+     * KPI, row or pill, rendered at the end so a formula can still be added
+     */
+    private static class Item {
+        String label;
+        String unit;
+        int decimals;
+        String series;
+        ValueContainer<Double> value;
+        ValueContainer<Boolean> state;
+        Duration maxAge;
+        String formula;
     }
 
     private Card current() {
@@ -78,15 +96,11 @@ public class StatusPage {
     }
 
     /**
-     * KPI whose value is stored in InfluxDB as WP_series, a click shows its course of the last 24 hours
+     * KPI whose value is stored in InfluxDB as WP_series, a click shows its course
      */
     public StatusPage kpi(String label, String unit, int decimals, String series,
                           Callable<ValueContainer<Double>> value) {
-        ValueContainer<Double> container = call(value);
-        kpis.add("<div class=\"kpi\"" + history(series, label, unit, decimals) + "><div class=\"label\">" + label
-                + "</div><div class=\"value\"><span class=\"num\">" + number(container, decimals)
-                + unit(container, unit) + "</span></div>"
-                + age(container, MAX_AGE) + "</div>");
+        kpis.add(item(label, unit, decimals, series, call(value), MAX_AGE));
         return this;
     }
 
@@ -108,7 +122,7 @@ public class StatusPage {
     }
 
     /**
-     * Row whose value is stored in InfluxDB as WP_series, a click shows its course of the last 24 hours
+     * Row whose value is stored in InfluxDB as WP_series, a click shows its course
      */
     public StatusPage row(String label, String unit, int decimals, String series,
                           Callable<ValueContainer<Double>> value) {
@@ -117,43 +131,97 @@ public class StatusPage {
 
     public StatusPage row(String label, String unit, int decimals, String series,
                           Callable<ValueContainer<Double>> value, Duration maxAge) {
-        ValueContainer<Double> container = call(value);
-        current().content.append("<div class=\"row\"").append(history(series, label, unit, decimals))
-                .append("><span class=\"label\">").append(label).append("</span>")
-                .append("<span class=\"value\"><span class=\"num\">").append(number(container, decimals))
-                .append(unit(container, unit)).append("</span>")
-                .append(age(container, maxAge)).append("</span></div>");
+        current().content.add(item(label, unit, decimals, series, call(value), maxAge));
         return this;
+    }
+
+    public StatusPage pill(String label, Callable<ValueContainer<Boolean>> value) {
+        Item pill = new Item();
+        pill.label = label;
+        pill.state = call(value);
+        current().pills.add(pill);
+        last = pill;
+        return this;
+    }
+
+    /**
+     * Formula of the value calculated by the service, shown as tooltip of the last added KPI, row or pill and in
+     * the course dialog
+     */
+    public StatusPage formula(String text) {
+        if (last == null) {
+            throw new IllegalStateException("kpi(), row() or pill() has to be called first");
+        }
+        last.formula = text;
+        hasFormula = true;
+        return this;
+    }
+
+    public StatusPage note(String text) {
+        current().content.add("<p class=\"note\">" + text + "</p>");
+        return this;
+    }
+
+    private Item item(String label, String unit, int decimals, String series, ValueContainer<Double> value,
+                      Duration maxAge) {
+        Item item = new Item();
+        item.label = label;
+        item.unit = unit;
+        item.decimals = decimals;
+        item.series = series;
+        item.value = value;
+        item.maxAge = maxAge;
+        hasHistory |= series != null;
+        last = item;
+        return item;
+    }
+
+    private String renderKpi(Item kpi) {
+        return "<div class=\"kpi\"" + history(kpi) + "><div class=\"label\">" + label(kpi) + "</div>"
+                + "<div class=\"value\"><span class=\"num\">" + number(kpi.value, kpi.decimals)
+                + unit(kpi.value, kpi.unit) + "</span></div>" + age(kpi.value, kpi.maxAge) + "</div>";
+    }
+
+    private String renderRow(Item row) {
+        return "<div class=\"row\"" + history(row) + "><span class=\"label\">" + label(row) + "</span>"
+                + "<span class=\"value\"><span class=\"num\">" + number(row.value, row.decimals)
+                + unit(row.value, row.unit) + "</span>" + age(row.value, row.maxAge) + "</span></div>";
+    }
+
+    private String renderPill(Item pill) {
+        String state = pill.state == null ? "unknown" : (pill.state.getValue() ? "on" : "off");
+        String text = pill.state == null ? "–" : (pill.state.getValue() ? "an" : "aus");
+        return "<span class=\"pill " + state + "\"><span class=\"dot\"></span>" + label(pill) + " <b>" + text
+                + "</b></span>";
+    }
+
+    /**
+     * Label with the formula as tooltip. Without course the label can be focused, so a tap shows it on a phone.
+     */
+    private static String label(Item item) {
+        if (item.formula == null) {
+            return item.label;
+        }
+        return "<span class=\"calc\" data-formula=\"" + attr(item.formula) + "\""
+                + (item.series == null ? " tabindex=\"0\"" : "") + ">" + item.label
+                + "<span class=\"info\" aria-hidden=\"true\">ⓘ</span></span>";
     }
 
     /**
      * Attributes which make a row or KPI clickable, empty without series
      */
-    private String history(String series, String label, String unit, int decimals) {
-        if (series == null) {
+    private static String history(Item item) {
+        if (item.series == null) {
             return "";
         }
-        hasHistory = true;
-        return " data-series=\"" + attr(series) + "\" data-label=\"" + attr(label) + "\" data-unit=\"" + attr(unit)
-                + "\" data-decimals=\"" + decimals + "\" role=\"button\" tabindex=\"0\" title=\"Verlauf 24 h\"";
+        return " data-series=\"" + attr(item.series) + "\" data-label=\"" + attr(item.label) + "\" data-unit=\""
+                + attr(item.unit) + "\" data-decimals=\"" + item.decimals + "\""
+                + (item.formula == null ? "" : " data-formula=\"" + attr(item.formula) + "\"")
+                + " role=\"button\" tabindex=\"0\"";
     }
 
     private static String attr(String text) {
         return text.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
-    }
-
-    public StatusPage pill(String label, Callable<ValueContainer<Boolean>> value) {
-        ValueContainer<Boolean> container = call(value);
-        String state = container == null ? "unknown" : (container.getValue() ? "on" : "off");
-        String text = container == null ? "–" : (container.getValue() ? "an" : "aus");
-        current().pills.append("<span class=\"pill ").append(state).append("\"><span class=\"dot\"></span>")
-                .append(label).append(" <b>").append(text).append("</b></span>");
-        return this;
-    }
-
-    public StatusPage note(String text) {
-        current().content.append("<p class=\"note\">").append(text).append("</p>");
-        return this;
     }
 
     private static <T> T call(Callable<T> value) {
@@ -196,7 +264,8 @@ public class StatusPage {
                 // With the course dialog the script reloads the page, but not while the dialog is open
                 .append(hasHistory ? "<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"
                         : "<meta http-equiv=\"refresh\" content=\"20\">")
-                .append("<title>Wärmepumpe</title><style>").append(CSS).append(hasHistory ? HISTORY_CSS : "")
+                .append("<title>Wärmepumpe</title><style>").append(CSS)
+                .append(hasFormula ? FORMULA_CSS : "").append(hasHistory ? HISTORY_CSS : "")
                 .append("</style></head><body><main>");
 
         html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
@@ -206,14 +275,19 @@ public class StatusPage {
         html.append("</div></header>");
 
         html.append("<section class=\"kpis\">");
-        kpis.forEach(html::append);
+        kpis.forEach(kpi -> html.append(renderKpi(kpi)));
         html.append("</section><section class=\"cards\">");
         for (Card card : cards) {
             html.append("<article class=\"card\"><h2>").append(card.title).append("</h2>");
-            if (card.pills.length() > 0) {
-                html.append("<div class=\"pills\">").append(card.pills).append("</div>");
+            if (!card.pills.isEmpty()) {
+                html.append("<div class=\"pills\">");
+                card.pills.forEach(pill -> html.append(renderPill(pill)));
+                html.append("</div>");
             }
-            html.append(card.content).append("</article>");
+            for (Object content : card.content) {
+                html.append(content instanceof Item row ? renderRow(row) : content);
+            }
+            html.append("</article>");
         }
         html.append("</section></main>");
         if (hasHistory) {
@@ -223,9 +297,20 @@ public class StatusPage {
         return html.toString();
     }
 
+    private static final String FORMULA_CSS = """
+            .calc { position: relative; cursor: help; outline: none; }
+            .calc .info { margin-left: 4px; font-size: 0.85em; color: var(--accent); opacity: 0.8; }
+            .calc:hover::after, .calc:focus::after { content: attr(data-formula); position: absolute; left: 0;
+              top: calc(100% + 4px); z-index: 10; width: max-content; max-width: min(340px, 80vw);
+              white-space: normal; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
+              background: var(--card); color: var(--text); font-size: 12px; font-weight: 400; line-height: 1.4;
+              text-transform: none; letter-spacing: 0; box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
+            .pill .calc:hover::after, .pill .calc:focus::after { top: calc(100% + 8px); }
+            """;
+
     private static final String HISTORY_DIALOG = """
             <dialog id="verlauf" aria-labelledby="v-title">
-              <div class="v-head"><div><h3 id="v-title"></h3><p class="sub" id="v-sub"></p></div>
+              <div class="v-head"><div><h3 id="v-title"></h3><p class="sub" id="v-sub"></p><p class="v-formula" id="v-formula" hidden></p></div>
               <button type="button" class="v-close" aria-label="Schließen">×</button></div>
               <div class="v-ranges" role="group" aria-label="Zeitbereich">
                 <button type="button" data-range="6h">6 h</button><button type="button" data-range="24h">24 h</button>
@@ -247,6 +332,8 @@ public class StatusPage {
             dialog#verlauf::backdrop { background: rgb(0 0 0 / 0.45); }
             .v-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
             .v-head h3 { margin: 0; font-size: 18px; }
+            .v-formula { margin: 4px 0 0; font-size: 12px; color: var(--text); }
+            .v-formula::before { content: "Berechnung: "; color: var(--muted); }
             .v-close { border: 0; background: var(--off-bg); color: var(--text); width: 32px; height: 32px;
               border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; flex: none; }
             .v-ranges { display: inline-flex; flex-wrap: wrap; gap: 2px; margin-top: 10px; padding: 3px;
@@ -438,6 +525,9 @@ public class StatusPage {
               function open(row) {
                 current = row;
                 document.getElementById('v-title').textContent = row.dataset.label;
+                const formula = document.getElementById('v-formula');
+                formula.textContent = row.dataset.formula || '';
+                formula.hidden = !row.dataset.formula;
                 if (!dlg.open) dlg.showModal();
                 load();
               }
