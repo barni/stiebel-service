@@ -33,7 +33,7 @@ public class StatusPage {
     // Last added KPI, row or pill, formula() refers to it
     private Item last;
     private boolean hasHistory;
-    private boolean hasFormula;
+    private boolean hasTooltip;
 
     public StatusPage() {
         this(Clock.systemDefaultZone());
@@ -66,6 +66,8 @@ public class StatusPage {
         ValueContainer<Double> value;
         ValueContainer<Boolean> state;
         Duration maxAge;
+        // Explanation of the value and, for calculated values, the formula
+        String info;
         String formula;
         // Text instead of a number, e.g. the firmware version
         String text;
@@ -163,12 +165,25 @@ public class StatusPage {
      * the course dialog
      */
     public StatusPage formula(String text) {
-        if (last == null) {
-            throw new IllegalStateException("kpi(), row() or pill() has to be called first");
-        }
-        last.formula = text;
-        hasFormula = true;
+        lastItem().formula = text;
+        hasTooltip = true;
         return this;
+    }
+
+    /**
+     * Explanation of the last added KPI, row or pill, shown as tooltip and in the course dialog
+     */
+    public StatusPage info(String text) {
+        lastItem().info = text;
+        hasTooltip = true;
+        return this;
+    }
+
+    private Item lastItem() {
+        if (last == null) {
+            throw new IllegalStateException("kpi(), row(), text() or pill() has to be called first");
+        }
+        return last;
     }
 
     public StatusPage note(String text) {
@@ -214,15 +229,24 @@ public class StatusPage {
     }
 
     /**
-     * Label with the formula as tooltip. Without course the label can be focused, so a tap shows it on a phone.
+     * Label with explanation and formula as tooltip. Without course the label can be focused, so a tap shows it on a
+     * phone.
      */
     private static String label(Item item) {
-        if (item.formula == null) {
+        if (item.info == null && item.formula == null) {
             return item.label;
         }
-        return "<span class=\"calc\" data-formula=\"" + attr(item.formula) + "\""
+        return "<span class=\"calc\" data-tip=\"" + attr(tooltip(item)) + "\""
                 + (item.series == null ? " tabindex=\"0\"" : "") + ">" + item.label
                 + "<span class=\"info\" aria-hidden=\"true\">ⓘ</span></span>";
+    }
+
+    private static String tooltip(Item item) {
+        if (item.formula == null) {
+            return item.info;
+        }
+        String formula = "Berechnung: " + item.formula;
+        return item.info == null ? formula : item.info + "\n" + formula;
     }
 
     /**
@@ -234,12 +258,14 @@ public class StatusPage {
         }
         return " data-series=\"" + attr(item.series) + "\" data-label=\"" + attr(item.label) + "\" data-unit=\""
                 + attr(item.unit) + "\" data-decimals=\"" + item.decimals + "\""
+                + (item.info == null ? "" : " data-info=\"" + attr(item.info) + "\"")
                 + (item.formula == null ? "" : " data-formula=\"" + attr(item.formula) + "\"")
                 + " role=\"button\" tabindex=\"0\"";
     }
 
     private static String attr(String text) {
-        return text.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
+        return text.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\n", "&#10;");
     }
 
     private static <T> T call(Callable<T> value) {
@@ -283,7 +309,7 @@ public class StatusPage {
                 .append(hasHistory ? "<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"
                         : "<meta http-equiv=\"refresh\" content=\"20\">")
                 .append("<title>Wärmepumpe</title><style>").append(CSS)
-                .append(hasFormula ? FORMULA_CSS : "").append(hasHistory ? HISTORY_CSS : "")
+                .append(hasTooltip ? TOOLTIP_CSS : "").append(hasHistory ? HISTORY_CSS : "")
                 .append("</style></head><body><main>");
 
         html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
@@ -315,12 +341,12 @@ public class StatusPage {
         return html.toString();
     }
 
-    private static final String FORMULA_CSS = """
+    private static final String TOOLTIP_CSS = """
             .calc { position: relative; cursor: help; outline: none; }
             .calc .info { margin-left: 4px; font-size: 0.85em; color: var(--accent); opacity: 0.8; }
-            .calc:hover::after, .calc:focus::after { content: attr(data-formula); position: absolute; left: 0;
+            .calc:hover::after, .calc:focus::after { content: attr(data-tip); position: absolute; left: 0;
               top: calc(100% + 4px); z-index: 10; width: max-content; max-width: min(340px, 80vw);
-              white-space: normal; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
+              white-space: pre-line; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
               background: var(--card); color: var(--text); font-size: 12px; font-weight: 400; line-height: 1.4;
               text-transform: none; letter-spacing: 0; box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
             .pill .calc:hover::after, .pill .calc:focus::after { top: calc(100% + 8px); }
@@ -328,7 +354,7 @@ public class StatusPage {
 
     private static final String HISTORY_DIALOG = """
             <dialog id="verlauf" aria-labelledby="v-title">
-              <div class="v-head"><div><h3 id="v-title"></h3><p class="sub" id="v-sub"></p><p class="v-formula" id="v-formula" hidden></p></div>
+              <div class="v-head"><div><h3 id="v-title"></h3><p class="sub" id="v-sub"></p><p class="v-info" id="v-info" hidden></p><p class="v-formula" id="v-formula" hidden></p></div>
               <button type="button" class="v-close" aria-label="Schließen">×</button></div>
               <div class="v-ranges" role="group" aria-label="Zeitbereich">
                 <button type="button" data-range="6h">6 h</button><button type="button" data-range="24h">24 h</button>
@@ -350,6 +376,7 @@ public class StatusPage {
             dialog#verlauf::backdrop { background: rgb(0 0 0 / 0.45); }
             .v-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
             .v-head h3 { margin: 0; font-size: 18px; }
+            .v-info { margin: 4px 0 0; font-size: 12px; color: var(--text); }
             .v-formula { margin: 4px 0 0; font-size: 12px; color: var(--text); }
             .v-formula::before { content: "Berechnung: "; color: var(--muted); }
             .v-close { border: 0; background: var(--off-bg); color: var(--text); width: 32px; height: 32px;
@@ -543,9 +570,11 @@ public class StatusPage {
               function open(row) {
                 current = row;
                 document.getElementById('v-title').textContent = row.dataset.label;
-                const formula = document.getElementById('v-formula');
-                formula.textContent = row.dataset.formula || '';
-                formula.hidden = !row.dataset.formula;
+                for (const key of ['info', 'formula']) {
+                  const line = document.getElementById('v-' + key);
+                  line.textContent = row.dataset[key] || '';
+                  line.hidden = !row.dataset[key];
+                }
                 if (!dlg.open) dlg.showModal();
                 load();
               }

@@ -1157,6 +1157,13 @@ public class StblService {
                 canStatistik.getLetzteAntwort(), canStatistik.getLetzteMinute(), canStatistik.getKnoten());
     }
 
+    // What the CAN nodes are, as far as known from the answered values
+    private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
+            0x180, "Wärmepumpenmanager WPM3 im HM Trend, Heizungsregler (Betriebsstatus, Heizungsdruck).",
+            0x480, "Wärmepumpenmanager WPM3, Steuerung der Wärmepumpe, fragt die Außeneinheit 0x500 ab.",
+            0x500, "Außeneinheit WPL 17 ACS (Verdichter, Kältekreis, Inverter, Lüfter).",
+            0x514, "Außeneinheit, Zugang für externe Abfragen mit Zählern, Laufzeiten und Einstellungen.");
+
     private static final DateTimeFormatter ZEITPUNKT = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm:ss");
 
     private static final String FORMEL_SCHEINLEISTUNG = "Spannung × Strom des Inverters, ohne Leistungsfaktor";
@@ -1198,114 +1205,220 @@ public class StblService {
         StatusPage page = new StatusPage()
                 .badge("Verdichter läuft", "Verdichter aus", this::isVerdichterOn)
                 .kpi("Außentemperatur", "°C", 1, "Aussentemp", this::getAussentemp)
+                .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
+                        + "Wärmepumpenmanagers etwas abweichen, beim Abtauen steigt sie kurz um einige Kelvin.")
                 .kpi("Vorlauf", "°C", 1, "VorlaufIstTemp", this::getVorlaufIstTemp)
+                .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
+                        + "Schritten von etwa 1,1 K gemeldet.")
                 .kpi("Rücklauf", "°C", 1, "RuecklaufIstTemp", this::getRuecklaufIstTemp)
+                .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
+                        + "Schritten von etwa 1,1 K gemeldet.")
                 .kpi("Verdichter", "Hz", 0, "VerdichterDrehzahlHz", this::getVerdichterDrehzahl)
+                .info("Aktuelle Drehzahl des Inverter-Verdichters in der Außeneinheit (0x500). 0 bedeutet, der "
+                        + "Verdichter steht.")
                 .kpi("Inverter (berechnet)", "VA", 0, "LeistungInverter", this::getLeistungInverter)
+                .info("Momentane Leistungsaufnahme des Verdichter-Inverters. Die echte Wirkleistung ist bei kleiner "
+                        + "Last bis etwa 20 % niedriger.")
                 .formula(FORMEL_SCHEINLEISTUNG)
                 .card("Betrieb")
                 .pill("Verdichter", this::isVerdichterOn)
+                .info("Verdichter läuft, aus dem Betriebsstatus des Wärmepumpenmanagers (0x180).")
                 .pill("Pufferladepumpe", this::isPufferladepumpeOn)
+                .info("Pumpe, die das Heizwasser durch die Wärmepumpe fördert, Betriebsstatus des "
+                        + "Wärmepumpenmanagers (0x180).")
                 .pill("Warmwasserladepumpe", this::isWarmwasserladepumpe)
+                .info("Ladung des Warmwasserspeichers aktiv, Betriebsstatus des Wärmepumpenmanagers (0x180).")
                 .pill("DHC 1", this::isDHC_1On)
+                .info("Stufe 1 des elektrischen Heizstabs (Not-/Zusatzheizung) im HM Trend, Betriebsstatus (0x180).")
                 .pill("DHC 2", this::isDHC_2On)
+                .info("Stufe 2 des elektrischen Heizstabs (Not-/Zusatzheizung) im HM Trend, Betriebsstatus (0x180).")
                 .pill("EVU-Sperre", this::isEvuSperre)
+                .info("Sperrsignal des Energieversorgers am Kontakt EVU. Während der Sperre darf die Wärmepumpe "
+                        + "nicht laufen.")
                 .pill("Abtauung (berechnet)", this::isAbtauung)
+                .info("Die Außeneinheit taut ihren vereisten Verdampfer ab und nimmt dafür kurz Wärme aus dem "
+                        + "Heizwasser. Der Dienst erkennt das selbst, weil die Wärmepumpe es nicht zuverlässig "
+                        + "meldet.")
                 .formula(formelAbtauung())
                 .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", this::getLaufzeit_DHC1)
+                .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
                 .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", this::getLaufzeit_DHC2)
+                .info("Betriebsstunden der Heizstab-Stufe 2 seit Inbetriebnahme (0x500).")
                 .row("Laufzeit DHC 1+2", "h", 0, "LaufzeitDHZ12", this::getLaufzeit_DHC12)
+                .info("Betriebsstunden mit beiden Heizstab-Stufen gleichzeitig seit Inbetriebnahme (0x500).")
                 .card("Verdichter")
                 .row("Laufzeit Heizen", "h", 0, "LaufzeitVerdichterHeizen", this::getLaufzeitVerdichterHeizen)
+                .info("Betriebsstunden des Verdichters im Heizbetrieb seit Inbetriebnahme (0x514).")
                 .row("Starts", "", 0, "VerdichterStarts", this::getVerdichterStarts)
+                .info("Anzahl der Verdichterstarts seit Inbetriebnahme (0x514). Wenige, lange Läufe sind effizienter "
+                        + "und schonen den Verdichter.")
                 .row("Laufzeit je Start (berechnet)", "h", 2, this::getLaufzeitProStart)
+                .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
                 .formula("Laufzeit Heizen ÷ Verdichterstarts")
                 .row("Laufzeit Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", this::getLaufzeitVerdichterAbtauen)
+                .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514).")
                 .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", this::getDauerLetzteAbtauung)
+                .info("Dauer der letzten Abtauung (0x514).")
                 .note("Zähler seit Inbetriebnahme.")
                 .card("Heizkreis")
                 .row("Vorlauf", "°C", 1, "VorlaufIstTemp", this::getVorlaufIstTemp)
+                .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
+                        + "Schritten von etwa 1,1 K gemeldet.")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", this::getRuecklaufIstTemp)
+                .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
+                        + "Schritten von etwa 1,1 K gemeldet.")
                 .row("Spreizung (berechnet)", "K", 1, this::getSpreizung)
+                .info("Temperaturunterschied zwischen Vor- und Rücklauf. Der Sollwert steht unter Einstellungen "
+                        + "(Soll-Spreizung).")
                 .formula("Vorlauf − Rücklauf")
                 .row("Volumenstrom", "l/min", 1, "WasserVolumenstrom", this::getVolumenstrom)
+                .info("Heizwasser, das durch die Wärmepumpe fließt (0x500). Wird jede Minute abgefragt.")
                 .row("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", this::getWaermeleistung)
+                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt.")
                 .formula(formelWaermeleistung())
                 .row("Heizungsdruck", "bar", 2, "Heizungsdruck", this::getHeizungsdruck)
+                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180).")
                 .card("Kältekreis")
                 .row("Verdichter-Drehzahl", "Hz", 0, "VerdichterDrehzahlHz", this::getVerdichterDrehzahl)
+                .info("Aktuelle Drehzahl des Inverter-Verdichters in der Außeneinheit (0x500). 0 bedeutet, der "
+                        + "Verdichter steht.")
                 .row("Verdichter-Solldrehzahl", "Hz", 0, "VerdichterSollDrehzahlHz", this::getVerdichterSollDrehzahl)
+                .info("Drehzahl, die die Regelung vom Verdichter fordert (0x514).")
                 .row("Hochdruck", "bar", 2, "Hochdruck", this::getHochdruck)
+                .info("Absoluter Druck auf der Hochdruckseite des Kältekreises (0x500). Entspricht der "
+                        + "Kondensationstemperatur, die etwa der Vorlauftemperatur folgt.")
                 .row("Niederdruck", "bar", 2, "Niederdruck", this::getNiederdruck)
+                .info("Absoluter Druck auf der Saugseite des Kältekreises (0x500). Entspricht der "
+                        + "Verdampfungstemperatur, im Betrieb einige Kelvin unter der Außentemperatur.")
                 .row("Heißgas", "°C", 1, "HeissgasTemp", this::getHeissgasTemp)
+                .info("Temperatur des Kältemittels direkt hinter dem Verdichter (0x500).")
                 .row("Verdichter-Eintritt", "°C", 1, "VerdichterEintrittstemp", this::getVerdichterEintrittstemp)
+                .info("Temperatur des angesaugten Kältemittels am Verdichtereintritt (0x500).")
                 .row("Verdampfer", "°C", 1, "VerdampferTemp", this::getVerdampferTemp)
+                .info("Temperatur am Austritt des Verdampfers in der Außeneinheit (0x500). Steigt beim Abtauen stark "
+                        + "an.")
                 .row("Ölsumpf", "°C", 1, "OelsumpfTemp", this::getOelsumpfTemp)
+                .info("Temperatur des Öls im Verdichter (0x500).")
                 .row("Überhitzung", "K", 1, "UeberhitzungIst", this::getIstUeberhitzung)
+                .info("Wie viel wärmer das Kältemittel am Verdampferaustritt ist als seine Verdampfungstemperatur "
+                        + "(0x514). Darauf regelt das Expansionsventil.")
                 .row("Überhitzung Soll", "K", 1, "UeberhitzungSoll", this::getSollUeberhitzung)
+                .info("Zielwert der Überhitzung für das Expansionsventil (0x514).")
                 .row("Expansionsventil", "%", 1, "OeffnungsgradEXV", this::getOeffnungsgradExv)
+                .info("Öffnung des elektronischen Expansionsventils (0x514). Beim Heizen meist um 20–25 %, beim "
+                        + "Abtauen und kurz nach einem Start bis 100 %.")
                 .row("Lüfter", "Hz", 0, "LuefterIstDrehzahlHz", this::getLuefterIstDrehzahl)
+                .info("Ist-Drehzahl des Lüfters der Außeneinheit (0x514).")
                 .row("Lüfter Soll", "Hz", 0, "LuefterSollDrehzahlHz", this::getLuefterSollDrehzahl)
+                .info("Von der Regelung geforderte Lüfterdrehzahl (0x514).")
                 .row("Lüfterleistung", "%", 0, "LuefterLeistung", this::getLuefterLeistung)
+                .info("Relative Leistung des Lüfters der Außeneinheit (0x500).")
                 .card("Inverter")
                 .row("Spannung", "V", 1, "SpannungInverter", this::getSpannungInverter)
+                .info("Netzspannung am Verdichter-Inverter (0x500). Zeigt dauerhaft etwa 10 V zu wenig an, der "
+                        + "Hauszähler misst richtig.")
                 .row("Strom", "A", 1, "StromInverter", this::getStromInverter)
+                .info("Stromaufnahme des Verdichter-Inverters (0x500).")
                 .row("Scheinleistung (berechnet)", "VA", 0, "LeistungInverter", this::getLeistungInverter)
+                .info("Momentane Leistungsaufnahme des Verdichter-Inverters. Die echte Wirkleistung ist bei kleiner "
+                        + "Last bis etwa 20 % niedriger.")
                 .formula(FORMEL_SCHEINLEISTUNG)
                 .row("Umgebungstemperatur", "°C", 1, "UmgebungstempInverter", this::getUmgebungstempInverter)
+                .info("Temperatur in der Umgebung der Inverter-Elektronik (0x514).")
                 .row("Temperatur Verdichter", "°C", 1, "TempInverterVerdichter", this::getTempInverterVerdichter)
+                .info("Vom Inverter gemessene Temperatur am Verdichter (0x514).")
                 .note("Spannung × Strom ohne Leistungsfaktor. Die Wirkleistung liegt laut Smartmeter bei etwa "
                         + "80 % bei 600 VA und erreicht ab 1000 VA die Scheinleistung.")
                 .card("Energie Heizen")
                 .row("Stromaufnahme", "MWh", 3, "AufnahmeLeistung", this::getAufnahmeLeistung)
+                .info("Elektrische Energie fürs Heizen seit Inbetriebnahme laut Stromzähler der Wärmepumpe (0x514), "
+                        + "aus Summe und Tageswert zusammengesetzt. Der Zähler zählt rund 15–20 % zu wenig.")
                 .row("Wärmeerzeugung", "MWh", 3, "AbgabeWaerme", this::getAbgabeWaerme)
+                .info("Heizwärme seit Inbetriebnahme laut Wärmezähler der Wärmepumpe (0x514), aus Summe und "
+                        + "Tageswert zusammengesetzt. Stimmt auf etwa 6 % mit der Rechnung aus Durchfluss und "
+                        + "Spreizung überein.")
                 .row("Zusatzheizung", "MWh", 3, "WaermeZusatzheizung", this::getWaermeZusatzheizung)
+                .info("Vom Heizstab erzeugte Wärme seit Inbetriebnahme (0x514).")
                 .row("Effizienz gesamt (Zähler, berechnet)", "", 2, this::getEffezienz)
+                .info("Arbeitszahl seit Inbetriebnahme nach den Zählern der Wärmepumpe. Zu hoch, weil der "
+                        + "Stromzähler zu wenig zählt.")
                 .formula("Wärmeerzeugung ÷ Stromaufnahme, beides Zähler der Wärmepumpe")
                 .row("Effizienz gesamt (korrigiert, berechnet)", "", 2, "EffizienzKorrigiert", this::getEffizienzKorrigiert)
+                .info("Realistische Arbeitszahl seit Inbetriebnahme, mit korrigiertem Stromverbrauch.")
                 .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + zahl(STROMZAEHLER_KORREKTUR)
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
                 .row("Arbeitszahl aktuell (berechnet)", "", 1, "ArbeitszahlGeschaetzt", this::getArbeitszahl)
+                .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung.")
                 .formula(formelArbeitszahl())
                 .note("Zähler der Wärmepumpe seit Inbetriebnahme. Der Stromzähler zählt rund 20 % zu wenig, "
                         + "die korrigierte Effizienz rechnet das heraus. Die aktuelle Arbeitszahl ist geschätzt: "
                         + "berechnete Wärmeleistung geteilt durch die aus der Scheinleistung geschätzte Wirkleistung.")
                 .card("Einstellungen")
                 .row("Auslegungstemperatur", "°C", 1, "Einstellung_Auslegungstemperatur", this::getAuslegungstemperatur, MAX_AGE_3600)
+                .info("Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Einstellung im Wärmepumpenmanager, "
+                        + "gelesen von 0x514.")
                 .row("Wärmebedarf", "kW", 1, "Einstellung_Waermebedarf", this::getWaermebedarf, MAX_AGE_3600)
+                .info("Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
+                        + "hochregelt. Einstellung im Wärmepumpenmanager.")
                 .row("Soll-Spreizung", "K", 1, "Einstellung_SollSpreizung", this::getSollSpreizung, MAX_AGE_3600)
+                .info("Gewünschter Unterschied zwischen Vor- und Rücklauf. Einstellung im Wärmepumpenmanager.")
                 .row("Bivalenztemperatur", "°C", 1, "Einstellung_Bivalenztemperatur", this::getBivalenztemperatur, MAX_AGE_3600)
+                .info("Unterhalb dieser Außentemperatur darf der Heizstab zuheizen. Einstellung im Wärmepumpenmanager.")
                 .row("Einsatzgrenze Heizen", "°C", 1, "Einstellung_EinsatzgrenzeHeizen", this::getEinsatzgrenzeHeizen, MAX_AGE_3600)
+                .info("Unterhalb dieser Außentemperatur heizt die Wärmepumpe nicht mehr, nur noch der Heizstab. "
+                        + "Einstellung im Wärmepumpenmanager.")
                 .row("Silent Leistung", "%", 0, "Einstellung_SilentLeistung", this::getSilentLeistung, MAX_AGE_3600)
+                .info("Begrenzung der Verdichterleistung im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
                 .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", this::getSilentLuefter, MAX_AGE_3600)
+                .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
                 .note("Heizlast bei Auslegungstemperatur und weitere Einstellungen, stündlich abgefragt.")
                 .card("USB-Adapter")
                 .pill("Verbindung", this::isAdapterVerbunden)
+                .info("USBtin am Pi verbunden und CAN-Kanal geöffnet.")
                 .text("Port", usbPort + " · " + usbSpeed / 1000 + " kbit/s")
+                .info("Serielle Schnittstelle des USBtin am Pi und Bitrate des Wärmepumpen-Busses.")
                 .text("Firmware / Hardware", canStatistik.getFirmware() == null ? null
                         : canStatistik.getFirmware() + " / " + canStatistik.getHardware())
+                .info("Versionen des USBtin, beim Verbinden ausgelesen.")
                 .text("Seriennummer", canStatistik.getSeriennummer())
+                .info("Seriennummer des USBtin.")
                 .text("Verbunden seit", zeitpunkt(canStatistik.getVerbundenSeit()))
+                .info("Zeitpunkt der letzten erfolgreichen Verbindung, also Start des Dienstes oder letzter "
+                        + "USB-Neustart.")
                 .row("USB-Neustarts", "", 0, "CAN_UsbNeustarts", this::getUsbNeustarts)
+                .info("Wie oft die Überwachung die USB-Verbindung neu gestartet hat, weil 2 min keine Antwort kam.")
                 .text("Letzter Neustart", zeitpunkt(canStatistik.getLetzterNeustart()))
+                .info("Zeitpunkt des letzten USB-Neustarts durch die Überwachung.")
                 .note("Neustarts durch die Überwachung (keine Antwort für 2 min), gezählt seit dem Start des "
                         + "Dienstes.")
                 .card("CAN-Bus")
                 .row("Letzte Antwort vor", "s", 0, this::getSekundenSeitAntwort)
+                .info("Zeit seit der letzten Antwort auf eine Anfrage des Dienstes. Nach 120 s startet die "
+                        + "Überwachung die USB-Verbindung neu.")
                 .row("Empfangen", "/min", 0, "CAN_Empfangen", () -> canMinute(CanStatistik.Minute::empfangen))
+                .info("Alle empfangenen CAN-Nachrichten pro Minute. Mit can.logall=false nur die Antworten an den "
+                        + "Dienst.")
                 .row("davon Antworten", "/min", 0, "CAN_Antworten", () -> canMinute(CanStatistik.Minute::antworten))
+                .info("Antworten auf Anfragen des Dienstes pro Minute.")
                 .row("Anfragen gesendet", "/min", 0, "CAN_Gesendet", () -> canMinute(CanStatistik.Minute::gesendet))
+                .info("Vom Dienst gesendete Abfragen pro Minute.")
                 .row("Antwortquote (berechnet)", "%", 0, "CAN_Antwortquote",
                         () -> canMinute(CanStatistik.Minute::antwortquote))
+                .info("Anteil der beantworteten Anfragen. Dauerhaft deutlich unter 100 % deutet auf Probleme am Bus "
+                        + "oder auf Werte hin, die kein Gerät kennt.")
                 .formula("Antworten ÷ gesendete Anfragen der letzten Minute, höchstens 100 %")
                 .row("Antwort „nicht verfügbar“", "/min", 0, "CAN_NichtVerfuegbar",
                         () -> canMinute(CanStatistik.Minute::nichtVerfuegbar))
+                .info("Antworten mit dem Wert 0x8000 pro Minute: Das Gerät kennt den abgefragten Wert nicht.")
                 .row("Buslast (berechnet)", "%", 1, "CAN_Buslast", () -> canMinute(CanStatistik.Minute::buslast))
+                .info("Wie stark der CAN-Bus ausgelastet ist.")
                 .formula("Summe (47 + 8 × Datenbytes) Bit aller empfangenen und gesendeten Nachrichten der letzten "
                         + "Minute ÷ 60 s ÷ " + usbSpeed + " bit/s. Ohne Bit-Stuffing, also eher etwas zu niedrig");
         for (CanStatistik.KnotenStatus knoten : canStatistik.getKnoten()) {
             page.row(knoten.name(), "/min", 0, knotenSerie(knoten.id()),
-                    () -> new ValueContainer<>(knoten.proMinute(), knoten.zuletzt()));
+                    () -> new ValueContainer<>(knoten.proMinute(), knoten.zuletzt()))
+                    .info(KNOTEN_ERKLAERUNG.getOrDefault(knoten.id(), "Unbekanntes Gerät am CAN-Bus.")
+                            + " Nachrichten pro Minute, „seit“ zeigt, wann es zuletzt gesendet hat.");
         }
         return page
                 .note("Werte der letzten vollen Minute, je Gerät die Nachrichten pro Minute. Mit can.logall=false "

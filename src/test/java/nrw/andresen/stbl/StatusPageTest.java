@@ -168,15 +168,37 @@ public class StatusPageTest {
     public void testFormula() throws Exception {
         String html = render();
         // Row without course: tooltip on the label, focusable for a tap on a phone
-        assertTrue(html.contains("<span class=\"calc\" data-formula=\"Vorlauf − Rücklauf\" tabindex=\"0\">"
+        assertTrue(html.contains("<span class=\"calc\" data-tip=\"Berechnung: Vorlauf − Rücklauf\" tabindex=\"0\">"
                 + "Spreizung<span class=\"info\" aria-hidden=\"true\">ⓘ</span></span>"));
         // Row with course: the dialog shows the formula, the label is not focusable on its own
         assertTrue(html.contains("data-formula=\"Volumenstrom × Spreizung\" role=\"button\""));
-        assertTrue(html.contains("<span class=\"calc\" data-formula=\"Volumenstrom × Spreizung\">"));
+        assertTrue(html.contains("<span class=\"calc\" data-tip=\"Berechnung: Volumenstrom × Spreizung\">"));
         // Pill, the formula is escaped
-        assertTrue(html.contains("data-formula=\"EXV &amp; Verdampfer\" tabindex=\"0\">Abtauung (berechnet)"));
+        assertTrue(html.contains("data-tip=\"Berechnung: EXV &amp; Verdampfer\" tabindex=\"0\">Abtauung (berechnet)"));
         assertTrue(html.contains("id=\"v-formula\""));
         assertTrue(html.contains(".calc:hover::after"));
+    }
+
+    @Test
+    public void testInfo() {
+        String html = new StatusPage(clock)
+                .kpi("Vorlauf", "°C", 1, "VorlaufIstTemp", () -> value(29.8))
+                .info("Temperatur zum Heizkreis")
+                .card("Heizkreis")
+                .row("Spreizung (berechnet)", "K", 1, () -> value(6.7))
+                .info("Unterschied Vor- und Rücklauf")
+                .formula("Vorlauf − Rücklauf")
+                .text("Seriennummer", "A1")
+                .info("Des USBtin")
+                .render();
+        // Explanation only
+        assertTrue(html.contains("<span class=\"calc\" data-tip=\"Temperatur zum Heizkreis\">Vorlauf"));
+        assertTrue(html.contains("data-info=\"Temperatur zum Heizkreis\" role=\"button\""));
+        // Explanation and formula in two lines
+        assertTrue(html.contains("data-tip=\"Unterschied Vor- und Rücklauf&#10;Berechnung: Vorlauf − Rücklauf\""));
+        assertTrue(html.contains("<span class=\"calc\" data-tip=\"Des USBtin\" tabindex=\"0\">Seriennummer"));
+        assertTrue(html.contains("id=\"v-info\""));
+        assertTrue(html.contains("white-space: pre-line"));
     }
 
     @Test
