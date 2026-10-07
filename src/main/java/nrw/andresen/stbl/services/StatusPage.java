@@ -30,6 +30,7 @@ public class StatusPage {
     private final List<String> headerBadges = new ArrayList<>();
     private final List<String> kpis = new ArrayList<>();
     private final List<Card> cards = new ArrayList<>();
+    private boolean hasHistory;
 
     public StatusPage() {
         this(Clock.systemDefaultZone());
@@ -73,10 +74,18 @@ public class StatusPage {
     }
 
     public StatusPage kpi(String label, String unit, int decimals, Callable<ValueContainer<Double>> value) {
+        return kpi(label, unit, decimals, null, value);
+    }
+
+    /**
+     * KPI whose value is stored in InfluxDB as WP_series, a click shows its course of the last 24 hours
+     */
+    public StatusPage kpi(String label, String unit, int decimals, String series,
+                          Callable<ValueContainer<Double>> value) {
         ValueContainer<Double> container = call(value);
-        kpis.add("<div class=\"kpi\"><div class=\"label\">" + label + "</div>"
-                + "<div class=\"value\">" + number(container, decimals)
-                + unit(container, unit) + "</div>"
+        kpis.add("<div class=\"kpi\"" + history(series, label, unit, decimals) + "><div class=\"label\">" + label
+                + "</div><div class=\"value\"><span class=\"num\">" + number(container, decimals)
+                + unit(container, unit) + "</span></div>"
                 + age(container, MAX_AGE) + "</div>");
         return this;
     }
@@ -87,7 +96,7 @@ public class StatusPage {
     }
 
     public StatusPage row(String label, String unit, int decimals, Callable<ValueContainer<Double>> value) {
-        return row(label, unit, decimals, value, MAX_AGE);
+        return row(label, unit, decimals, null, value, MAX_AGE);
     }
 
     /**
@@ -95,12 +104,42 @@ public class StatusPage {
      */
     public StatusPage row(String label, String unit, int decimals, Callable<ValueContainer<Double>> value,
                           Duration maxAge) {
+        return row(label, unit, decimals, null, value, maxAge);
+    }
+
+    /**
+     * Row whose value is stored in InfluxDB as WP_series, a click shows its course of the last 24 hours
+     */
+    public StatusPage row(String label, String unit, int decimals, String series,
+                          Callable<ValueContainer<Double>> value) {
+        return row(label, unit, decimals, series, value, MAX_AGE);
+    }
+
+    public StatusPage row(String label, String unit, int decimals, String series,
+                          Callable<ValueContainer<Double>> value, Duration maxAge) {
         ValueContainer<Double> container = call(value);
-        current().content.append("<div class=\"row\"><span class=\"label\">").append(label).append("</span>")
-                .append("<span class=\"value\">").append(number(container, decimals))
-                .append(unit(container, unit))
+        current().content.append("<div class=\"row\"").append(history(series, label, unit, decimals))
+                .append("><span class=\"label\">").append(label).append("</span>")
+                .append("<span class=\"value\"><span class=\"num\">").append(number(container, decimals))
+                .append(unit(container, unit)).append("</span>")
                 .append(age(container, maxAge)).append("</span></div>");
         return this;
+    }
+
+    /**
+     * Attributes which make a row or KPI clickable, empty without series
+     */
+    private String history(String series, String label, String unit, int decimals) {
+        if (series == null) {
+            return "";
+        }
+        hasHistory = true;
+        return " data-series=\"" + attr(series) + "\" data-label=\"" + attr(label) + "\" data-unit=\"" + attr(unit)
+                + "\" data-decimals=\"" + decimals + "\" role=\"button\" tabindex=\"0\" title=\"Verlauf 24 h\"";
+    }
+
+    private static String attr(String text) {
+        return text.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     public StatusPage pill(String label, Callable<ValueContainer<Boolean>> value) {
@@ -154,8 +193,11 @@ public class StatusPage {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                .append("<meta http-equiv=\"refresh\" content=\"20\">")
-                .append("<title>Wärmepumpe</title><style>").append(CSS).append("</style></head><body><main>");
+                // With the course dialog the script reloads the page, but not while the dialog is open
+                .append(hasHistory ? "<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"
+                        : "<meta http-equiv=\"refresh\" content=\"20\">")
+                .append("<title>Wärmepumpe</title><style>").append(CSS).append(hasHistory ? HISTORY_CSS : "")
+                .append("</style></head><body><main>");
 
         html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
                 .append(TIME.format(Instant.now(clock).atZone(zone)))
@@ -173,9 +215,171 @@ public class StatusPage {
             }
             html.append(card.content).append("</article>");
         }
-        html.append("</section></main></body></html>");
+        html.append("</section></main>");
+        if (hasHistory) {
+            html.append(HISTORY_DIALOG).append("<script>").append(HISTORY_SCRIPT).append("</script>");
+        }
+        html.append("</body></html>");
         return html.toString();
     }
+
+    private static final String HISTORY_DIALOG = """
+            <dialog id="verlauf" aria-labelledby="v-title">
+              <div class="v-head"><div><h3 id="v-title"></h3><p class="sub">Letzte 24 Stunden, Mittel über 2 min</p></div>
+              <button type="button" class="v-close" aria-label="Schließen">×</button></div>
+              <div id="v-chart" class="v-chart"></div>
+              <div id="v-stats" class="v-stats"></div>
+            </dialog>""";
+
+    private static final String HISTORY_CSS = """
+            [data-series] { cursor: pointer; }
+            [data-series] .num { text-decoration: underline dotted var(--muted); text-underline-offset: 4px; }
+            .row[data-series]:hover .num, .kpi[data-series]:hover .num, [data-series]:focus-visible .num {
+              color: var(--accent); text-decoration-color: var(--accent); }
+            [data-series]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+            dialog#verlauf { width: min(760px, calc(100vw - 32px)); max-width: none; padding: 16px 16px 12px;
+              border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--text); }
+            dialog#verlauf::backdrop { background: rgb(0 0 0 / 0.45); }
+            .v-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+            .v-head h3 { margin: 0; font-size: 18px; }
+            .v-close { border: 0; background: var(--off-bg); color: var(--text); width: 32px; height: 32px;
+              border-radius: 50%; font-size: 20px; line-height: 1; cursor: pointer; flex: none; }
+            .v-chart { position: relative; margin-top: 10px; min-height: 260px; }
+            .v-chart svg { display: block; width: 100%; height: 260px; touch-action: none; }
+            .v-chart .msg { display: grid; place-items: center; height: 260px; color: var(--muted); }
+            .v-chart .grid { stroke: var(--line); stroke-width: 1; }
+            .v-chart .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+            .v-chart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round;
+              stroke-linecap: round; }
+            .v-chart .cursor { stroke: var(--muted); stroke-width: 1; }
+            .v-chart .dot { fill: var(--accent); stroke: var(--card); stroke-width: 2; }
+            .v-tip { position: absolute; top: 4px; pointer-events: none; background: var(--card);
+              border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; font-size: 13px;
+              white-space: nowrap; font-variant-numeric: tabular-nums; box-shadow: 0 2px 8px rgb(0 0 0 / 0.12); }
+            .v-stats { display: flex; flex-wrap: wrap; gap: 6px 18px; padding-top: 8px; font-size: 13px;
+              color: var(--muted); font-variant-numeric: tabular-nums; }
+            .v-stats b { color: var(--text); font-weight: 600; }
+            """;
+
+    private static final String HISTORY_SCRIPT = """
+            (() => {
+              const dlg = document.getElementById('verlauf');
+              const chart = document.getElementById('v-chart');
+              const stats = document.getElementById('v-stats');
+              const NS = 'http://www.w3.org/2000/svg';
+              let reloadDue = false;
+              setTimeout(() => { reloadDue = true; if (!dlg.open) location.reload(); }, 20000);
+              dlg.addEventListener('close', () => { if (reloadDue) location.reload(); });
+              dlg.querySelector('.v-close').addEventListener('click', () => dlg.close());
+              dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+              const fmt = d => new Intl.NumberFormat('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
+              const hhmm = t => new Date(t).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+              const el = (name, attrs, parent) => {
+                const e = document.createElementNS(NS, name);
+                for (const k in attrs) e.setAttribute(k, attrs[k]);
+                if (parent) parent.appendChild(e);
+                return e;
+              };
+              const message = text => { chart.innerHTML = '<div class="msg"></div>'; chart.firstChild.textContent = text; };
+
+              function niceStep(range) {
+                const raw = range / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+                return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+              }
+
+              function draw(data, unit, decimals) {
+                const t = data.time, v = data.value, n = t.length;
+                if (!n) { message('Keine Daten in den letzten 24 Stunden.'); stats.textContent = ''; return; }
+                const W = Math.max(chart.clientWidth, 280), H = 260, L = 52, R = 12, T = 12, B = 26;
+                const end = Date.now(), start = end - 24 * 3600e3;
+                let lo = Math.min(...v), hi = Math.max(...v);
+                if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+                const step = niceStep(hi - lo);
+                lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+                const x = ms => L + (ms - start) / (end - start) * (W - L - R);
+                const y = val => T + (hi - val) / (hi - lo) * (H - T - B);
+                chart.innerHTML = '';
+                const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img' }, chart);
+                const tickDec = Math.max(0, Math.min(3, -Math.floor(Math.log10(step) + 1e-9)));
+                for (let val = lo; val <= hi + step / 2; val += step) {
+                  el('line', { x1: L, x2: W - R, y1: y(val), y2: y(val), class: 'grid' }, svg);
+                  el('text', { x: L - 6, y: y(val) + 4, 'text-anchor': 'end', class: 'axis' }, svg)
+                    .textContent = fmt(tickDec).format(val);
+                }
+                // Time axis every 3 hours, on narrow phones every 6 hours
+                const hours = W < 480 ? 6 : 3, tick = new Date(start); tick.setMinutes(0, 0, 0);
+                while (tick.getTime() < start || tick.getHours() % hours) tick.setHours(tick.getHours() + 1);
+                for (; tick.getTime() <= end; tick.setHours(tick.getHours() + hours)) {
+                  const tx = x(tick.getTime());
+                  el('line', { x1: tx, x2: tx, y1: T, y2: H - B, class: 'grid' }, svg);
+                  el('text', { x: tx, y: H - 8, 'text-anchor': 'middle', class: 'axis' }, svg).textContent = hhmm(tick);
+                }
+                // Gap in the line where values are missing, settings are stored only once per hour
+                const gaps = [];
+                for (let i = 1; i < n; i++) gaps.push(t[i] - t[i - 1]);
+                gaps.sort((a, b) => a - b);
+                const maxGap = Math.max(10 * 60e3, 3 * (gaps.length ? gaps[gaps.length >> 1] : 0));
+                let d = '';
+                for (let i = 0; i < n; i++) {
+                  d += (i === 0 || t[i] - t[i - 1] > maxGap ? 'M' : 'L') + x(t[i]).toFixed(1) + ' ' + y(v[i]).toFixed(1);
+                }
+                el('path', { d, class: 'line' }, svg);
+                const cursor = el('line', { y1: T, y2: H - B, class: 'cursor', visibility: 'hidden' }, svg);
+                const dot = el('circle', { r: 4, class: 'dot', visibility: 'hidden' }, svg);
+                const tip = document.createElement('div');
+                tip.className = 'v-tip'; tip.hidden = true; chart.appendChild(tip);
+                const u = unit ? '\\u202f' + unit : '';
+                svg.addEventListener('pointermove', e => {
+                  const box = svg.getBoundingClientRect(), px = (e.clientX - box.left) * W / box.width;
+                  const ms = start + (px - L) / (W - L - R) * (end - start);
+                  let a = 0, b = n - 1;
+                  while (b - a > 1) { const m = (a + b) >> 1; if (t[m] < ms) a = m; else b = m; }
+                  const i = Math.abs(t[a] - ms) <= Math.abs(t[b] - ms) ? a : b;
+                  const cx = x(t[i]), cy = y(v[i]);
+                  cursor.setAttribute('x1', cx); cursor.setAttribute('x2', cx); cursor.setAttribute('visibility', 'visible');
+                  dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('visibility', 'visible');
+                  tip.textContent = hhmm(t[i]) + ' Uhr · ' + fmt(decimals).format(v[i]) + u;
+                  tip.hidden = false;
+                  const left = cx / W * box.width;
+                  tip.style.left = Math.min(Math.max(left - tip.offsetWidth / 2, 0), box.width - tip.offsetWidth) + 'px';
+                });
+                svg.addEventListener('pointerleave', () => {
+                  tip.hidden = true; cursor.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden');
+                });
+                const mean = v.reduce((s, a) => s + a, 0) / n;
+                stats.innerHTML = '';
+                [['Min', Math.min(...v)], ['Max', Math.max(...v)], ['Mittel', mean], ['Letzter Wert', v[n - 1]]]
+                  .forEach(([k, val]) => {
+                    const s = document.createElement('span'), b = document.createElement('b');
+                    s.textContent = k + ' '; b.textContent = fmt(decimals).format(val) + u;
+                    s.appendChild(b); stats.appendChild(s);
+                  });
+              }
+
+              async function open(row) {
+                const { series, label, unit } = row.dataset, decimals = +row.dataset.decimals;
+                document.getElementById('v-title').textContent = label;
+                stats.textContent = '';
+                if (!dlg.open) dlg.showModal();
+                message('Lade Verlauf …');
+                try {
+                  const res = await fetch('history/' + encodeURIComponent(series), { headers: { Accept: 'application/json' } });
+                  if (!res.ok) throw new Error((await res.text()) || ('HTTP ' + res.status));
+                  draw(await res.json(), unit, decimals);
+                } catch (e) {
+                  message('Verlauf nicht verfügbar: ' + e.message);
+                }
+              }
+
+              document.querySelectorAll('[data-series]').forEach(row => {
+                row.addEventListener('click', () => open(row));
+                row.addEventListener('keydown', e => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(row); }
+                });
+              });
+            })();
+            """;
 
     private static final String CSS = """
             :root {
