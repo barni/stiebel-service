@@ -32,6 +32,12 @@ before you rely on it.
   watchdog) and the CAN bus of the last full minute (received messages, answers, sent requests, answer rate, answers
   "not available", estimated bus load, messages per node). Stored every minute as `WP_CAN_*`, e.g.
   `WP_CAN_Antwortquote`, `WP_CAN_Buslast`, `WP_CAN_Knoten_480`, and as JSON from `/verbindung`.
+- **Fault trial**: how the WPM3 reports faults over CAN is not documented. The service requests candidate indices
+  every minute (FEHLERAUSGANG 0x0730 at 0x180 as used by OneESP32 for the WPL 17, FEHLERMELDUNG 0x0001 at every node,
+  the Betriebsstatus of the manager 0x480, FEHLERLISTEN_EINTRAG/FEHLERART) and shows the raw answers per node and
+  index in the card "Störungen (Erprobung)", in `/stoerungen` and as `WP_Fehler_<node>_<index>`. The raw
+  Betriebsstatus of 0x180 is stored as `WP_Betriebsstatus`. Compare them with the message list of the WPM
+  (DIAGNOSE → MELDUNGSLISTE) before relying on one of them.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the

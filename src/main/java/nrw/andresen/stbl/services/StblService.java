@@ -11,6 +11,7 @@ import jakarta.annotation.PreDestroy;
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterBetriebsstatus;
 import nrw.andresen.stbl.services.can.ElsterMessage;
+import nrw.andresen.stbl.services.can.FehlerDiagnose;
 import nrw.andresen.stbl.services.can.SynchronizedUSBtin;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
@@ -172,6 +173,8 @@ public class StblService {
     private volatile LocalDateTime lastMsgReceived;
     // Messages on the bus and state of the USBtin adapter, kept over USB restarts
     private final CanStatistik canStatistik = new CanStatistik();
+    // Trial of indices which might show a fault, kept per node and index
+    private final FehlerDiagnose fehlerDiagnose = new FehlerDiagnose();
     private String usbPort;
     private int usbSpeed;
     private boolean logall;
@@ -212,8 +215,15 @@ public class StblService {
                     canStatistik.empfangen(canmsg.getId(), canmsg.getData().length, jetzt);
                     ElsterMessage elsterMessage = new ElsterMessage(canmsg);
                     short index = elsterMessage.getElsterIndex().getIndex();
-                    if (REQUESTED_INDICES.contains(index) && elsterMessage.isResponse()
-                            && elsterMessage.getReceiverId() == CAN_SENDER_ID) {
+                    boolean anDenDienst = elsterMessage.isResponse() && elsterMessage.getReceiverId() == CAN_SENDER_ID;
+                    boolean diagnose = anDenDienst && FehlerDiagnose.istKandidat(elsterMessage.getId(), index);
+                    if (diagnose && elsterMessage.getRawValue() != null) {
+                        lastMsgReceived = LocalDateTime.now();
+                        fehlerDiagnose.antwort(elsterMessage.getId(), index, elsterMessage.getRawValue(), jetzt);
+                        canStatistik.antwort(elsterMessage.getRawValue() == VALUE_NOT_AVAILABLE, jetzt);
+                    }
+                    // The Betriebsstatus of the manager is only part of the trial, it must not replace the one of 0x180
+                    if (!diagnose && REQUESTED_INDICES.contains(index) && anDenDienst) {
                         lastMsgReceived = LocalDateTime.now();
                         Short rawValue = elsterMessage.getRawValue();
                         canStatistik.antwort(rawValue != null && index != BETRIEBS_STATUS
@@ -837,6 +847,12 @@ public class StblService {
         usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, WAERMEPUMPE, LUEFTERLEISTUNG_REL).getMessage());
     }
 
+    private synchronized void requestFehlerKandidaten() throws USBtinException {
+        for (FehlerDiagnose.Kandidat kandidat : FehlerDiagnose.KANDIDATEN) {
+            usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, kandidat.knoten(), kandidat.index()).getMessage());
+        }
+    }
+
     private synchronized void requestEinstellungen() throws USBtinException {
         for (short index : EINSTELLUNGEN_HEIZMODUL) {
             usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, HEIZMODUL, index).getMessage());
@@ -934,6 +950,7 @@ public class StblService {
             requestVolumenstrom();
             requestLaufzeiten();
             requestBetriebswerte();
+            requestFehlerKandidaten();
         } catch (Exception e) {
             logger.error("Rquest failiure: ", e);
         }
@@ -1021,6 +1038,7 @@ public class StblService {
             addPoint(points, "VerdampferTemp", this::getVerdampferTemp, MAX_AGE_20);
             addPoint(points, "OelsumpfTemp", this::getOelsumpfTemp, MAX_AGE_20);
             addPoint(points, "Abtauung", this::getAbtauung, MAX_AGE_60);
+            addPoint(points, "Betriebsstatus", this::getBetriebsstatusRoh, MAX_AGE_20);
             influxController.storePoints(points);
 
         } catch (Exception e) {
@@ -1064,6 +1082,12 @@ public class StblService {
             addPoint(points, "CAN_Antwortquote", () -> canMinute(CanStatistik.Minute::antwortquote), MAX_AGE_60);
             addPoint(points, "CAN_Buslast", () -> canMinute(CanStatistik.Minute::buslast), MAX_AGE_60);
             addPoint(points, "CAN_UsbNeustarts", this::getUsbNeustarts, MAX_AGE_60);
+            for (FehlerDiagnose.Antwort antwort : fehlerDiagnose.getAntworten()) {
+                if (!antwort.nichtVerfuegbar()) {
+                    addPoint(points, fehlerSerie(antwort),
+                            () -> new ValueContainer<>((double) antwort.wert(), antwort.zeit()), MAX_AGE_60);
+                }
+            }
             for (CanStatistik.KnotenStatus knoten : canStatistik.getKnoten()) {
                 addPoint(points, knotenSerie(knoten.id()), () -> canMinute(m -> knoten.proMinute()), MAX_AGE_60);
             }
@@ -1131,6 +1155,28 @@ public class StblService {
 
     private ValueContainer<Boolean> isAdapterVerbunden() {
         return new ValueContainer<>(canStatistik.isVerbunden(), Instant.now());
+    }
+
+    /**
+     * Betriebsstatus of 0x180 as raw value 0..0xffff, to see bits which are not evaluated yet
+     */
+    private ValueContainer<Double> getBetriebsstatusRoh() throws Exception {
+        ElsterMessage betriebsstatus = msgs.get(BETRIEBS_STATUS);
+        if (betriebsstatus == null || betriebsstatus.getRawValue() == null) {
+            throw new Exception("NO_VALUES_REVEIVED");
+        }
+        return new ValueContainer<>((double) (betriebsstatus.getRawValue() & 0xffff), betriebsstatus.getTimestamp());
+    }
+
+    static String fehlerSerie(FehlerDiagnose.Antwort antwort) {
+        return String.format("Fehler_%03X_%04X", antwort.knoten(), antwort.index());
+    }
+
+    /**
+     * Answers of the fault trial for the REST API
+     */
+    public List<FehlerDiagnose.Zeile> getStoerungen() {
+        return fehlerDiagnose.zeilen();
     }
 
     static String knotenSerie(int id) {
@@ -1372,6 +1418,18 @@ public class StblService {
                 .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", this::getSilentLuefter, MAX_AGE_3600)
                 .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
                 .note("Heizlast bei Auslegungstemperatur und weitere Einstellungen, stündlich abgefragt.")
+                .card("Störungen (Erprobung)");
+        for (FehlerDiagnose.Zeile zeile : fehlerDiagnose.zeilen()) {
+            FehlerDiagnose.Antwort antwort = zeile.antwort();
+            String alter = antwort == null || antwort.zeit().isAfter(Instant.now().minus(MAX_AGE_60)) ? ""
+                    : " (seit " + zeitpunkt(antwort.zeit()) + ")";
+            page.text(CanStatistik.knotenName(zeile.knoten()) + " · " + zeile.name(),
+                            FehlerDiagnose.beschreibung(antwort) + alter)
+                    .info(zeile.erklaerung() + String.format(" Index 0x%04X, jede Minute abgefragt.", zeile.index()));
+        }
+        page.note("Erprobung: Wie der WPM3 Störungen über CAN meldet, ist nicht dokumentiert. Bei einer Meldung am "
+                        + "WPM (DIAGNOSE → MELDUNGSLISTE) hier vergleichen, welcher Wert sich ändert. „nicht verfügbar“ "
+                        + "heißt, das Gerät kennt den Index nicht.")
                 .card("USB-Adapter")
                 .pill("Verbindung", this::isAdapterVerbunden)
                 .info("USBtin am Pi verbunden und CAN-Kanal geöffnet.")
