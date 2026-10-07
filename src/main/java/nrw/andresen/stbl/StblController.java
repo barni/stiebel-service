@@ -102,6 +102,14 @@ public class StblController {
         return stblService.getStoerungen();
     }
 
+    /**
+     * Trial for the fault list: answers of 0x180, 0x480 and 0x514 for the possible fault list indices
+     */
+    @RequestMapping("/stoerungen/liste")
+    public List<FehlerDiagnose.Zeile> fehlerListe() {
+        return stblService.getFehlerListe();
+    }
+
     @RequestMapping("/aufnahmeLeistung")
     public ValueContainer<Double> aufnahmeLeistung() throws Exception{
         return stblService.getAufnahmeLeistung();
