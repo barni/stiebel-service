@@ -2,6 +2,7 @@ package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.StblService;
 import nrw.andresen.stbl.services.can.FehlerDiagnose;
+import nrw.andresen.stbl.services.can.IndexScan;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
 import org.slf4j.Logger;
@@ -100,6 +101,29 @@ public class StblController {
     @RequestMapping("/stoerungen")
     public List<FehlerDiagnose.Zeile> stoerungen() {
         return stblService.getStoerungen();
+    }
+
+    /**
+     * State and evaluation of the scan of all Elster indices
+     */
+    @RequestMapping("/diagnose/scan")
+    public IndexScan.Status indexScan() {
+        return stblService.getIndexScanStatus();
+    }
+
+    /**
+     * Starts the scan of all Elster indices, read only, takes about 25 minutes
+     */
+    @RequestMapping("/diagnose/scan/start")
+    public ResponseEntity<IndexScan.Status> indexScanStarten() {
+        boolean gestartet = stblService.starteIndexScan();
+        return ResponseEntity.status(gestartet ? HttpStatus.ACCEPTED : HttpStatus.CONFLICT)
+                .body(stblService.getIndexScanStatus());
+    }
+
+    @RequestMapping(value = "/diagnose/scan.csv", produces = "text/csv;charset=UTF-8")
+    public String indexScanCsv() {
+        return stblService.getIndexScanCsv();
     }
 
     @RequestMapping("/aufnahmeLeistung")

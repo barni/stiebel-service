@@ -19,6 +19,8 @@
 package nrw.andresen.stbl.services.can;
 
 import java.nio.ByteBuffer;
+import java.util.Comparator;
+import java.util.List;
 import java.util.HashMap;
 
 import static nrw.andresen.stbl.services.can.ElsterType.*;
@@ -134,6 +136,13 @@ public class ElsterTable {
         }
 
         return elsterIndex;
+    }
+
+    /**
+     * All known indices, sorted, e.g. for a scan of the devices
+     */
+    public List<Short> alleIndizes() {
+        return elsterIndexHashMap.keySet().stream().sorted(Comparator.comparingInt(index -> index & 0xffff)).toList();
     }
 
     private static void add(ElsterIndex elsterIndex) {
