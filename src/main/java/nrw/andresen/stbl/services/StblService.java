@@ -853,17 +853,6 @@ public class StblService {
         }
     }
 
-    /**
-     * Possible fault list, see FehlerDiagnose.LISTEN_INDIZES, 168 read requests once per hour
-     */
-    private synchronized void requestFehlerListe() throws USBtinException {
-        for (int knoten : FehlerDiagnose.LISTEN_KNOTEN) {
-            for (short index : FehlerDiagnose.LISTEN_INDIZES) {
-                usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, knoten, index).getMessage());
-            }
-        }
-    }
-
     private synchronized void requestEinstellungen() throws USBtinException {
         for (short index : EINSTELLUNGEN_HEIZMODUL) {
             usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, HEIZMODUL, index).getMessage());
@@ -977,7 +966,6 @@ public class StblService {
     public synchronized void check3600() {
         try {
             requestEinstellungen();
-            requestFehlerListe();
         } catch (Exception e) {
             logger.error("Rquest failiure: ", e);
         }
@@ -1189,13 +1177,6 @@ public class StblService {
      */
     public List<FehlerDiagnose.Zeile> getStoerungen() {
         return fehlerDiagnose.zeilen();
-    }
-
-    /**
-     * Answers of the fault list trial for the REST API, all requested nodes and indices
-     */
-    public List<FehlerDiagnose.Zeile> getFehlerListe() {
-        return fehlerDiagnose.listenZeilen();
     }
 
     static String knotenSerie(int id) {
@@ -1449,26 +1430,6 @@ public class StblService {
         page.note("Erprobung: Wie der WPM3 Störungen über CAN meldet, ist nicht dokumentiert. Bei einer Meldung am "
                         + "WPM (DIAGNOSE → MELDUNGSLISTE) hier vergleichen, welcher Wert sich ändert. „nicht verfügbar“ "
                         + "heißt, das Gerät kennt den Index nicht.")
-                .card("Fehlerliste (Erprobung)");
-        List<FehlerDiagnose.Zeile> liste = fehlerDiagnose.listenZeilen();
-        long beantwortet = liste.stream().filter(z -> z.antwort() != null && !z.antwort().nichtVerfuegbar()).count();
-        long nichtVerfuegbar = liste.stream().filter(z -> z.antwort() != null && z.antwort().nichtVerfuegbar()).count();
-        page.text("Anfragen", liste.size() + " je Stunde, " + beantwortet + " mit Wert, " + nichtVerfuegbar
-                        + " nicht verfügbar, " + (liste.size() - beantwortet - nichtVerfuegbar) + " ohne Antwort")
-                .info("Stündliche Leseanfragen an 0x180, 0x480 und 0x514 für Indizes der Elster-Tabelle, die die "
-                        + "Fehlerliste mit 20 Einträgen enthalten könnten.");
-        for (FehlerDiagnose.Zeile zeile : liste) {
-            FehlerDiagnose.Antwort antwort = zeile.antwort();
-            if (antwort != null && !antwort.nichtVerfuegbar()) {
-                page.text(CanStatistik.knotenName(zeile.knoten()) + String.format(" · 0x%04X ", zeile.index())
-                                + zeile.name(), FehlerDiagnose.beschreibung(antwort))
-                        .info("Kandidat für die Fehlerliste, zuletzt beantwortet " + zeitpunkt(antwort.zeit())
-                                + ".");
-            }
-        }
-        page.note("Erprobung: Wenn die Fehlerliste hier liegt, steht 19-mal derselbe Code für INV H ROTORVEKTOR "
-                        + "und einmal 8256 (0x2040, INV H Ausgangsstrombegrenzung). Nur Werte werden angezeigt, "
-                        + "„nicht verfügbar“ und fehlende Antworten nicht.")
                 .card("USB-Adapter")
                 .pill("Verbindung", this::isAdapterVerbunden)
                 .info("USBtin am Pi verbunden und CAN-Kanal geöffnet.")

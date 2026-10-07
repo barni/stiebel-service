@@ -91,30 +91,4 @@ public class FehlerDiagnoseTest {
         }
         return text.toString();
     }
-
-    @Test
-    public void testListenKandidaten() {
-        // K_OS_STOERMELDUNG_1..10 with the day counters, K_FEHLERZAEHLER_01..25, pointer, K_OS_STOERMELDUNG_11..20
-        assertEquals(20 + 36, FehlerDiagnose.LISTEN_INDIZES.size());
-        assertTrue(FehlerDiagnose.istListenIndex((short) 0x022b));
-        assertTrue(FehlerDiagnose.istListenIndex((short) 0x037f));
-        assertTrue(FehlerDiagnose.istListenIndex((short) 0x0389));
-        assertFalse(FehlerDiagnose.istListenIndex((short) 0x038a));
-        assertTrue(FehlerDiagnose.istKandidat(0x180, (short) 0x022b));
-        assertEquals("K_OS_STOERMELDUNG_1", FehlerDiagnose.listenName((short) 0x022b));
-        assertEquals("K_OS_STOERMELDUNG_POINTER", FehlerDiagnose.listenName((short) 0x037f));
-    }
-
-    @Test
-    public void testListenZeilen() {
-        FehlerDiagnose diagnose = new FehlerDiagnose();
-        diagnose.antwort(0x480, (short) 0x022b, (short) 0x2040, ZEIT);
-        List<FehlerDiagnose.Zeile> liste = diagnose.listenZeilen();
-        assertEquals(3 * FehlerDiagnose.LISTEN_INDIZES.size(), liste.size());
-        FehlerDiagnose.Zeile zeile = liste.stream()
-                .filter(z -> z.knoten() == 0x480 && z.index() == (short) 0x022b).findFirst().orElseThrow();
-        assertEquals("0x2040 (8256)", FehlerDiagnose.beschreibung(zeile.antwort()));
-        // The fault list answers are not repeated in the lines of the first trial
-        assertEquals(FehlerDiagnose.KANDIDATEN.size(), diagnose.zeilen().size());
-    }
 }
