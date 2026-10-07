@@ -32,17 +32,12 @@ before you rely on it.
   watchdog) and the CAN bus of the last full minute (received messages, answers, sent requests, answer rate, answers
   "not available", estimated bus load, messages per node). Stored every minute as `WP_CAN_*`, e.g.
   `WP_CAN_Antwortquote`, `WP_CAN_Buslast`, `WP_CAN_Knoten_480`, and as JSON from `/verbindung`.
-- **Fault trial**: how the WPM3 reports faults over CAN is not documented. The service requests candidate indices
-  every minute (FEHLERAUSGANG 0x0730 at 0x180 as used by OneESP32 for the WPL 17, FEHLERMELDUNG 0x0001 at every node,
-  the Betriebsstatus of the manager 0x480, FEHLERLISTEN_EINTRAG/FEHLERART) and shows the raw answers per node and
-  index in the card "Störungen (Erprobung)", in `/stoerungen` and as `WP_Fehler_<node>_<index>`. The raw
-  Betriebsstatus of 0x180 is stored as `WP_Betriebsstatus`. Compare them with the message list of the WPM
-  (DIAGNOSE → MELDUNGSLISTE) before relying on one of them.
-- **Index scan**: `/diagnose/scan/start` reads every index of the Elster table once at 0x180, 0x480, 0x500 and
-  0x514 (read requests only, about 10 per second, about 25 minutes), like can_scan. Indices the service requests
-  anyway are skipped. `/diagnose/scan` shows the progress and hits (e.g. 0x2040 = 8256 from the fault list,
-  values a node answers for many indices), `/diagnose/scan.csv` all answers with a value.
-- **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted.
+- **Fault list** of the heat pump manager (DIAGNOSE → FEHLERLISTE): the 20 entries with time and fault code are read
+  every 10 minutes from `FEHLERFELD_0..139` (0x0B00–0x0B8B at node 0x180, 7 values per entry: minute, hour, day,
+  month, year, 0, code). Shown on the status page with text for known codes (e.g. 8116 `INV H ROTORVEKTOR`) and as
+  JSON from `/fehlerliste`, newest first.
+- **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, and when a
+  new entry appears in the fault list.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the
 real power estimated from the inverter's apparent power; both are skipped during the start phase and the defrost. The

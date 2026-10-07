@@ -11,8 +11,7 @@ import jakarta.annotation.PreDestroy;
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterBetriebsstatus;
 import nrw.andresen.stbl.services.can.ElsterMessage;
-import nrw.andresen.stbl.services.can.FehlerDiagnose;
-import nrw.andresen.stbl.services.can.IndexScan;
+import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.SynchronizedUSBtin;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
@@ -33,7 +32,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -175,14 +173,10 @@ public class StblService {
     private volatile LocalDateTime lastMsgReceived;
     // Messages on the bus and state of the USBtin adapter, kept over USB restarts
     private final CanStatistik canStatistik = new CanStatistik();
-    // Trial of indices which might show a fault, kept per node and index
-    private final FehlerDiagnose fehlerDiagnose = new FehlerDiagnose();
-    // One time scan of all Elster indices, started from the REST API
-    private final IndexScan indexScan = new IndexScan();
-    // Pause between two scan requests, about 10 per second, the scan takes about 25 minutes
-    private static final Duration SCAN_PAUSE = Duration.ofMillis(100);
-    // Wait for late answers after the last request
-    private static final Duration SCAN_NACHLAUF = Duration.ofSeconds(2);
+    // Fault list of the WPM, read every 10 minutes, a new entry is sent by mail
+    private final Fehlerliste fehlerliste = new Fehlerliste();
+    private volatile Instant fehlerlisteAngefragt;
+    private static final DateTimeFormatter FEHLERZEIT = DateTimeFormatter.ofPattern("dd.MM.yy HH:mm");
     private String usbPort;
     private int usbSpeed;
     private boolean logall;
@@ -223,21 +217,15 @@ public class StblService {
                     canStatistik.empfangen(canmsg.getId(), canmsg.getData().length, jetzt);
                     ElsterMessage elsterMessage = new ElsterMessage(canmsg);
                     short index = elsterMessage.getElsterIndex().getIndex();
-                    boolean anDenDienst = elsterMessage.isResponse() && elsterMessage.getReceiverId() == CAN_SENDER_ID;
-                    boolean diagnose = anDenDienst && FehlerDiagnose.istKandidat(elsterMessage.getId(), index);
-                    if (diagnose && elsterMessage.getRawValue() != null) {
-                        lastMsgReceived = LocalDateTime.now();
-                        fehlerDiagnose.antwort(elsterMessage.getId(), index, elsterMessage.getRawValue(), jetzt);
-                        canStatistik.antwort(elsterMessage.getRawValue() == VALUE_NOT_AVAILABLE, jetzt);
-                    }
-                    if (!diagnose && anDenDienst && indexScan.laeuft() && !REQUESTED_INDICES.contains(index)
+                    if (elsterMessage.isResponse() && elsterMessage.getReceiverId() == CAN_SENDER_ID
+                            && Fehlerliste.istFeld(elsterMessage.getId(), index)
                             && elsterMessage.getRawValue() != null) {
                         lastMsgReceived = LocalDateTime.now();
-                        indexScan.antwort(elsterMessage.getId(), index, elsterMessage.getRawValue(), jetzt);
+                        fehlerliste.feld(index, elsterMessage.getRawValue(), jetzt);
                         canStatistik.antwort(elsterMessage.getRawValue() == VALUE_NOT_AVAILABLE, jetzt);
                     }
-                    // The Betriebsstatus of the manager is only part of the trial, it must not replace the one of 0x180
-                    if (!diagnose && REQUESTED_INDICES.contains(index) && anDenDienst) {
+                    if (REQUESTED_INDICES.contains(index) && elsterMessage.isResponse()
+                            && elsterMessage.getReceiverId() == CAN_SENDER_ID) {
                         lastMsgReceived = LocalDateTime.now();
                         Short rawValue = elsterMessage.getRawValue();
                         canStatistik.antwort(rawValue != null && index != BETRIEBS_STATUS
@@ -861,12 +849,6 @@ public class StblService {
         usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, WAERMEPUMPE, LUEFTERLEISTUNG_REL).getMessage());
     }
 
-    private synchronized void requestFehlerKandidaten() throws USBtinException {
-        for (FehlerDiagnose.Kandidat kandidat : FehlerDiagnose.KANDIDATEN) {
-            usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, kandidat.knoten(), kandidat.index()).getMessage());
-        }
-    }
-
     private synchronized void requestEinstellungen() throws USBtinException {
         for (short index : EINSTELLUNGEN_HEIZMODUL) {
             usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, HEIZMODUL, index).getMessage());
@@ -964,7 +946,6 @@ public class StblService {
             requestVolumenstrom();
             requestLaufzeiten();
             requestBetriebswerte();
-            requestFehlerKandidaten();
         } catch (Exception e) {
             logger.error("Rquest failiure: ", e);
         }
@@ -984,6 +965,36 @@ public class StblService {
             logger.error("Rquest failiure: ", e);
         }
         storeValues3600();
+    }
+
+    /**
+     * Reads the fault list every 10 minutes. The answers of the previous request are checked first: a new entry is
+     * logged and sent by mail. The first complete read only remembers the list.
+     */
+    @Scheduled(fixedRate = 600000)
+    public synchronized void checkFehlerliste() {
+        if (fehlerlisteAngefragt != null && fehlerliste.vollstaendigSeit(fehlerlisteAngefragt)) {
+            for (Fehlerliste.Eintrag eintrag : fehlerliste.neueEintraege()) {
+                String text = FEHLERZEIT.format(eintrag.zeit()) + " " + eintrag.text()
+                        + " (Code " + eintrag.code() + ")";
+                logger.warn("New entry in the fault list of the heat pump: " + text);
+                emailService.sendAlert("Wärmepumpe: " + eintrag.text(),
+                        "Neuer Eintrag in der Fehlerliste der Wärmepumpe:\n" + text);
+            }
+        }
+        try {
+            fehlerlisteAngefragt = Instant.now();
+            for (int feld = 0; feld < Fehlerliste.FELDER; feld++) {
+                usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, Fehlerliste.KNOTEN,
+                        (short) (Fehlerliste.ERSTES_FELD + feld)).getMessage());
+            }
+        } catch (Exception e) {
+            logger.error("Rquest failiure: ", e);
+        }
+    }
+
+    public List<Fehlerliste.Eintrag> getFehlerliste() {
+        return fehlerliste.eintraege();
     }
 
     /**
@@ -1052,7 +1063,6 @@ public class StblService {
             addPoint(points, "VerdampferTemp", this::getVerdampferTemp, MAX_AGE_20);
             addPoint(points, "OelsumpfTemp", this::getOelsumpfTemp, MAX_AGE_20);
             addPoint(points, "Abtauung", this::getAbtauung, MAX_AGE_60);
-            addPoint(points, "Betriebsstatus", this::getBetriebsstatusRoh, MAX_AGE_20);
             influxController.storePoints(points);
 
         } catch (Exception e) {
@@ -1096,12 +1106,6 @@ public class StblService {
             addPoint(points, "CAN_Antwortquote", () -> canMinute(CanStatistik.Minute::antwortquote), MAX_AGE_60);
             addPoint(points, "CAN_Buslast", () -> canMinute(CanStatistik.Minute::buslast), MAX_AGE_60);
             addPoint(points, "CAN_UsbNeustarts", this::getUsbNeustarts, MAX_AGE_60);
-            for (FehlerDiagnose.Antwort antwort : fehlerDiagnose.getAntworten()) {
-                if (!antwort.nichtVerfuegbar()) {
-                    addPoint(points, fehlerSerie(antwort),
-                            () -> new ValueContainer<>((double) antwort.wert(), antwort.zeit()), MAX_AGE_60);
-                }
-            }
             for (CanStatistik.KnotenStatus knoten : canStatistik.getKnoten()) {
                 addPoint(points, knotenSerie(knoten.id()), () -> canMinute(m -> knoten.proMinute()), MAX_AGE_60);
             }
@@ -1169,61 +1173,6 @@ public class StblService {
 
     private ValueContainer<Boolean> isAdapterVerbunden() {
         return new ValueContainer<>(canStatistik.isVerbunden(), Instant.now());
-    }
-
-    /**
-     * Betriebsstatus of 0x180 as raw value 0..0xffff, to see bits which are not evaluated yet
-     */
-    private ValueContainer<Double> getBetriebsstatusRoh() throws Exception {
-        ElsterMessage betriebsstatus = msgs.get(BETRIEBS_STATUS);
-        if (betriebsstatus == null || betriebsstatus.getRawValue() == null) {
-            throw new Exception("NO_VALUES_REVEIVED");
-        }
-        return new ValueContainer<>((double) (betriebsstatus.getRawValue() & 0xffff), betriebsstatus.getTimestamp());
-    }
-
-    static String fehlerSerie(FehlerDiagnose.Antwort antwort) {
-        return String.format("Fehler_%03X_%04X", antwort.knoten(), antwort.index());
-    }
-
-    /**
-     * Starts the scan of all Elster indices at 0x180, 0x480, 0x500 and 0x514 in the background, false if one is
-     * running. Indices the service requests anyway are skipped, an answer of another node would overwrite them.
-     */
-    public boolean starteIndexScan() {
-        if (indexScan.laeuft()) {
-            return false;
-        }
-        Set<Short> ausgenommen = new HashSet<>(REQUESTED_INDICES);
-        for (FehlerDiagnose.Kandidat kandidat : FehlerDiagnose.KANDIDATEN) {
-            ausgenommen.add(kandidat.index());
-        }
-        Thread scan = new Thread(() -> indexScan.scannen(CAN_SENDER_ID, ausgenommen, SCAN_PAUSE, SCAN_NACHLAUF, anfrage -> {
-            try {
-                usbtin.send(anfrage.getMessage());
-            } catch (USBtinException e) {
-                logger.warn("Scan request failed: " + e.getMessage());
-            }
-        }), "index-scan");
-        scan.setDaemon(true);
-        scan.start();
-        logger.info("Index scan started");
-        return true;
-    }
-
-    public IndexScan.Status getIndexScanStatus() {
-        return indexScan.status();
-    }
-
-    public String getIndexScanCsv() {
-        return indexScan.csv();
-    }
-
-    /**
-     * Answers of the fault trial for the REST API
-     */
-    public List<FehlerDiagnose.Zeile> getStoerungen() {
-        return fehlerDiagnose.zeilen();
     }
 
     static String knotenSerie(int id) {
@@ -1465,32 +1414,18 @@ public class StblService {
                 .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", this::getSilentLuefter, MAX_AGE_3600)
                 .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
                 .note("Heizlast bei Auslegungstemperatur und weitere Einstellungen, stündlich abgefragt.")
-                .card("Störungen (Erprobung)");
-        for (FehlerDiagnose.Zeile zeile : fehlerDiagnose.zeilen()) {
-            FehlerDiagnose.Antwort antwort = zeile.antwort();
-            String alter = antwort == null || antwort.zeit().isAfter(Instant.now().minus(MAX_AGE_60)) ? ""
-                    : " (seit " + zeitpunkt(antwort.zeit()) + ")";
-            page.text(CanStatistik.knotenName(zeile.knoten()) + " · " + zeile.name(),
-                            FehlerDiagnose.beschreibung(antwort) + alter)
-                    .info(zeile.erklaerung() + String.format(" Index 0x%04X, jede Minute abgefragt.", zeile.index()));
+                .card("Fehlerliste");
+        List<Fehlerliste.Eintrag> eintraege = fehlerliste.eintraege();
+        if (eintraege.isEmpty()) {
+            page.text("Einträge", fehlerlisteAngefragt == null ? null : "keine")
+                    .info("Die Fehlerliste des Wärmepumpenmanagers wird alle 10 Minuten gelesen.");
         }
-        page.note("Erprobung: Wie der WPM3 Störungen über CAN meldet, ist nicht dokumentiert. Bei einer Meldung am "
-                        + "WPM (DIAGNOSE → MELDUNGSLISTE) hier vergleichen, welcher Wert sich ändert. „nicht verfügbar“ "
-                        + "heißt, das Gerät kennt den Index nicht.")
-                .card("Index-Scan");
-        IndexScan.Status scan = indexScan.status();
-        page.text("Zustand", scan.laeuft() ? "läuft" : scan.ende() != null ? "fertig " + zeitpunkt(scan.ende())
-                        : "noch nicht gestartet")
-                .info("Einmaliges Auslesen aller Indizes der Elster-Tabelle bei 0x180, 0x480, 0x500 und 0x514, nur "
-                        + "lesend, etwa 10 Anfragen pro Sekunde. Gestartet über /diagnose/scan/start.")
-                .text("Fortschritt", scan.gesamt() == 0 ? null
-                        : scan.gesendet() + " von " + scan.gesamt() + " Anfragen")
-                .text("Ergebnis", scan.gesamt() == 0 ? null : scan.mitWert() + " mit Wert, " + scan.nichtVerfuegbar()
-                        + " nicht verfügbar, " + scan.treffer().size() + " Treffer")
-                .info("Treffer sind Werte, die zur Fehlerliste passen könnten, z. B. 8256 (0x2040) oder Datum und "
-                        + "Uhrzeit eines Eintrags. Details in /diagnose/scan, alle Werte in /diagnose/scan.csv.")
-                .note("<a href=\"diagnose/scan/start\">Scan starten</a> · <a href=\"diagnose/scan\">Auswertung</a> · "
-                        + "<a href=\"diagnose/scan.csv\">Alle Werte als CSV</a>")
+        for (Fehlerliste.Eintrag eintrag : eintraege) {
+            page.text(FEHLERZEIT.format(eintrag.zeit()), eintrag.text())
+                    .info("Code " + eintrag.code() + ", Platz " + (eintrag.platz() + 1) + " im Ringspeicher des WPM.");
+        }
+        page.note("Fehlerliste des WPM (DIAGNOSE → FEHLERLISTE), 20 Einträge, der neueste zuerst. Alle 10 Minuten "
+                        + "gelesen, ein neuer Eintrag wird per Mail gemeldet.")
                 .card("USB-Adapter")
                 .pill("Verbindung", this::isAdapterVerbunden)
                 .info("USBtin am Pi verbunden und CAN-Kanal geöffnet.")
