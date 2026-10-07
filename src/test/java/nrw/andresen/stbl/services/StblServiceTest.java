@@ -116,4 +116,18 @@ public class StblServiceTest {
         // New sum with the day value of the previous minute
         assertFalse(StblService.gleichzeitig(List.of(summe, summe, summe.minusSeconds(60), summe.minusSeconds(60))));
     }
+
+    @Test
+    public void testFormeln() {
+        assertEquals("0,7", StblService.zahl(0.7));
+        assertEquals("1,24", StblService.zahl(1.24));
+        assertEquals("1,0", StblService.zahl(1.0));
+        assertTrue(StblService.formelWaermeleistung().startsWith("Volumenstrom [l/min] ÷ 60 × 4,19 kJ/(kg·K)"));
+        assertTrue(StblService.formelWaermeleistung().contains("ersten 60 s"));
+        assertTrue(StblService.formelArbeitszahl().contains("(1,24 − 270 W ÷ Scheinleistung)"));
+        assertTrue(StblService.formelArbeitszahl().contains("0,7 bis 1,0"));
+        assertTrue(StblService.formelAbtauung().contains("innerhalb von 5 min"));
+        assertTrue(StblService.formelAbtauung().contains("mindestens 90 %"));
+        assertTrue(StblService.formelAbtauung().contains("mehr als 5 K"));
+    }
 }

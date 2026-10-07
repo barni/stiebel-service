@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StatusPageTest {
@@ -42,6 +43,8 @@ public class StatusPageTest {
                 .pill("DHC 1", () -> state(false))
                 .pill("DHC 2", () -> state(false))
                 .pill("EVU-Sperre", () -> state(false))
+                .pill("Abtauung (berechnet)", () -> state(false))
+                .formula("EXV & Verdampfer")
                 .row("Laufzeit DHC 1", "h", 0, () -> value(0))
                 .row("Laufzeit DHC 2", "h", 0, () -> value(0))
                 .row("Laufzeit DHC 1+2", "h", 0, () -> value(2))
@@ -49,8 +52,10 @@ public class StatusPageTest {
                 .row("Vorlauf", "°C", 1, () -> value(29.8))
                 .row("Rücklauf", "°C", 1, () -> value(23.1))
                 .row("Spreizung", "K", 1, () -> value(6.7))
+                .formula("Vorlauf − Rücklauf")
                 .row("Volumenstrom", "l/min", 1, () -> value(9.0))
-                .row("Wärmeleistung (berechnet)", "kW", 2, () -> value(3.39))
+                .row("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", () -> value(3.39))
+                .formula("Volumenstrom × Spreizung")
                 .row("Heizungsdruck", "bar", 2, () -> value(1.56))
                 .card("Kältekreis")
                 .row("Verdichter-Drehzahl", "Hz", 0, () -> value(24))
@@ -157,5 +162,25 @@ public class StatusPageTest {
         assertFalse(html.contains("data-series"));
         assertFalse(html.contains("<dialog"));
         assertTrue(html.contains("<meta http-equiv=\"refresh\" content=\"20\">"));
+    }
+
+    @Test
+    public void testFormula() throws Exception {
+        String html = render();
+        // Row without course: tooltip on the label, focusable for a tap on a phone
+        assertTrue(html.contains("<span class=\"calc\" data-formula=\"Vorlauf − Rücklauf\" tabindex=\"0\">"
+                + "Spreizung<span class=\"info\" aria-hidden=\"true\">ⓘ</span></span>"));
+        // Row with course: the dialog shows the formula, the label is not focusable on its own
+        assertTrue(html.contains("data-formula=\"Volumenstrom × Spreizung\" role=\"button\""));
+        assertTrue(html.contains("<span class=\"calc\" data-formula=\"Volumenstrom × Spreizung\">"));
+        // Pill, the formula is escaped
+        assertTrue(html.contains("data-formula=\"EXV &amp; Verdampfer\" tabindex=\"0\">Abtauung (berechnet)"));
+        assertTrue(html.contains("id=\"v-formula\""));
+        assertTrue(html.contains(".calc:hover::after"));
+    }
+
+    @Test
+    public void testFormulaWithoutValue() {
+        assertThrows(IllegalStateException.class, () -> new StatusPage(clock).formula("x"));
     }
 }

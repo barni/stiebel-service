@@ -20,6 +20,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -1072,6 +1075,36 @@ public class StblService {
     }
 
 
+    private static final String FORMEL_SCHEINLEISTUNG = "Spannung × Strom des Inverters, ohne Leistungsfaktor";
+
+    /**
+     * Number for the formulas on the status page, e.g. 4,19 or 0,7
+     */
+    static String zahl(double value) {
+        return new DecimalFormat("0.0#", DecimalFormatSymbols.getInstance(Locale.GERMANY)).format(value);
+    }
+
+    static String formelWaermeleistung() {
+        return "Volumenstrom [l/min] ÷ 60 × " + zahl(WAERMEKAPAZITAET_WASSER) + " kJ/(kg·K) × Spreizung [K]. "
+                + "0 bei stehendem Verdichter, kein Wert in den ersten " + ANLAUFZEIT.toSeconds()
+                + " s nach dem Start, während der Abtauung und ohne Volumenstrom";
+    }
+
+    static String formelArbeitszahl() {
+        return "Wärmeleistung ÷ Wirkleistung, Wirkleistung = Scheinleistung × (" + zahl(WIRKLEISTUNG_STEIGUNG)
+                + " − " + (int) WIRKLEISTUNG_OFFSET_W + " W ÷ Scheinleistung), Anteil begrenzt auf "
+                + zahl(WIRKLEISTUNGSANTEIL_MIN) + " bis " + zahl(WIRKLEISTUNGSANTEIL_MAX)
+                + " (Abgleich mit dem Hauszähler 2024/25)";
+    }
+
+    static String formelAbtauung() {
+        return "An, wenn das Expansionsventil innerhalb von " + ABTAUUNG_MAX_STILLSTAND.toMinutes()
+                + " min nach einem Verdichterstopp auf mindestens " + (int) ABTAUUNG_EXV_PROZENT
+                + " % öffnet oder der Verdampfer bei laufendem Verdichter mehr als "
+                + (int) ABTAUUNG_VERDAMPFER_UEBER_VORLAUF_K + " K wärmer als der Vorlauf ist. Bleibt "
+                + ABTAUUNG_NACHLAUF.toSeconds() + " s nach dem Ende an";
+    }
+
     /**
      * Returns actual status
      *
@@ -1084,7 +1117,8 @@ public class StblService {
                 .kpi("Vorlauf", "°C", 1, "VorlaufIstTemp", this::getVorlaufIstTemp)
                 .kpi("Rücklauf", "°C", 1, "RuecklaufIstTemp", this::getRuecklaufIstTemp)
                 .kpi("Verdichter", "Hz", 0, "VerdichterDrehzahlHz", this::getVerdichterDrehzahl)
-                .kpi("Inverter", "VA", 0, "LeistungInverter", this::getLeistungInverter)
+                .kpi("Inverter (berechnet)", "VA", 0, "LeistungInverter", this::getLeistungInverter)
+                .formula(FORMEL_SCHEINLEISTUNG)
                 .card("Betrieb")
                 .pill("Verdichter", this::isVerdichterOn)
                 .pill("Pufferladepumpe", this::isPufferladepumpeOn)
@@ -1093,6 +1127,7 @@ public class StblService {
                 .pill("DHC 2", this::isDHC_2On)
                 .pill("EVU-Sperre", this::isEvuSperre)
                 .pill("Abtauung (berechnet)", this::isAbtauung)
+                .formula(formelAbtauung())
                 .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", this::getLaufzeit_DHC1)
                 .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", this::getLaufzeit_DHC2)
                 .row("Laufzeit DHC 1+2", "h", 0, "LaufzeitDHZ12", this::getLaufzeit_DHC12)
@@ -1100,6 +1135,7 @@ public class StblService {
                 .row("Laufzeit Heizen", "h", 0, "LaufzeitVerdichterHeizen", this::getLaufzeitVerdichterHeizen)
                 .row("Starts", "", 0, "VerdichterStarts", this::getVerdichterStarts)
                 .row("Laufzeit je Start (berechnet)", "h", 2, this::getLaufzeitProStart)
+                .formula("Laufzeit Heizen ÷ Verdichterstarts")
                 .row("Laufzeit Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", this::getLaufzeitVerdichterAbtauen)
                 .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", this::getDauerLetzteAbtauung)
                 .note("Zähler seit Inbetriebnahme.")
@@ -1107,8 +1143,10 @@ public class StblService {
                 .row("Vorlauf", "°C", 1, "VorlaufIstTemp", this::getVorlaufIstTemp)
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", this::getRuecklaufIstTemp)
                 .row("Spreizung (berechnet)", "K", 1, this::getSpreizung)
+                .formula("Vorlauf − Rücklauf")
                 .row("Volumenstrom", "l/min", 1, "WasserVolumenstrom", this::getVolumenstrom)
                 .row("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", this::getWaermeleistung)
+                .formula(formelWaermeleistung())
                 .row("Heizungsdruck", "bar", 2, "Heizungsdruck", this::getHeizungsdruck)
                 .card("Kältekreis")
                 .row("Verdichter-Drehzahl", "Hz", 0, "VerdichterDrehzahlHz", this::getVerdichterDrehzahl)
@@ -1128,7 +1166,8 @@ public class StblService {
                 .card("Inverter")
                 .row("Spannung", "V", 1, "SpannungInverter", this::getSpannungInverter)
                 .row("Strom", "A", 1, "StromInverter", this::getStromInverter)
-                .row("Scheinleistung", "VA", 0, "LeistungInverter", this::getLeistungInverter)
+                .row("Scheinleistung (berechnet)", "VA", 0, "LeistungInverter", this::getLeistungInverter)
+                .formula(FORMEL_SCHEINLEISTUNG)
                 .row("Umgebungstemperatur", "°C", 1, "UmgebungstempInverter", this::getUmgebungstempInverter)
                 .row("Temperatur Verdichter", "°C", 1, "TempInverterVerdichter", this::getTempInverterVerdichter)
                 .note("Spannung × Strom ohne Leistungsfaktor. Die Wirkleistung liegt laut Smartmeter bei etwa "
@@ -1138,8 +1177,12 @@ public class StblService {
                 .row("Wärmeerzeugung", "MWh", 3, "AbgabeWaerme", this::getAbgabeWaerme)
                 .row("Zusatzheizung", "MWh", 3, "WaermeZusatzheizung", this::getWaermeZusatzheizung)
                 .row("Effizienz gesamt (Zähler, berechnet)", "", 2, this::getEffezienz)
+                .formula("Wärmeerzeugung ÷ Stromaufnahme, beides Zähler der Wärmepumpe")
                 .row("Effizienz gesamt (korrigiert, berechnet)", "", 2, "EffizienzKorrigiert", this::getEffizienzKorrigiert)
+                .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + zahl(STROMZAEHLER_KORREKTUR)
+                        + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
                 .row("Arbeitszahl aktuell (berechnet)", "", 1, "ArbeitszahlGeschaetzt", this::getArbeitszahl)
+                .formula(formelArbeitszahl())
                 .note("Zähler der Wärmepumpe seit Inbetriebnahme. Der Stromzähler zählt rund 20 % zu wenig, "
                         + "die korrigierte Effizienz rechnet das heraus. Die aktuelle Arbeitszahl ist geschätzt: "
                         + "berechnete Wärmeleistung geteilt durch die aus der Scheinleistung geschätzte Wirkleistung.")
