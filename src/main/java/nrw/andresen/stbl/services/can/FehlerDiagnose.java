@@ -67,9 +67,38 @@ public class FehlerDiagnose {
             new Kandidat(0x480, FEHLERART, "FEHLERART",
                     "Art des Fehlers beim Manager, nur der Name in der Elster-Tabelle ist bekannt."));
 
+    // Nodes asked for the possible fault list, 0x500 is the outdoor unit and has its own fault number
+    public static final List<Integer> LISTEN_KNOTEN = List.of(0x180, 0x480, 0x514);
+
+    /**
+     * Indices of the Elster table which might hold the fault list of 20 entries: K_OS_STOERMELDUNG_1..10 with
+     * K_OS_STUNDEN_TAGESZAEHLER_1..10 next to each (0x022b-0x023e), the pointer (0x037f), K_OS_STOERMELDUNG_11..20
+     * (0x0380-0x0389) and K_FEHLERZAEHLER_01..25 (0x0366-0x037e). Requested once per hour, read only.
+     */
+    public static final List<Short> LISTEN_INDIZES = listenIndizes();
+
+    private static List<Short> listenIndizes() {
+        List<Short> indizes = new ArrayList<>();
+        for (int index = 0x022b; index <= 0x023e; index++) {
+            indizes.add((short) index);
+        }
+        for (int index = 0x0366; index <= 0x0389; index++) {
+            indizes.add((short) index);
+        }
+        return List.copyOf(indizes);
+    }
+
     // Indices which are only requested for the trial, an answer from any node is kept
-    private static final Set<Short> NUR_DIAGNOSE = KANDIDATEN.stream().map(Kandidat::index)
-            .filter(index -> index != BETRIEBS_STATUS).collect(Collectors.toSet());
+    private static final Set<Short> NUR_DIAGNOSE = nurDiagnose();
+
+    private static Set<Short> nurDiagnose() {
+        Set<Short> indizes = KANDIDATEN.stream().map(Kandidat::index)
+                .filter(index -> index != BETRIEBS_STATUS).collect(Collectors.toSet());
+        indizes.addAll(LISTEN_INDIZES);
+        return Set.copyOf(indizes);
+    }
+
+    private static final ElsterTable ELSTER_TABLE = new ElsterTable();
 
     private final Map<Integer, Antwort> antworten = new ConcurrentHashMap<>();
 
@@ -90,12 +119,47 @@ public class FehlerDiagnose {
     }
 
     /**
+     * Name of a fault list index from the Elster table
+     */
+    public static String listenName(short index) {
+        ElsterIndex elsterIndex = ELSTER_TABLE.findByIndex(index);
+        return elsterIndex != null && elsterIndex != ElsterIndex.UNKOWN_ELSTER_INDEX ? elsterIndex.getName()
+                : String.format("Index 0x%04X", index);
+    }
+
+    /**
+     * True for an index of the fault list trial
+     */
+    public static boolean istListenIndex(short index) {
+        return LISTEN_INDIZES.contains(index);
+    }
+
+    /**
+     * Fault list trial: every requested node and index with its answer, null if nothing was received yet
+     */
+    public List<Zeile> listenZeilen() {
+        List<Zeile> zeilen = new ArrayList<>();
+        for (int knoten : LISTEN_KNOTEN) {
+            for (short index : LISTEN_INDIZES) {
+                zeilen.add(new Zeile(knoten, index, listenName(index), "Kandidat für die Fehlerliste.",
+                        antworten.get(schluessel(knoten, index))));
+            }
+        }
+        return zeilen;
+    }
+
+    /**
      * All candidates in their order, then answers of other nodes with a trial index
      */
     public List<Zeile> zeilen() {
         List<Zeile> zeilen = new ArrayList<>();
         Set<Integer> bekannt = KANDIDATEN.stream().map(k -> schluessel(k.knoten(), k.index()))
                 .collect(Collectors.toSet());
+        for (int knoten : LISTEN_KNOTEN) {
+            for (short index : LISTEN_INDIZES) {
+                bekannt.add(schluessel(knoten, index));
+            }
+        }
         for (Kandidat k : KANDIDATEN) {
             zeilen.add(new Zeile(k.knoten(), k.index(), k.name(), k.erklaerung(),
                     antworten.get(schluessel(k.knoten(), k.index()))));

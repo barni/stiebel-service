@@ -38,6 +38,9 @@ before you rely on it.
   index in the card "Störungen (Erprobung)", in `/stoerungen` and as `WP_Fehler_<node>_<index>`. The raw
   Betriebsstatus of 0x180 is stored as `WP_Betriebsstatus`. Compare them with the message list of the WPM
   (DIAGNOSE → MELDUNGSLISTE) before relying on one of them.
+  For the fault list itself, the indices K_OS_STOERMELDUNG_1..20 with pointer and day counters and
+  K_FEHLERZAEHLER_01..25 are requested once per hour at 0x180, 0x480 and 0x514 (card "Fehlerliste (Erprobung)",
+  `/stoerungen/liste`). Nothing is written, e.g. GESPEICHERTE_FEHLER_LOESCHEN is never touched.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the
