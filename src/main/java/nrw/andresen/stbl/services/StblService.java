@@ -12,6 +12,7 @@ import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterBetriebsstatus;
 import nrw.andresen.stbl.services.can.ElsterMessage;
 import nrw.andresen.stbl.services.can.FehlerDiagnose;
+import nrw.andresen.stbl.services.can.IndexScan;
 import nrw.andresen.stbl.services.can.SynchronizedUSBtin;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
@@ -32,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -175,6 +177,12 @@ public class StblService {
     private final CanStatistik canStatistik = new CanStatistik();
     // Trial of indices which might show a fault, kept per node and index
     private final FehlerDiagnose fehlerDiagnose = new FehlerDiagnose();
+    // One time scan of all Elster indices, started from the REST API
+    private final IndexScan indexScan = new IndexScan();
+    // Pause between two scan requests, about 10 per second, the scan takes about 25 minutes
+    private static final Duration SCAN_PAUSE = Duration.ofMillis(100);
+    // Wait for late answers after the last request
+    private static final Duration SCAN_NACHLAUF = Duration.ofSeconds(2);
     private String usbPort;
     private int usbSpeed;
     private boolean logall;
@@ -220,6 +228,12 @@ public class StblService {
                     if (diagnose && elsterMessage.getRawValue() != null) {
                         lastMsgReceived = LocalDateTime.now();
                         fehlerDiagnose.antwort(elsterMessage.getId(), index, elsterMessage.getRawValue(), jetzt);
+                        canStatistik.antwort(elsterMessage.getRawValue() == VALUE_NOT_AVAILABLE, jetzt);
+                    }
+                    if (!diagnose && anDenDienst && indexScan.laeuft() && !REQUESTED_INDICES.contains(index)
+                            && elsterMessage.getRawValue() != null) {
+                        lastMsgReceived = LocalDateTime.now();
+                        indexScan.antwort(elsterMessage.getId(), index, elsterMessage.getRawValue(), jetzt);
                         canStatistik.antwort(elsterMessage.getRawValue() == VALUE_NOT_AVAILABLE, jetzt);
                     }
                     // The Betriebsstatus of the manager is only part of the trial, it must not replace the one of 0x180
@@ -1173,6 +1187,39 @@ public class StblService {
     }
 
     /**
+     * Starts the scan of all Elster indices at 0x180, 0x480, 0x500 and 0x514 in the background, false if one is
+     * running. Indices the service requests anyway are skipped, an answer of another node would overwrite them.
+     */
+    public boolean starteIndexScan() {
+        if (indexScan.laeuft()) {
+            return false;
+        }
+        Set<Short> ausgenommen = new HashSet<>(REQUESTED_INDICES);
+        for (FehlerDiagnose.Kandidat kandidat : FehlerDiagnose.KANDIDATEN) {
+            ausgenommen.add(kandidat.index());
+        }
+        Thread scan = new Thread(() -> indexScan.scannen(CAN_SENDER_ID, ausgenommen, SCAN_PAUSE, SCAN_NACHLAUF, anfrage -> {
+            try {
+                usbtin.send(anfrage.getMessage());
+            } catch (USBtinException e) {
+                logger.warn("Scan request failed: " + e.getMessage());
+            }
+        }), "index-scan");
+        scan.setDaemon(true);
+        scan.start();
+        logger.info("Index scan started");
+        return true;
+    }
+
+    public IndexScan.Status getIndexScanStatus() {
+        return indexScan.status();
+    }
+
+    public String getIndexScanCsv() {
+        return indexScan.csv();
+    }
+
+    /**
      * Answers of the fault trial for the REST API
      */
     public List<FehlerDiagnose.Zeile> getStoerungen() {
@@ -1430,6 +1477,20 @@ public class StblService {
         page.note("Erprobung: Wie der WPM3 Störungen über CAN meldet, ist nicht dokumentiert. Bei einer Meldung am "
                         + "WPM (DIAGNOSE → MELDUNGSLISTE) hier vergleichen, welcher Wert sich ändert. „nicht verfügbar“ "
                         + "heißt, das Gerät kennt den Index nicht.")
+                .card("Index-Scan");
+        IndexScan.Status scan = indexScan.status();
+        page.text("Zustand", scan.laeuft() ? "läuft" : scan.ende() != null ? "fertig " + zeitpunkt(scan.ende())
+                        : "noch nicht gestartet")
+                .info("Einmaliges Auslesen aller Indizes der Elster-Tabelle bei 0x180, 0x480, 0x500 und 0x514, nur "
+                        + "lesend, etwa 10 Anfragen pro Sekunde. Gestartet über /diagnose/scan/start.")
+                .text("Fortschritt", scan.gesamt() == 0 ? null
+                        : scan.gesendet() + " von " + scan.gesamt() + " Anfragen")
+                .text("Ergebnis", scan.gesamt() == 0 ? null : scan.mitWert() + " mit Wert, " + scan.nichtVerfuegbar()
+                        + " nicht verfügbar, " + scan.treffer().size() + " Treffer")
+                .info("Treffer sind Werte, die zur Fehlerliste passen könnten, z. B. 8256 (0x2040) oder Datum und "
+                        + "Uhrzeit eines Eintrags. Details in /diagnose/scan, alle Werte in /diagnose/scan.csv.")
+                .note("<a href=\"diagnose/scan/start\">Scan starten</a> · <a href=\"diagnose/scan\">Auswertung</a> · "
+                        + "<a href=\"diagnose/scan.csv\">Alle Werte als CSV</a>")
                 .card("USB-Adapter")
                 .pill("Verbindung", this::isAdapterVerbunden)
                 .info("USBtin am Pi verbunden und CAN-Kanal geöffnet.")

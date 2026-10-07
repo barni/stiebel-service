@@ -38,6 +38,10 @@ before you rely on it.
   index in the card "Störungen (Erprobung)", in `/stoerungen` and as `WP_Fehler_<node>_<index>`. The raw
   Betriebsstatus of 0x180 is stored as `WP_Betriebsstatus`. Compare them with the message list of the WPM
   (DIAGNOSE → MELDUNGSLISTE) before relying on one of them.
+- **Index scan**: `/diagnose/scan/start` reads every index of the Elster table once at 0x180, 0x480, 0x500 and
+  0x514 (read requests only, about 10 per second, about 25 minutes), like can_scan. Indices the service requests
+  anyway are skipped. `/diagnose/scan` shows the progress and hits (e.g. 0x2040 = 8256 from the fault list,
+  values a node answers for many indices), `/diagnose/scan.csv` all answers with a value.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the
