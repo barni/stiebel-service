@@ -23,8 +23,9 @@ before you rely on it.
   all endpoints. A value that is missing or not meaningful (e.g. efficiency while the compressor stands still) is
   answered with HTTP 503 and the reason.
 - **Status page** `/status` with all current values. A click on a value that is stored in InfluxDB shows its course
-  over the last 24 hours as chart (2 minute means, from `/history/<name>`, name as in InfluxDB without `WP_`, e.g.
-  `/history/VorlaufIstTemp`). The InfluxDB token then also needs read access to the bucket.
+  as chart, selectable for 6 h, 24 h, 7 days, 30 days or 1 year (from `/history/<name>?range=6h|24h|7d|30d|1y`,
+  name as in InfluxDB without `WP_`, e.g. `/history/VorlaufIstTemp?range=7d`; means over 1 min to 12 h, default
+  24h). The InfluxDB token then also needs read access to the bucket.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the

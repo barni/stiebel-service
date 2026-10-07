@@ -140,6 +140,10 @@ public class StatusPageTest {
         assertFalse(html.contains("data-series=\"Spreizung\""));
         assertTrue(html.contains("<dialog id=\"verlauf\""));
         assertTrue(html.contains("fetch('history/'"));
+        // Range selection in the dialog, the same ranges as in StblController
+        for (String range : new String[]{"6h", "24h", "7d", "30d", "1y"}) {
+            assertTrue(html.contains("data-range=\"" + range + "\""));
+        }
         // The page is reloaded by the script, not while the dialog is open
         assertTrue(html.contains("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"));
     }
