@@ -1,6 +1,7 @@
 package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.StblService;
+import nrw.andresen.stbl.services.can.FehlerDiagnose;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
 import org.slf4j.Logger;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -90,6 +92,14 @@ public class StblController {
     @RequestMapping("/verbindung")
     public StblService.Verbindung verbindung() {
         return stblService.getVerbindung();
+    }
+
+    /**
+     * Trial of indices which might show a fault of the WPM3, raw answers per node and index
+     */
+    @RequestMapping("/stoerungen")
+    public List<FehlerDiagnose.Zeile> stoerungen() {
+        return stblService.getStoerungen();
     }
 
     @RequestMapping("/aufnahmeLeistung")
