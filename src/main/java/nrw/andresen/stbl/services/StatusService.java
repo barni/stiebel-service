@@ -333,8 +333,18 @@ public class StatusService {
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
                 .card("Einstellungen");
         for (Waermepumpe.Einstellung einstellung : wp.getEinstellungen()) {
-            page.row(einstellung.label(), einstellung.unit(), einstellung.decimals(),
-                    "Einstellung_" + einstellung.name(), einstellung.wert(), stunde).info(einstellung.info());
+            if (einstellung.anzeige() != null) {
+                String text;
+                try {
+                    text = einstellung.text(einstellung.wert().call().getValue());
+                } catch (Exception e) {
+                    text = null;
+                }
+                page.text(einstellung.label(), text).info(einstellung.info());
+            } else {
+                page.row(einstellung.label(), einstellung.unit(), einstellung.decimals(),
+                        "Einstellung_" + einstellung.name(), einstellung.wert(), stunde).info(einstellung.info());
+            }
         }
         page.note("Stündlich vom Wärmepumpenmanager gelesen, eine Änderung wird per Mail gemeldet."
                         + (ueberwachung.getEinstellungsaenderungen().isEmpty() ? ""

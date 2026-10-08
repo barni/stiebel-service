@@ -82,6 +82,10 @@ public class UeberwachungTest {
         // Unchanged or nothing known before
         assertNull(Ueberwachung.aenderung(heizkurve, 0.35, 0.35));
         assertNull(Ueberwachung.aenderung(heizkurve, null, 0.35));
+        Waermepumpe.Einstellung betriebsart = new Waermepumpe.Einstellung("Betriebsart", "Betriebsart", "", 0, null,
+                "", Waermepumpe::betriebsart);
+        assertEquals("Betriebsart: Programmbetrieb → Komfortbetrieb", Ueberwachung.aenderung(betriebsart, 2d, 3));
+        assertEquals("Betriebsart 11", Waermepumpe.betriebsart(11));
     }
 
     @Test
