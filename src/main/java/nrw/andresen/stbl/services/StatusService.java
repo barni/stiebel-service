@@ -83,7 +83,8 @@ public class StatusService {
                 .badgeWennAn("Warmwasser", "Ladung des Warmwasserspeichers aktiv, Betriebsstatus des "
                         + "Wärmepumpenmanagers (0x180).", wp::isWarmwasserladepumpe)
                 .badgeWennAn("Abtauung", "Die Außeneinheit taut ihren vereisten Verdampfer ab und nimmt dafür kurz "
-                        + "Wärme aus dem Heizwasser. Vom Dienst erkannt: " + Waermepumpe.formelAbtauung() + ".",
+                        + "Wärme aus dem Heizwasser. Eis bildet sich laut Anleitung vor allem bei 0–8 °C Luft mit "
+                        + "Nebel oder Regen. Vom Dienst erkannt: " + Waermepumpe.formelAbtauung() + ".",
                         wp::isAbtauung)
                 .badgeWennAn("EVU-Sperre", "Sperrsignal des Energieversorgers am Kontakt EVU. Während der Sperre "
                         + "darf die Wärmepumpe nicht laufen.", wp::isEvuSperre)
@@ -104,14 +105,18 @@ public class StatusService {
                         + "Schritten von etwa 1,1 K gemeldet.")
                 .kpi("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
                 .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180). "
-                        + "Warnung unter 1,3 und über 2,5 bar; er sinkt um etwa 0,2 bar pro Jahr.")
+                        + "Warnung unter 1,3 und über 2,5 bar, zulässig sind laut Anleitung 3 bar; er sinkt um etwa "
+                        + "0,2 bar pro Jahr.")
                 .kpi("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
-                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt.")
+                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt. Laut Anleitung kann die WPL 17 "
+                        + "bei A7/W35 2,6–8,5 kW und bei A−7/W35 3,0–7,8 kW; braucht das Haus weniger als das "
+                        + "Minimum, taktet sie.")
                 .formula(Waermepumpe.formelWaermeleistung())
                 .ersatz("–")
                 .kpi("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
                 .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
-                        + "während der Verdichter läuft.")
+                        + "während der Verdichter läuft. Datenblatt WPL 17: A7/W35 4,76, A2/W35 3,97, A−7/W35 2,92, "
+                        + "SCOP 4,48.")
                 .formula(Waermepumpe.formelArbeitszahl())
                 .ersatz("aus");
     }
@@ -229,29 +234,38 @@ public class StatusService {
                         + "(Soll-Spreizung).")
                 .formula("Vorlauf − Rücklauf")
                 .row("Volumenstrom", "l/min", 1, "WasserVolumenstrom", wp::getVolumenstrom)
-                .info("Heizwasser, das durch die Wärmepumpe fließt (0x500). Wird jede Minute abgefragt.")
+                .info("Heizwasser, das durch die Wärmepumpe fließt (0x500), jede Minute abgefragt. Die Pumpe "
+                        + "regelt ihn so, dass die Soll-Spreizung erreicht wird; bei kleiner Leistung daher oft nur "
+                        + "8–10 l/min. Laut Anleitung WPL 17: mindestens 10 l/min (0,6 m³/h), nenn 22 l/min bei "
+                        + "A−7/W35, beim Abtauen etwa 30 l/min.")
                 .row("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
-                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt.")
+                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt. Laut Anleitung kann die WPL 17 "
+                        + "bei A7/W35 2,6–8,5 kW und bei A−7/W35 3,0–7,8 kW; braucht das Haus weniger als das "
+                        + "Minimum, taktet sie.")
                 .formula(Waermepumpe.formelWaermeleistung())
                 .ersatz("–")
                 .row("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
                 .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
-                        + "während der Verdichter läuft.")
+                        + "während der Verdichter läuft. Datenblatt WPL 17: A7/W35 4,76, A2/W35 3,97, A−7/W35 2,92, "
+                        + "SCOP 4,48.")
                 .formula(Waermepumpe.formelArbeitszahl())
                 .ersatz("aus")
                 .row("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
                 .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180). "
-                        + "Warnung unter 1,3 und über 2,5 bar; er sinkt um etwa 0,2 bar pro Jahr.")
+                        + "Warnung unter 1,3 und über 2,5 bar, zulässig sind laut Anleitung 3 bar; er sinkt um etwa "
+                        + "0,2 bar pro Jahr.")
                 .card("Kältekreis")
                 .row("Außentemperatur", "°C", 1, "Aussentemp", wp::getAussentemp)
                 .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
                         + "Wärmepumpenmanagers etwas abweichen, beim Abtauen steigt sie kurz um einige Kelvin.")
                 .row("Hochdruck", "bar", 2, "Hochdruck", wp::getHochdruck)
                 .info("Absoluter Druck auf der Hochdruckseite des Kältekreises (0x500). Entspricht der "
-                        + "Kondensationstemperatur, die etwa der Vorlauftemperatur folgt.")
+                        + "Kondensationstemperatur, die etwa der Vorlauftemperatur folgt. Sensor bis 42 bar, "
+                        + "Hochdruckwächter schaltet bei 45 bar ab.")
                 .row("Niederdruck", "bar", 2, "Niederdruck", wp::getNiederdruck)
                 .info("Absoluter Druck auf der Saugseite des Kältekreises (0x500). Entspricht der "
-                        + "Verdampfungstemperatur, im Betrieb einige Kelvin unter der Außentemperatur.")
+                        + "Verdampfungstemperatur, im Betrieb einige Kelvin unter der Außentemperatur. Sensor bis "
+                        + "16 bar.")
                 .row("Heißgas", "°C", 1, "HeissgasTemp", wp::getHeissgasTemp)
                 .info("Temperatur des Kältemittels direkt hinter dem Verdichter (0x500).")
                 .row("Verdichter-Eintritt", "°C", 1, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp)
@@ -283,7 +297,8 @@ public class StatusService {
                 .info("Netzspannung am Verdichter-Inverter (0x500). Zeigt dauerhaft etwa 10 V zu wenig an, der "
                         + "Hauszähler misst richtig.")
                 .row("Strom", "A", 1, "StromInverter", wp::getStromInverter)
-                .info("Stromaufnahme des Verdichter-Inverters (0x500).")
+                .info("Stromaufnahme des Verdichter-Inverters (0x500). Laut Anleitung max. 20 A Betriebsstrom, "
+                        + "7 A Anlaufstrom, abgesichert mit B25.")
                 .row("Scheinleistung (berechnet)", "VA", 0, "LeistungInverter", wp::getLeistungInverter)
                 .info("Momentane Leistungsaufnahme des Verdichter-Inverters. Die Wirkleistung liegt laut Smartmeter "
                         + "bei etwa 80 % bei 600 VA und erreicht ab 1000 VA die Scheinleistung.")
