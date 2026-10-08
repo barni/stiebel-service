@@ -461,16 +461,20 @@ public class StatusService {
         }
         List<List<String>> zeilen = new ArrayList<>();
         for (Fehlstarts.Saison saison : saisons) {
-            zeilen.add(List.of(saison.name() + (saison.laufend() ? " (laufend)" : ""), String.valueOf(saison.starts()),
-                    String.valueOf(saison.fehlstarts()), zahl(saison.jeTausend(), 1)));
+            zeilen.add(List.of(saison.name() + (saison.laufend() ? " (laufend)" : ""),
+                    String.valueOf(saison.fehlstarts()), zahl(saison.jeMWh(), 1), zahl(saison.jeTausendMild(), 1),
+                    String.valueOf(saison.tageMitDaten())));
         }
-        page.table(List.of("Saison", "Starts", "Fehlstarts", "je 1000 Starts"), zeilen);
+        page.table(List.of("Saison", "Fehlstarts", "je MWh", "je 1000 Starts 0–15 °C", "Tage mit Daten"), zeilen);
         List<Instant> letzte = fehlstarts.getLetzte();
         page.note("Fehlstart: Der Verdichter kommt beim Anlauf nicht in Gang (Fehlerliste: INV H ROTORVEKTOR), "
                 + "die Wärmepumpe wartet etwa 23 Minuten und startet dann normal. Aus den gespeicherten Werten "
-                + "erkannt (Hochdruck fällt beim Startversuch, kein Lauf, Neustart nach der Sperre), Heizsaison "
-                + "Juli bis Juni. Starts nach mindestens 3 min Stillstand. Bis 2021/22 lag die Quote bei 6–9, "
-                + "steigt sie deutlich, Kundendienst fragen."
+                + "erkannt, Heizsaison Juli bis Juni. „je MWh“: je MWh erzeugter Wärme, unabhängig davon, wie oft die "
+                + "Anlage startet. „je 1000 Starts 0–15 °C“: nur Tage mit diesem Tagesmittel, denn bei Frost gibt es "
+                + "praktisch keine Fehlstarts; erst ab 03/2022 (Außentemperatur). Bisher 20–26 pro Winter, 1,0–1,9 "
+                + "je MWh und 13–16 je 1000 Starts bei 0–15 °C. Auffällig wäre deutlich mehr als ~30 pro Winter, "
+                + "~2,5 je MWh oder ~20 je 1000 Starts. Wenige „Tage mit Daten“ heißt Lücken, dann sind die Zahlen "
+                + "zu klein."
                 + (letzte.isEmpty() ? "" : " Zuletzt erkannt: " + String.join(", ", letzte.stream()
                 .map(t -> Fehlerliste.ZEITFORMAT.format(t.atZone(ZoneId.systemDefault()))).toList()) + ".")
                 + " Stand " + zeitpunkt(fehlstarts.getBerechnet()) + ".");

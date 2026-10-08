@@ -45,10 +45,22 @@ public class Fehlstarts {
     static final Duration SPERRE_MIN = Duration.ofMinutes(18);
     static final Duration SPERRE_MAX = Duration.ofMinutes(30);
     private static final int TAGE_JE_ABFRAGE = 90;
+    // Failed starts happen on days with a mean outdoor temperature in this range, hardly below 0 degC (2022-2026: none
+    // in 507 starts) and seldom above 15 degC; the rate is compared only within it, so a different mix of cold and
+    // mild days or the number of starts does not change it
+    static final double MILD_VON = 0;
+    static final double MILD_BIS = 15;
+    // A day counts as covered with 80 % of the values every 30 s; until 2021 the values were stored about every 25 s,
+    // since then every 20 s
+    private static final int MIN_WERTE_PRO_TAG = 2400;
+    // The rate on mild days only if the outdoor temperature is known for most covered days of the season
+    private static final double MIN_ANTEIL_TEMPERATUR = 0.8;
 
     private final Logger logger = LoggerFactory.getLogger(Fehlstarts.class);
     @Autowired
     private InfluxController influx;
+    @Autowired
+    private WaermebedarfVergleich vergleich;
     private final LocalDate start;
     // Seasons before the current one do not change and are calculated once
     private volatile List<Saison> abgeschlossen;
@@ -57,12 +69,22 @@ public class Fehlstarts {
     private volatile Instant berechnet;
 
     /**
-     * Starts and failed starts of one heating season, e.g. "2025/26"
+     * Failed starts of one heating season, e.g. "2025/26"; waermeMWh only of the covered days, startsMild and
+     * fehlstarteMild only of days with a known outdoor temperature between 0 and 15 degC
      */
-    public record Saison(String name, int starts, int fehlstarts, boolean laufend) {
+    public record Saison(String name, int starts, int fehlstarts, boolean laufend, double waermeMWh, int tageMitDaten,
+                         int startsMild, int fehlstartsMild, int tageMitTemperatur) {
 
-        public Double jeTausend() {
-            return starts > 0 ? 1000d * fehlstarts / starts : null;
+        public Double jeMWh() {
+            return waermeMWh >= 0.5 ? fehlstarts / waermeMWh : null;
+        }
+
+        /**
+         * Failed starts per 1000 starts on mild days, null without outdoor temperature or starts
+         */
+        public Double jeTausendMild() {
+            return tageMitTemperatur >= MIN_ANTEIL_TEMPERATUR * tageMitDaten && tageMitDaten > 0 && startsMild > 0
+                    ? 1000d * fehlstartsMild / startsMild : null;
         }
     }
 
@@ -70,7 +92,13 @@ public class Fehlstarts {
      * Events from the stored values: pressure drops, changes standstill/running (+1 start, -1 stop) per minute and
      * starts of real runs
      */
-    record Ereignisse(List<Instant> druckabfaelle, NavigableMap<Instant, Double> anAus, List<Instant> laeufe) {
+    record Ereignisse(List<Instant> druckabfaelle, NavigableMap<Instant, Double> anAus, List<Instant> laeufe,
+                      Map<LocalDate, Double> werteProTag, Map<LocalDate, Double> waermeProTag,
+                      Map<LocalDate, Double> temperatur) {
+
+        Ereignisse(List<Instant> druckabfaelle, NavigableMap<Instant, Double> anAus, List<Instant> laeufe) {
+            this(druckabfaelle, anAus, laeufe, Map.of(), Map.of(), Map.of());
+        }
     }
 
     public Fehlstarts(@Value("${auswertung.fehlstarts.start:2019-01-01}") String start) {
@@ -92,7 +120,8 @@ public class Fehlstarts {
             }
             Ereignisse aktuell = ereignisse(saisonStart.atStartOfDay(ZONE).toInstant(), jetzt);
             List<Saison> saisons = saisons(aktuell, saisonName(saisonStart));
-            laufend = saisons.isEmpty() ? new Saison(saisonName(saisonStart), 0, 0, true) : saisons.get(0);
+            laufend = saisons.isEmpty() ? new Saison(saisonName(saisonStart), 0, 0, true, 0, 0, 0, 0, 0)
+                    : saisons.get(0);
             List<Instant> fehlstarts = erkennen(aktuell);
             letzte = fehlstarts.subList(Math.max(0, fehlstarts.size() - 5), fehlstarts.size());
             berechnet = jetzt;
@@ -147,7 +176,37 @@ public class Fehlstarts {
                     " |> map(fn: (r) => ({r with _value: if r._value > " + LAUF_AB_VA + " then 1.0 else 0.0}))"
                             + " |> difference() |> filter(fn: (r) => r._value == 1.0)")).keySet());
         }
-        return new Ereignisse(druckabfaelle, anAus, laeufe);
+        Map<LocalDate, Double> werteProTag = tageswerte(von, bis, bucket, "WP_LeistungInverter", "count()");
+        Map<LocalDate, Double> waermeProTag = waermeProTag(tageswerte(von.minus(Duration.ofDays(1)), bis, bucket,
+                "WP_AbgabeWaerme", "last()"));
+        Map<LocalDate, Double> temperatur = vergleich.aussentemperatur(von, bis);
+        return new Ereignisse(druckabfaelle, anAus, laeufe, werteProTag, waermeProTag, temperatur);
+    }
+
+    /**
+     * Heat per day in MWh from the counter at the end of the day and of the day before; a day without the day before
+     * or with a falling counter is left out
+     */
+    static Map<LocalDate, Double> waermeProTag(Map<LocalDate, Double> zaehlerAmTagesende) {
+        Map<LocalDate, Double> waerme = new TreeMap<>();
+        zaehlerAmTagesende.forEach((tag, stand) -> {
+            Double vorher = zaehlerAmTagesende.get(tag.minusDays(1));
+            if (vorher != null && stand >= vorher) {
+                waerme.put(tag, stand - vorher);
+            }
+        });
+        return waerme;
+    }
+
+    private Map<LocalDate, Double> tageswerte(Instant von, Instant bis, String bucket, String measurement,
+                                              String funktion) {
+        Map<LocalDate, Double> tage = new TreeMap<>();
+        for (Instant teil = von; teil.isBefore(bis); teil = teil.plus(Duration.ofDays(TAGE_JE_ABFRAGE))) {
+            Instant teilBis = teil.plus(Duration.ofDays(TAGE_JE_ABFRAGE));
+            influx.werte(WaermebedarfVergleich.flux(teil, teilBis.isAfter(bis) ? bis : teilBis, bucket, measurement,
+                    null, funktion, "")).forEach((zeit, wert) -> tage.put(zeit.atZone(ZONE).toLocalDate(), wert));
+        }
+        return tage;
     }
 
     static String flux(String bucket, String measurement, Instant von, Instant bis, String funktion, String rest) {
@@ -199,31 +258,60 @@ public class Fehlstarts {
     }
 
     /**
-     * Starts after at least 3 minutes standstill and failed starts per season, the oldest first
+     * Starts after at least 3 minutes standstill, failed starts, heat and covered days per season, the oldest first
      *
      * @param nurSaison only this season, all if null
      */
     static List<Saison> saisons(Ereignisse e, String nurSaison) {
+        // starts, failed starts, starts mild, failed starts mild, covered days, days with temperature
         Map<String, int[]> zaehler = new TreeMap<>();
+        Map<String, Double> waerme = new TreeMap<>();
         Instant gestoppt = null;
         for (Map.Entry<Instant, Double> wechsel : e.anAus().entrySet()) {
             if (wechsel.getValue() < 0) {
                 gestoppt = wechsel.getKey();
             } else if (gestoppt == null
                     || Duration.between(gestoppt, wechsel.getKey()).compareTo(MIN_STILLSTAND_START) >= 0) {
-                zaehler.computeIfAbsent(saisonName(wechsel.getKey()), k -> new int[2])[0]++;
+                int[] z = zaehler.computeIfAbsent(saisonName(wechsel.getKey()), k -> new int[6]);
+                z[0]++;
+                if (mild(e.temperatur(), wechsel.getKey())) {
+                    z[2]++;
+                }
             }
         }
         for (Instant fehlstart : erkennen(e)) {
-            zaehler.computeIfAbsent(saisonName(fehlstart), k -> new int[2])[1]++;
+            int[] z = zaehler.computeIfAbsent(saisonName(fehlstart), k -> new int[6]);
+            z[1]++;
+            if (mild(e.temperatur(), fehlstart)) {
+                z[3]++;
+            }
         }
+        e.werteProTag().forEach((tag, werte) -> {
+            if (werte >= MIN_WERTE_PRO_TAG) {
+                String name = saisonName(saisonStart(tag));
+                zaehler.computeIfAbsent(name, k -> new int[6])[4]++;
+                waerme.merge(name, e.waermeProTag().getOrDefault(tag, 0d), Double::sum);
+                if (e.temperatur().containsKey(tag)) {
+                    zaehler.get(name)[5]++;
+                }
+            }
+        });
         List<Saison> saisons = new ArrayList<>();
         zaehler.forEach((name, z) -> {
-            if (nurSaison == null || nurSaison.equals(name)) {
-                saisons.add(new Saison(name, z[0], z[1], nurSaison != null));
+            if ((nurSaison == null && (z[0] > 0 || z[1] > 0)) || name.equals(nurSaison)) {
+                saisons.add(new Saison(name, z[0], z[1], nurSaison != null, waerme.getOrDefault(name, 0d), z[4],
+                        z[2], z[3], z[5]));
             }
         });
         return saisons;
+    }
+
+    /**
+     * True if the daily mean outdoor temperature of the day is known and between 0 and 15 degC
+     */
+    static boolean mild(Map<LocalDate, Double> temperatur, Instant zeit) {
+        Double wert = temperatur.get(zeit.atZone(ZONE).toLocalDate());
+        return wert != null && wert >= MILD_VON && wert < MILD_BIS;
     }
 
     static LocalDate saisonStart(LocalDate tag) {
