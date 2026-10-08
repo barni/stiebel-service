@@ -1,6 +1,8 @@
 package nrw.andresen.stbl;
 
-import nrw.andresen.stbl.services.StblService;
+import nrw.andresen.stbl.services.CanBus;
+import nrw.andresen.stbl.services.StatusService;
+import nrw.andresen.stbl.services.Waermepumpe;
 import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
@@ -42,12 +44,16 @@ public class StblController {
             "1y", new HistoryRange(Duration.ofDays(365), Duration.ofHours(12)));
 
     @Autowired
-    private StblService stblService;
+    private Waermepumpe waermepumpe;
+    @Autowired
+    private CanBus canBus;
+    @Autowired
+    private StatusService statusService;
     @Autowired
     private InfluxController influxController;
 
     /**
-     * The getters throw an exception if no current value is available, e.g. VERDICHTER_AUS or NO_VALUES_REVEIVED.
+     * The getters throw an exception if no current value is available, e.g. VERDICHTER_AUS or NO_VALUES_RECEIVED.
      * Answer 503 with the reason instead of 500 with a stack trace, Home Assistant shows the sensor as unavailable.
      */
     @ExceptionHandler(Exception.class)
@@ -65,7 +71,7 @@ public class StblController {
 
     @RequestMapping(value = "/status", produces = "text/html;charset=UTF-8")
     public String status() throws Exception{
-        return stblService.getStatus();
+        return statusService.getStatus();
     }
 
     /**
@@ -90,8 +96,8 @@ public class StblController {
      * State of the USBtin adapter and the CAN bus: version, restarts, messages per minute, answer rate, bus load
      */
     @RequestMapping("/verbindung")
-    public StblService.Verbindung verbindung() {
-        return stblService.getVerbindung();
+    public CanBus.Verbindung verbindung() {
+        return canBus.getVerbindung();
     }
 
     /**
@@ -99,152 +105,152 @@ public class StblController {
      */
     @RequestMapping("/fehlerliste")
     public List<Fehlerliste.Eintrag> fehlerliste() {
-        return stblService.getFehlerliste();
+        return canBus.getFehlerliste().eintraege();
     }
 
     @RequestMapping("/aufnahmeLeistung")
     public ValueContainer<Double> aufnahmeLeistung() throws Exception{
-        return stblService.getAufnahmeLeistung();
+        return waermepumpe.getAufnahmeLeistung();
     }
 
     @RequestMapping("/abgabeWaerme")
     public ValueContainer<Double> abgabeWaerme() throws Exception{
-        return stblService.getAbgabeWaerme();
+        return waermepumpe.getAbgabeWaerme();
     }
 
     @RequestMapping("/betriebstatus")
     public ValueContainer<Short> betriebstatus() throws Exception {
-        return stblService.getBetriebstatus();
+        return waermepumpe.getBetriebstatus();
     }
 
     @RequestMapping("/vorlaufIstTemp")
     public ValueContainer<Double> vorlaufIstTemp() throws Exception {
-        return stblService.getVorlaufIstTemp();
+        return waermepumpe.getVorlaufIstTemp();
     }
 
     @RequestMapping("/ruecklaufIstTemp")
     public ValueContainer<Double> ruecklaufIstTemp() throws Exception {
-        return stblService.getRuecklaufIstTemp();
+        return waermepumpe.getRuecklaufIstTemp();
     }
 
     @RequestMapping("/stromInverter")
     public ValueContainer<Double> speicherIstTemp() throws Exception {
-        return stblService.getStromInverter();
+        return waermepumpe.getStromInverter();
     }
 
 
     @RequestMapping("/spannungInverter")
     public ValueContainer<Double> spannungInverter() throws Exception {
-        return stblService.getSpannungInverter();
+        return waermepumpe.getSpannungInverter();
     }
 
 
     @RequestMapping("/hochdruck")
     public ValueContainer<Double> hochdruck() throws Exception {
-        return stblService.getHochdruck();
+        return waermepumpe.getHochdruck();
     }
 
     @RequestMapping("/niederdruck")
     public ValueContainer<Double> niederdruck() throws Exception {
-        return stblService.getNiederdruck();
+        return waermepumpe.getNiederdruck();
     }
 
     @RequestMapping("/heizungsdruck")
     public ValueContainer<Double>  heizungsdruck() throws Exception {
-        return stblService.getHeizungsdruck();
+        return waermepumpe.getHeizungsdruck();
     }
 
     @RequestMapping("/waermeZusatzheizung")
     public ValueContainer<Double> waermeZusatzheizung() throws Exception {
-        return stblService.getWaermeZusatzheizung();
+        return waermepumpe.getWaermeZusatzheizung();
     }
 
     @RequestMapping("/aussentemp")
     public ValueContainer<Double> aussentemp() throws Exception {
-        return stblService.getAussentemp();
+        return waermepumpe.getAussentemp();
     }
 
     @RequestMapping("/heissgasTemp")
     public ValueContainer<Double> heissgasTemp() throws Exception {
-        return stblService.getHeissgasTemp();
+        return waermepumpe.getHeissgasTemp();
     }
 
     @RequestMapping("/verdichterDrehzahl")
     public ValueContainer<Double> verdichterDrehzahl() throws Exception {
-        return stblService.getVerdichterDrehzahl();
+        return waermepumpe.getVerdichterDrehzahl();
     }
 
     @RequestMapping("/verdichterEintrittstemp")
     public ValueContainer<Double> verdichterEintrittstemp() throws Exception {
-        return stblService.getVerdichterEintrittstemp();
+        return waermepumpe.getVerdichterEintrittstemp();
     }
 
     @RequestMapping("/verdampferTemp")
     public ValueContainer<Double> verdampferTemp() throws Exception {
-        return stblService.getVerdampferTemp();
+        return waermepumpe.getVerdampferTemp();
     }
 
     @RequestMapping("/oelsumpfTemp")
     public ValueContainer<Double> oelsumpfTemp() throws Exception {
-        return stblService.getOelsumpfTemp();
+        return waermepumpe.getOelsumpfTemp();
     }
 
     @RequestMapping("/effizienzKorrigiert")
     public ValueContainer<Double> effizienzKorrigiert() throws Exception {
-        return stblService.getEffizienzKorrigiert();
+        return waermepumpe.getEffizienzKorrigiert();
     }
 
     @RequestMapping("/volumenstrom")
     public ValueContainer<Double> volumenstrom() throws Exception {
-        return stblService.getVolumenstrom();
+        return waermepumpe.getVolumenstrom();
     }
 
     @RequestMapping("/waermeleistung")
     public ValueContainer<Double> waermeleistung() throws Exception {
-        return stblService.getWaermeleistung();
+        return waermepumpe.getWaermeleistung();
     }
 
     @RequestMapping("/arbeitszahl")
     public ValueContainer<Double> arbeitszahl() throws Exception {
-        return stblService.getArbeitszahl();
+        return waermepumpe.getArbeitszahl();
     }
 
     @RequestMapping("/laufzeit_DHC1")
     public ValueContainer<Double>  laufzeit_DHC1() throws Exception {
-        return stblService.getLaufzeit_DHC1();
+        return waermepumpe.getLaufzeit_DHC1();
     }
     @RequestMapping("/laufzeit_DHC2")
     public ValueContainer<Double>  laufzeit_DHC2() throws Exception {
-        return stblService.getLaufzeit_DHC2();
+        return waermepumpe.getLaufzeit_DHC2();
     }
     @RequestMapping("/laufzeit_DHC12")
     public ValueContainer<Double>  laufzeit_DHC12() throws Exception {
-        return stblService.getLaufzeit_DHC12();
+        return waermepumpe.getLaufzeit_DHC12();
     }
 
     @RequestMapping("/laufzeitVerdichterHeizen")
     public ValueContainer<Double> laufzeitVerdichterHeizen() throws Exception {
-        return stblService.getLaufzeitVerdichterHeizen();
+        return waermepumpe.getLaufzeitVerdichterHeizen();
     }
 
     @RequestMapping("/laufzeitVerdichterAbtauen")
     public ValueContainer<Double> laufzeitVerdichterAbtauen() throws Exception {
-        return stblService.getLaufzeitVerdichterAbtauen();
+        return waermepumpe.getLaufzeitVerdichterAbtauen();
     }
 
     @RequestMapping("/verdichterStarts")
     public ValueContainer<Double> verdichterStarts() throws Exception {
-        return stblService.getVerdichterStarts();
+        return waermepumpe.getVerdichterStarts();
     }
 
     @RequestMapping("/ueberhitzung")
     public ValueContainer<Double> ueberhitzung() throws Exception {
-        return stblService.getIstUeberhitzung();
+        return waermepumpe.getIstUeberhitzung();
     }
 
     @RequestMapping("/luefterDrehzahl")
     public ValueContainer<Double> luefterDrehzahl() throws Exception {
-        return stblService.getLuefterIstDrehzahl();
+        return waermepumpe.getLuefterIstDrehzahl();
     }
 
 }

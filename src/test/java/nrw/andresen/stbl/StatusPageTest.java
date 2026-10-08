@@ -121,7 +121,7 @@ public class StatusPageTest {
         String html = new StatusPage(clock)
                 .card("Heizkreis")
                 .row("Volumenstrom", "l/min", 1, () -> {
-                    throw new Exception("NO_VALUES_REVEIVED");
+                    throw new Exception("NO_VALUES_RECEIVED");
                 })
                 .render();
         assertTrue(html.contains("keine Daten"));

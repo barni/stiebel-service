@@ -5,7 +5,8 @@ import nrw.andresen.stbl.services.can.ElsterMessage;
 import org.junit.jupiter.api.Test;
 
 
-import static nrw.andresen.stbl.services.StblService.CAN_SENDER_ID;
+import static nrw.andresen.stbl.services.CanBus.CAN_SENDER_ID;
+import static nrw.andresen.stbl.services.can.ElsterTable.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
@@ -511,5 +512,44 @@ public class ElsterMessageTest {
         ElsterMessage sut = new ElsterMessage(Integer.parseInt(frame.substring(1, 4), 16), frame.substring(5));
         assertEquals(name, sut.getElsterIndex().getName());
         assertEquals(value, sut.getValue());
+    }
+
+    private static String anfrage(int knoten, short index) {
+        return ElsterMessage.bytesToHex(ElsterMessage.readRequest(CAN_SENDER_ID, knoten, index).getMessage().getData())
+                .toLowerCase();
+    }
+
+    /**
+     * The requests built from the table give the same bytes as the fixed hex strings used before
+     */
+    @Test
+    public void test_readRequest_wie_feste_anfragen() {
+        assertEquals("3100fa01760000", anfrage(0x180, BETRIEBS_STATUS));
+        assertEquals("3100fa06740000", anfrage(0x180, ANZEIGE_HEIZUNGSDRUCK));
+        assertEquals("a114fa09200000", anfrage(0x514, EL_AUFNAHMELEISTUNG_HEIZ_SUM_KWH));
+        assertEquals("a114fa09210000", anfrage(0x514, EL_AUFNAHMELEISTUNG_HEIZ_SUM_MWH));
+        assertEquals("a114fa091e0000", anfrage(0x514, EL_AUFNAHMELEISTUNG_HEIZ_TAG_WH));
+        assertEquals("a114fa091f0000", anfrage(0x514, EL_AUFNAHMELEISTUNG_HEIZ_TAG_KWH));
+        assertEquals("a114fa09300000", anfrage(0x514, WAERMEERTRAG_HEIZ_SUM_KWH));
+        assertEquals("a114fa09310000", anfrage(0x514, WAERMEERTRAG_HEIZ_SUM_MWH));
+        assertEquals("a114fa092e0000", anfrage(0x514, WAERMEERTRAG_HEIZ_TAG_WH));
+        assertEquals("a114fa092f0000", anfrage(0x514, WAERMEERTRAG_HEIZ_TAG_KWH));
+        assertEquals("a114fa09260000", anfrage(0x514, WAERMEERTRAG_2WE_HEIZ_TAG_WH));
+        assertEquals("a114fa09270000", anfrage(0x514, WAERMEERTRAG_2WE_HEIZ_TAG_KWH));
+        assertEquals("a114fa09280000", anfrage(0x514, WAERMEERTRAG_2WE_HEIZ_SUM_KWH));
+        assertEquals("a114fa09290000", anfrage(0x514, WAERMEERTRAG_2WE_HEIZ_SUM_MWH));
+        assertEquals("a100fa02590000", anfrage(0x500, LAUFZEIT_DHC1));
+        assertEquals("a100fa025a0000", anfrage(0x500, LAUFZEIT_DHC2));
+        assertEquals("a100fa08050000", anfrage(0x500, LAUFZEIT_DHC12));
+        assertEquals("a100fa06b20000", anfrage(0x500, TEST_OBJEKT_113_STROM_INVERTER));
+        assertEquals("a114fa01d60000", anfrage(0x514, WPVORLAUFIST));
+        assertEquals("a1141600000000", anfrage(0x514, RUECKLAUFISTTEMP));
+        assertEquals("a100fa06b10000", anfrage(0x500, TEST_OBJEKT_112_SPANNUNG_INVERTER));
+        assertEquals("a100fa07a60000", anfrage(0x500, ANZEIGE_HOCHDRUCK));
+        assertEquals("a100fa07a70000", anfrage(0x500, ANZEIGE_NIEDERDRUCK));
+        assertEquals("a1000c00000000", anfrage(0x500, AUSSENTEMP));
+        assertEquals("a100fa02650000", anfrage(0x500, HEISSGAS_TEMP));
+        assertEquals("a100fa063d0000", anfrage(0x500, VERDICHTER_DREHZAHL));
+        assertEquals("a100fa063f0000", anfrage(0x500, VERDICHTER_EINTRITTSTEMP));
     }
 }

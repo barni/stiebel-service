@@ -77,9 +77,15 @@ public class ElsterMessage  {
     /**
      * Creates a read request for an index in the 0xfa format
      */
+    /**
+     * Read request for the index; indices below 0xfa are sent in the short form with the index in the third byte,
+     * all others in the long form after 0xfa
+     */
     public static ElsterMessage readRequest(int senderId, int receiverId, short index){
         byte[] receiver = convertReceiverID(receiverId);
-        byte[] data = new byte[]{(byte)(receiver[0] | 0x01), receiver[1], (byte)0xfa, (byte)(index >> 8), (byte)index, 0, 0};
+        byte[] data = index >= 0 && index < 0xfa
+                ? new byte[]{(byte)(receiver[0] | 0x01), receiver[1], (byte)index, 0, 0, 0, 0}
+                : new byte[]{(byte)(receiver[0] | 0x01), receiver[1], (byte)0xfa, (byte)(index >> 8), (byte)index, 0, 0};
         return new ElsterMessage(senderId, data);
     }
 
