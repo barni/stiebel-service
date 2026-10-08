@@ -165,6 +165,9 @@ public class Ueberwachung {
         if (vorher == null || Math.abs(vorher - wert) < 1e-6) {
             return null;
         }
+        if (einstellung.anzeige() != null) {
+            return einstellung.label() + ": " + einstellung.text(vorher) + " → " + einstellung.text(wert);
+        }
         String format = "%." + einstellung.decimals() + "f";
         String einheit = einstellung.unit().isEmpty() ? "" : " " + einstellung.unit();
         return einstellung.label() + ": " + String.format(Locale.GERMANY, format, vorher) + " → "

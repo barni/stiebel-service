@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
+import java.util.function.DoubleFunction;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -130,6 +131,7 @@ public class Waermepumpe {
      */
     public void anfragen3600() throws USBtinException {
         can.anfragen(HEIZMODUL, EINSTELLUNGEN_HEIZMODUL);
+        can.anfragen(MANAGER, PROGRAMMSCHALTER);
     }
 
     /**
@@ -460,7 +462,29 @@ public class Waermepumpe {
      * Setting of the heat pump manager, stored hourly as WP_Einstellung_name; a change is reported by mail
      */
     public record Einstellung(String name, String label, String unit, int decimals,
-                              Callable<ValueContainer<Double>> wert, String info) {
+                              Callable<ValueContainer<Double>> wert, String info, DoubleFunction<String> anzeige) {
+
+        public Einstellung(String name, String label, String unit, int decimals, Callable<ValueContainer<Double>> wert,
+                           String info) {
+            this(name, label, unit, decimals, wert, info, null);
+        }
+
+        /**
+         * Value as shown on the status page and in the mail, e.g. "Programmbetrieb"
+         */
+        public String text(double wert) {
+            return anzeige != null ? anzeige.apply(wert)
+                    : String.format(Locale.GERMANY, "%." + decimals + "f", wert) + (unit.isEmpty() ? "" : " " + unit);
+        }
+    }
+
+    // Operating modes of the program switch as in the Elster tables; 2 checked on the display (2026-10-08)
+    private static final Map<Integer, String> BETRIEBSARTEN = Map.of(
+            0, "Notbetrieb", 1, "Bereitschaft", 2, "Programmbetrieb", 3, "Komfortbetrieb", 4, "Eco-Betrieb",
+            5, "Warmwasserbetrieb");
+
+    static String betriebsart(double wert) {
+        return BETRIEBSARTEN.getOrDefault((int) wert, "Betriebsart " + (int) wert);
     }
 
     private static final String WPM = " Einstellung im Wärmepumpenmanager.";
@@ -471,6 +495,11 @@ public class Waermepumpe {
      */
     public List<Einstellung> getEinstellungen() {
         return List.of(
+                new Einstellung("Betriebsart", "Betriebsart", "", 0, this::getBetriebsart,
+                        "Programmschalter des Wärmepumpenmanagers (0x180). Programmbetrieb: Komfort-Temperatur in den "
+                                + "Zeiten des Heizprogramms, sonst Eco. Komfortbetrieb: immer Komfort-Temperatur, "
+                                + "bei Fußbodenheizung meist günstiger (keine Leistungsspitze am Morgen).",
+                        Waermepumpe::betriebsart),
                 new Einstellung("Auslegungstemperatur", "Auslegungstemperatur", "°C", 1, this::getAuslegungstemperatur,
                         "Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Standard −15 °C." + WPM),
                 new Einstellung("Waermebedarf", "Wärmebedarf", "kW", 1, this::getWaermebedarf,
@@ -483,18 +512,21 @@ public class Waermepumpe {
                 new Einstellung("EinsatzgrenzeHeizen", "Einsatzgrenze Heizen", "°C", 1, this::getEinsatzgrenzeHeizen,
                         "Unterhalb dieser Außentemperatur heizt nur noch der Heizstab. Standard −20 °C." + WPM),
                 new Einstellung("SilentLeistung", "Silent Leistung", "%", 0, this::getSilentLeistung,
-                        "Begrenzung der Verdichterleistung im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE "
-                                + "an ist). Standard 100 %." + WPM),
+                        "Begrenzung der Verdichterleistung im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
+                                + "PROGRAMME → SILENTPROGRAMM 1. 70 % ist die Voreinstellung beim Aktivieren, bei der "
+                                + "WPL 17 höchstens etwa 5,0 kW bei A−7/W35." + WPM),
                 new Einstellung("SilentLuefter", "Silent Lüfter", "%", 0, this::getSilentLuefter,
-                        "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE an "
-                                + "ist). Standard 100 %." + WPM),
+                        "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
+                                + "PROGRAMME → SILENTPROGRAMM 1." + WPM),
                 new Einstellung("Komforttemperatur", "Komfort-Temperatur", "°C", 1,
-                        () -> getScaledValue(RAUMSOLLTEMP_I, 10), "Raum-Solltemperatur im Komfortbetrieb. Standard 20 °C." + WPM),
+                        () -> getScaledValue(RAUMSOLLTEMP_I, 10), "Raum-Solltemperatur im Komfortbetrieb, Richtwert 20 °C. Ist es in der Übergangszeit zu "
+                                + "kühl, laut Anleitung anheben; ohne Fernbedienung verschiebt das die Heizkurve." + WPM),
                 new Einstellung("Ecotemperatur", "Eco-Temperatur", "°C", 1,
                         () -> getScaledValue(RAUMSOLLTEMP_NACHT, 10), "Raum-Solltemperatur im Eco-Betrieb. Standard 20 °C." + WPM),
                 new Einstellung("Heizkurve", "Steigung Heizkurve", "", 2, () -> getScaledValue(HEIZKURVE, 100),
                         "Wie stark die Vorlauftemperatur mit sinkender Außentemperatur steigt. Eine steilere Kurve "
-                                + "heizt mehr, der Verdichter läuft öfter. Standard 0,6." + WPM),
+                                + "heizt mehr, der Verdichter läuft öfter. Richtwert WPL ACS bei Fußbodenheizung 0,4, "
+                                + "bei Radiatoren 0,8 (WPM-3-Standard 0,6)." + WPM),
                 new Einstellung("Kurvenabstand", "Abstand Heizkurve", "", 0,
                         () -> getScaledValue(HZK_KURVENABSTAND, 10),
                         "Abstand der Heizkurve, 1 bis 10, Standard 3 (Anleitung WPM 3)." + WPM),
@@ -506,8 +538,14 @@ public class Waermepumpe {
                 new Einstellung("Mindestlaufzeit", "Mindestlaufzeit", "min", 0,
                         () -> getScaledValue(MINDESTLAUFZEIT_WE, 1), "Mindestlaufzeit des Verdichters. Standard 10 min." + WPM),
                 new Einstellung("Reglerdynamik", "Reglerdynamik", "", 0, this::getReglerdynamik,
-                        "Schaltabstand zwischen Verdichter und den Stufen des Heizstabs: klein für schnell "
-                                + "reagierende, groß für träge Heizsysteme. 1 bis 500, Standard 100." + WPM));
+                        "Schaltabstand zwischen Verdichter und den Stufen des Heizstabs, 1 bis 500. Richtwert WPL ACS "
+                                + "bei Fußbodenheizung 25, bei Radiatoren 50 (ältere Anleitung: 10; WPM-3-Standard "
+                                + "100)." + WPM));
+    }
+
+    private ValueContainer<Double> getBetriebsart() throws Exception {
+        ElsterMessage msg = nachricht(PROGRAMMSCHALTER);
+        return new ValueContainer<>((double) littleEndian(msg.getRawValue()), msg.getTimestamp());
     }
 
     private ValueContainer<Double> getRaumeinfluss() throws Exception {

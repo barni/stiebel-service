@@ -110,6 +110,8 @@ public class ElsterTable {
     public static short RAUMEINFLUSS = (short)0x010f;
     public static short SPERRZEIT = (short)0x0026;
     public static short MINDESTLAUFZEIT_WE = (short)0x0914;
+    // Operating mode at 0x180 / 0x480 (not at 0x514), little endian: 0x0200 = 2 = Programmbetrieb (2026-10-08)
+    public static short PROGRAMMSCHALTER = (short)0x0112;
     // Reglerdynamik on the display (checked 2026-10-08: 25), little endian: 0x1900 = 25
     public static short SCHALTWERKDYNAMIKZEIT = (short)0xfdb0;
     // Not available at 0x180, 0x500 and 0x514 (0x8000): condenser temp 0x0a37, heating curve 0x4f2b, flow temp after
