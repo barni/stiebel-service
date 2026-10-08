@@ -74,14 +74,23 @@ public class StatusService {
     private void kopf(StatusPage page) {
         List<String> aktiv = ueberwachung.getWarnungen().stream().filter(Warnung::isAktiv).map(Warnung::getName)
                 .toList();
-        page.badge("Verdichter läuft", "Verdichter aus", wp::isVerdichterOn)
-                .hinweis(aktiv.isEmpty() ? "keine Warnung" : String.join(", ", aktiv), !aktiv.isEmpty())
-                .badgeWennAn("Abtauung", wp::isAbtauung)
-                .badgeWennAn("EVU-Sperre", wp::isEvuSperre)
-                .badgeWennAn("Heizstab", () -> {
+        page.badge("Verdichter läuft", "Verdichter aus", "Verdichter der Außeneinheit, aus dem Betriebsstatus des "
+                        + "Wärmepumpenmanagers (0x180).", wp::isVerdichterOn)
+                .badgeWennAn("Pufferladepumpe", "Pumpe, die das Heizwasser durch die Wärmepumpe fördert, "
+                        + "Betriebsstatus des Wärmepumpenmanagers (0x180).", wp::isPufferladepumpeOn)
+                .badgeWennAn("Warmwasser", "Ladung des Warmwasserspeichers aktiv, Betriebsstatus des "
+                        + "Wärmepumpenmanagers (0x180).", wp::isWarmwasserladepumpe)
+                .badgeWennAn("Abtauung", "Die Außeneinheit taut ihren vereisten Verdampfer ab und nimmt dafür kurz "
+                        + "Wärme aus dem Heizwasser. Vom Dienst erkannt: " + Waermepumpe.formelAbtauung() + ".",
+                        wp::isAbtauung)
+                .badgeWennAn("EVU-Sperre", "Sperrsignal des Energieversorgers am Kontakt EVU. Während der Sperre "
+                        + "darf die Wärmepumpe nicht laufen.", wp::isEvuSperre)
+                .badgeWennAn("Heizstab", "Stufe 1 oder 2 des elektrischen Heizstabs (DHC) im HM Trend ist an, "
+                        + "Betriebsstatus (0x180).", () -> {
                     ValueContainer<Boolean> dhc1 = wp.isDHC_1On();
                     return new ValueContainer<>(dhc1.getValue() || wp.isDHC_2On().getValue(), dhc1.getTimestamp());
                 })
+                .hinweis(aktiv.isEmpty() ? "keine Warnung" : String.join(", ", aktiv), !aktiv.isEmpty())
                 .kpi("Außentemperatur", "°C", 1, "Aussentemp", wp::getAussentemp)
                 .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
                         + "Wärmepumpenmanagers etwas abweichen, beim Abtauen steigt sie kurz um einige Kelvin.")
@@ -184,27 +193,7 @@ public class StatusService {
     }
 
     private void anlage(StatusPage page) {
-        page.bereichKlappbar("Anlage", "Betrieb · Heizkreis · Kältekreis · Verdichter", false)
-                .card("Betrieb")
-                .pill("Pufferladepumpe", wp::isPufferladepumpeOn)
-                .info("Pumpe, die das Heizwasser durch die Wärmepumpe fördert, Betriebsstatus des "
-                        + "Wärmepumpenmanagers (0x180).")
-                .pill("Warmwasserladepumpe", wp::isWarmwasserladepumpe)
-                .info("Ladung des Warmwasserspeichers aktiv, Betriebsstatus des Wärmepumpenmanagers (0x180).")
-                .pill("DHC 1", wp::isDHC_1On)
-                .info("Stufe 1 des elektrischen Heizstabs (Not-/Zusatzheizung) im HM Trend, Betriebsstatus (0x180).")
-                .pill("DHC 2", wp::isDHC_2On)
-                .info("Stufe 2 des elektrischen Heizstabs (Not-/Zusatzheizung) im HM Trend, Betriebsstatus (0x180).")
-                .pill("EVU-Sperre", wp::isEvuSperre)
-                .info("Sperrsignal des Energieversorgers am Kontakt EVU. Während der Sperre darf die Wärmepumpe "
-                        + "nicht laufen.")
-                .pill("Abtauung (berechnet)", wp::isAbtauung)
-                .info("Die Außeneinheit taut ihren vereisten Verdampfer ab und nimmt dafür kurz Wärme aus dem "
-                        + "Heizwasser. Der Dienst erkennt das selbst, weil die Wärmepumpe es nicht zuverlässig "
-                        + "meldet.")
-                .formula(Waermepumpe.formelAbtauung())
-                .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
-                .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514).")
+        page.bereichKlappbar("Anlage", "Heizkreis · Kältekreis · Verdichter", false)
                 .card("Heizkreis")
                 .row("Vorlauf", "°C", 1, "VorlaufIstTemp", wp::getVorlaufIstTemp)
                 .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
@@ -313,6 +302,8 @@ public class StatusService {
                 .formula("Laufzeit Heizen ÷ Verdichterstarts")
                 .row("Laufzeit Verdichter Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)
                 .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514).")
+                .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
+                .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514).")
                 .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", wp::getLaufzeit_DHC1)
                 .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
                 .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", wp::getLaufzeit_DHC2)
