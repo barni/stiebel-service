@@ -33,6 +33,8 @@ public class StatusService {
     private Tagesuebersicht tagesuebersicht;
     @Autowired
     private Ueberwachung ueberwachung;
+    @Autowired
+    private Fehlstarts fehlstarts;
 
     // What the CAN nodes are, as far as known from the answered values
     private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
@@ -274,9 +276,9 @@ public class StatusService {
 
     private void auswertung(StatusPage page) {
         Duration stunde = Waermepumpe.MAX_AGE_3600;
-        page.bereichKlappbar("Auswertung", "Zähler · Einstellungen · Vergleich Wärmebedarf", false)
+        page.bereichKlappbar("Auswertung", "Energie · Einstellungen · Laufzeiten · Fehlstarts · Vergleich", false)
                 .zweiSpalten()
-                .card("Zähler seit Inbetriebnahme")
+                .card("Energie seit Inbetriebnahme")
                 .row("Stromaufnahme", "MWh", 3, "AufnahmeLeistung", wp::getAufnahmeLeistung)
                 .info("Elektrische Energie fürs Heizen laut Stromzähler der Wärmepumpe (0x514), aus Summe und "
                         + "Tageswert zusammengesetzt. Der Zähler zählt rund 15–20 % zu wenig.")
@@ -292,24 +294,6 @@ public class StatusService {
                 .info("Realistische Arbeitszahl mit korrigiertem Stromverbrauch.")
                 .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + Waermepumpe.zahl(Waermepumpe.STROMZAEHLER_KORREKTUR)
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
-                .row("Laufzeit Verdichter Heizen", "h", 0, "LaufzeitVerdichterHeizen", wp::getLaufzeitVerdichterHeizen)
-                .info("Betriebsstunden des Verdichters im Heizbetrieb seit Inbetriebnahme (0x514).")
-                .row("Verdichterstarts", "", 0, "VerdichterStarts", wp::getVerdichterStarts)
-                .info("Anzahl der Verdichterstarts seit Inbetriebnahme (0x514). Wenige, lange Läufe sind effizienter "
-                        + "und schonen den Verdichter.")
-                .row("Laufzeit je Start (berechnet)", "h", 2, "LaufzeitProStart", wp::getLaufzeitProStart)
-                .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
-                .formula("Laufzeit Heizen ÷ Verdichterstarts")
-                .row("Laufzeit Verdichter Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)
-                .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514).")
-                .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
-                .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514).")
-                .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", wp::getLaufzeit_DHC1)
-                .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
-                .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", wp::getLaufzeit_DHC2)
-                .info("Betriebsstunden der Heizstab-Stufe 2 seit Inbetriebnahme (0x500).")
-                .row("Laufzeit DHC 1+2", "h", 0, "LaufzeitDHZ12", wp::getLaufzeit_DHC12)
-                .info("Betriebsstunden mit beiden Heizstab-Stufen gleichzeitig seit Inbetriebnahme (0x500).")
                 .card("Einstellungen")
                 .row("Auslegungstemperatur", "°C", 1, "Einstellung_Auslegungstemperatur",
                         wp::getAuslegungstemperatur, stunde)
@@ -332,8 +316,27 @@ public class StatusService {
                 .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", wp::getSilentLuefter, stunde)
                 .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
                 .note("Stündlich vom Wärmepumpenmanager gelesen.")
-                .card("Vergleich Einstellung Wärmebedarf")
-                .breit();
+                .card("Laufzeiten seit Inbetriebnahme")
+                .row("Laufzeit Verdichter Heizen", "h", 0, "LaufzeitVerdichterHeizen", wp::getLaufzeitVerdichterHeizen)
+                .info("Betriebsstunden des Verdichters im Heizbetrieb seit Inbetriebnahme (0x514).")
+                .row("Verdichterstarts", "", 0, "VerdichterStarts", wp::getVerdichterStarts)
+                .info("Anzahl der Verdichterstarts seit Inbetriebnahme (0x514). Wenige, lange Läufe sind effizienter "
+                        + "und schonen den Verdichter.")
+                .row("Laufzeit je Start (berechnet)", "h", 2, "LaufzeitProStart", wp::getLaufzeitProStart)
+                .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
+                .formula("Laufzeit Heizen ÷ Verdichterstarts")
+                .row("Laufzeit Verdichter Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)
+                .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514).")
+                .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
+                .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514).")
+                .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", wp::getLaufzeit_DHC1)
+                .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
+                .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", wp::getLaufzeit_DHC2)
+                .info("Betriebsstunden der Heizstab-Stufe 2 seit Inbetriebnahme (0x500).")
+                .row("Laufzeit DHC 1+2", "h", 0, "LaufzeitDHZ12", wp::getLaufzeit_DHC12)
+                .info("Betriebsstunden mit beiden Heizstab-Stufen gleichzeitig seit Inbetriebnahme (0x500).");
+        fehlstarts(page);
+        page.card("Vergleich Einstellung Wärmebedarf").breit();
         List<WaermebedarfVergleich.Vergleich> vergleiche = vergleich.getVergleich();
         if (vergleiche.isEmpty()) {
             page.text("Tage", vergleich.getBerechnet() == null ? "wird berechnet" : "keine");
@@ -447,5 +450,29 @@ public class StatusService {
                                         ToDoubleFunction<WaermebedarfVergleich.Gruppe> wert, int stellen) {
         String neu = zahl(wert.applyAsDouble(nachher), stellen);
         return vorher == null ? neu : zahl(wert.applyAsDouble(vorher), stellen) + " → " + neu;
+    }
+
+    private void fehlstarts(StatusPage page) {
+        page.card("Fehlstarts je Heizsaison");
+        List<Fehlstarts.Saison> saisons = fehlstarts.getSaisons();
+        if (saisons.isEmpty()) {
+            page.text("Saisons", "wird berechnet");
+            return;
+        }
+        List<List<String>> zeilen = new ArrayList<>();
+        for (Fehlstarts.Saison saison : saisons) {
+            zeilen.add(List.of(saison.name() + (saison.laufend() ? " (laufend)" : ""), String.valueOf(saison.starts()),
+                    String.valueOf(saison.fehlstarts()), zahl(saison.jeTausend(), 1)));
+        }
+        page.table(List.of("Saison", "Starts", "Fehlstarts", "je 1000 Starts"), zeilen);
+        List<Instant> letzte = fehlstarts.getLetzte();
+        page.note("Fehlstart: Der Verdichter kommt beim Anlauf nicht in Gang (Fehlerliste: INV H ROTORVEKTOR), "
+                + "die Wärmepumpe wartet etwa 23 Minuten und startet dann normal. Aus den gespeicherten Werten "
+                + "erkannt (Hochdruck fällt beim Startversuch, kein Lauf, Neustart nach der Sperre), Heizsaison "
+                + "Juli bis Juni. Starts nach mindestens 3 min Stillstand. Bis 2021/22 lag die Quote bei 6–9, "
+                + "steigt sie deutlich, Kundendienst fragen."
+                + (letzte.isEmpty() ? "" : " Zuletzt erkannt: " + String.join(", ", letzte.stream()
+                .map(t -> Fehlerliste.ZEITFORMAT.format(t.atZone(ZoneId.systemDefault()))).toList()) + ".")
+                + " Stand " + zeitpunkt(fehlstarts.getBerechnet()) + ".");
     }
 }

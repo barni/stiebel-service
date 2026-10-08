@@ -44,6 +44,11 @@ before you rely on it.
   The heat pump's own outdoor temperature `WP_Aussentemp` is only stored since 09/2026; for older days set a Home
   Assistant entity (measurement `°C`), the token then needs read access to that bucket:
   `auswertung.aussentemp.bucket=home_assistant`, `auswertung.aussentemp.entity=aussen_temperatur`.
+- **Failed starts per heating season** (July to June) on the status page and as JSON from `/fehlstarts`: the
+  compressor does not start (fault list INV H ROTORVEKTOR), the heat pump waits about 23 minutes. Found in the stored
+  values (drop of the high pressure after a standstill, no run, next run 18–30 minutes later), compared with the
+  starts after at least 3 minutes standstill. All seasons since `auswertung.fehlstarts.start` (default 2019-01-01)
+  2 minutes after the start, then the current season every hour.
 - **Daily overview** on the status page and as JSON from `/tagesuebersicht`: compressor starts, run time, heat,
   estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
   the days of similar outdoor temperature (±1.5 K) from the comparison above. Updated every 10 minutes.

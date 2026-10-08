@@ -1,6 +1,7 @@
 package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.CanBus;
+import nrw.andresen.stbl.services.Fehlstarts;
 import nrw.andresen.stbl.services.StatusService;
 import nrw.andresen.stbl.services.Tagesuebersicht;
 import nrw.andresen.stbl.services.Ueberwachung;
@@ -59,6 +60,8 @@ public class StblController {
     private Tagesuebersicht tagesuebersicht;
     @Autowired
     private Ueberwachung ueberwachung;
+    @Autowired
+    private Fehlstarts fehlstarts;
 
     record Tage(Tagesuebersicht.Tag heute, Tagesuebersicht.Tag gestern, Tagesuebersicht.Vergleichstage aehnlich) {
     }
@@ -152,6 +155,14 @@ public class StblController {
         return new UeberwachungStatus(ueberwachung.getWarnungen().stream()
                 .map(w -> new WarnungStatus(w.getName(), w.isAktiv(), w.getAktivSeit(), w.getText(), w.getRegel()))
                 .toList(), ueberwachung.getPruefungen(), ueberwachung.getGeprueft());
+    }
+
+    /**
+     * Starts and failed starts per heating season, the current one first, updated every hour
+     */
+    @RequestMapping("/fehlstarts")
+    public List<Fehlstarts.Saison> fehlstarts() {
+        return fehlstarts.getSaisons();
     }
 
     @RequestMapping("/aufnahmeLeistung")
