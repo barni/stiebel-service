@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.Callable;
 
 /**
@@ -199,6 +200,15 @@ public class StatusPage {
         return this;
     }
 
+    private static String mitErklaerung(String text, Map<String, String> erklaerungen) {
+        String erklaerung = erklaerungen.get(text);
+        if (erklaerung == null) {
+            return attr(text);
+        }
+        return "<span class=\"calc\" data-tip=\"" + attr(erklaerung) + "\" tabindex=\"0\">" + attr(text)
+                + "<span class=\"info\" aria-hidden=\"true\">ⓘ</span></span>";
+    }
+
     private String badgeText(String text, String erklaerung) {
         if (erklaerung == null) {
             return attr(text);
@@ -326,19 +336,31 @@ public class StatusPage {
         return table(kopf, zeilen, false);
     }
 
+    public StatusPage table(List<String> kopf, List<List<String>> zeilen, boolean stapeln) {
+        return table(kopf, zeilen, stapeln, Map.of());
+    }
+
     /**
      * Table; stapeln shows each row as a block with the column names on a narrow screen instead of a wide table
      */
-    public StatusPage table(List<String> kopf, List<List<String>> zeilen, boolean stapeln) {
+    /**
+     * Table with explanations as tooltip for column heads and the labels in the first column, keyed by their text
+     */
+    public StatusPage table(List<String> kopf, List<List<String>> zeilen, boolean stapeln,
+                            Map<String, String> erklaerungen) {
+        if (!erklaerungen.isEmpty()) {
+            hasTooltip = true;
+        }
         StringBuilder html = new StringBuilder("<div class=\"tbl" + (stapeln ? " stapeln" : "")
                 + "\"><table><thead><tr>");
-        kopf.forEach(spalte -> html.append("<th>").append(attr(spalte)).append("</th>"));
+        kopf.forEach(spalte -> html.append("<th>").append(mitErklaerung(spalte, erklaerungen)).append("</th>"));
         html.append("</tr></thead><tbody>");
         for (List<String> zeile : zeilen) {
             html.append("<tr>");
             for (int i = 0; i < zeile.size(); i++) {
                 html.append("<td data-label=\"").append(i < kopf.size() ? attr(kopf.get(i)) : "").append("\">")
-                        .append(attr(zeile.get(i))).append("</td>");
+                        .append(i == 0 ? mitErklaerung(zeile.get(i), erklaerungen) : attr(zeile.get(i)))
+                        .append("</td>");
             }
             html.append("</tr>");
         }
@@ -536,7 +558,8 @@ public class StatusPage {
               top: calc(100% + 4px); z-index: 10; width: max-content; max-width: min(340px, 80vw);
               white-space: pre-line; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
               background: var(--card); color: var(--text); font-size: 12px; font-weight: 400; line-height: 1.4;
-              text-transform: none; letter-spacing: 0; box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
+              text-transform: none; letter-spacing: 0; text-align: left; white-space: pre-line;
+              box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
             .pill .calc:hover::after, .pill .calc:focus::after { top: calc(100% + 8px); }
             .badge .calc:hover::after, .badge .calc:focus::after { top: calc(100% + 10px); left: auto; right: 0; }
             @media (max-width: 640px) {
@@ -848,12 +871,14 @@ public class StatusPage {
             details.bereich[open] > summary { margin-bottom: 10px; }
             .zusammenfassung { font-size: 13px; font-weight: 400; color: var(--muted); }
             details.mehr > summary { cursor: pointer; color: var(--accent); font-size: 13px; padding: 6px 0; }
-            .tbl { overflow-x: auto; margin: 4px 0 8px; }
+            .tbl { margin: 4px 0 8px; }
             .tbl table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
             .tbl th { color: var(--muted); font-weight: 500; text-align: right; padding: 4px 6px;
               border-bottom: 1px solid var(--line); white-space: nowrap; }
             .tbl td { text-align: right; padding: 5px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
             .tbl th:first-child, .tbl td:first-child { text-align: left; padding-left: 0; }
+            .tbl th .calc:hover::after, .tbl th .calc:focus::after { left: auto; right: 0; }
+            .tbl th:first-child .calc:hover::after, .tbl th:first-child .calc:focus::after { left: 0; right: auto; }
             .card.breit { grid-column: 1 / -1; }
             .cards.zwei { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             @media (max-width: 640px) { .cards.zwei { grid-template-columns: 1fr; } }

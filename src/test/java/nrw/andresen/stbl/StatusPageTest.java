@@ -286,4 +286,19 @@ public class StatusPageTest {
         assertFalse(html.contains("Heizstab"));
         assertTrue(html.contains("<span class=\"missing\">aus</span>"));
     }
+
+    @Test
+    public void testTabelleMitErklaerungen() {
+        String html = new StatusPage()
+                .card("Fehlstarts")
+                .table(java.util.List.of("Saison", "je MWh"), java.util.List.of(java.util.List.of("2025/26", "1,7"),
+                        java.util.List.of("2024/25", "1,7")), true, java.util.Map.of("je MWh", "Fehlstarts je MWh",
+                        "2025/26", "laufend"))
+                .render();
+        assertTrue(html.contains("<th><span class=\"calc\" data-tip=\"Fehlstarts je MWh\" tabindex=\"0\">je MWh"));
+        assertTrue(html.contains("<td data-label=\"Saison\"><span class=\"calc\" data-tip=\"laufend\""));
+        // Labels without explanation stay plain text
+        assertTrue(html.contains("<th>Saison</th>"));
+        assertTrue(html.contains("<td data-label=\"Saison\">2024/25</td>"));
+    }
 }

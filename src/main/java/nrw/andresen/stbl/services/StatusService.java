@@ -103,7 +103,8 @@ public class StatusService {
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
                 .kpi("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
-                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180).")
+                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180). "
+                        + "Warnung unter 1,3 und über 2,5 bar; er sinkt um etwa 0,2 bar pro Jahr.")
                 .kpi("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
                 .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt.")
                 .formula(Waermepumpe.formelWaermeleistung())
@@ -161,7 +162,22 @@ public class StatusService {
         zeilen.add(List.of("Arbeitszahl", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1), "–"));
         zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
                 "–"));
-        page.table(List.of("", "Heute", "Gestern", "Ø gleiche Außentemp."), zeilen)
+        page.table(List.of("", "Heute", "Gestern", "Ø gleiche Außentemp."), zeilen, false, Map.of(
+                        "Heute", "Von Mitternacht bis jetzt.",
+                        "Ø gleiche Außentemp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
+                                + ", deren Tagesmittel der Außentemperatur höchstens "
+                                + zahl(Tagesuebersicht.AEHNLICH_K, 1) + " K von gestern abweicht. Zeigt, ob gestern "
+                                + "normal war. Strom, Arbeitszahl und Abtauungen liegen für alte Tage nicht vor.",
+                        "Außen °C", "Tagesmittel der Außentemperatur.",
+                        "Starts", "Verdichterstarts, gezählt aus der Inverterleistung (Wechsel von Stillstand zu Lauf).",
+                        "Laufzeit h", "Stunden, in denen der Verdichter lief.",
+                        "h je Start", "Mittlere Laufzeit eines Verdichterlaufs. Länger ist effizienter und schont den "
+                                + "Verdichter.",
+                        "Wärme kWh", "Abgegebene Heizwärme laut Wärmezähler der Wärmepumpe.",
+                        "Strom kWh", "Geschätzte Wirkleistung des Verdichter-Inverters, aufsummiert; ohne Pumpe und "
+                                + "Regelung, daher etwas zu niedrig.",
+                        "Arbeitszahl", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch.",
+                        "Abtauungen", "Vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa 2 Minuten)."))
                 .note("„Ø gleiche Außentemp.“: Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                         + ", deren Tagesmittel höchstens " + zahl(Tagesuebersicht.AEHNLICH_K, 1)
                         + " K von gestern abweicht" + (gleich == null ? "" : " (" + gleich.tage() + " Tage)")
@@ -178,10 +194,13 @@ public class StatusService {
                     .info("Die Fehlerliste des Wärmepumpenmanagers wird alle 10 Minuten gelesen.");
             return;
         }
-        Map<String, Long> anzahl = new LinkedHashMap<>();
-        eintraege.forEach(e -> anzahl.merge(e.text(), 1L, Long::sum));
-        anzahl.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                .forEach(e -> page.text(e.getValue() + " ×", e.getKey()));
+        Map<Integer, Long> anzahl = new LinkedHashMap<>();
+        eintraege.forEach(e -> anzahl.merge(e.code(), 1L, Long::sum));
+        anzahl.entrySet().stream().sorted(Map.Entry.<Integer, Long>comparingByValue().reversed())
+                .forEach(e -> page.text(e.getValue() + " ×", Fehlerliste.text(e.getKey()))
+                        .info("Code " + e.getKey() + (Fehlerliste.erklaerung(e.getKey()) == null ? ""
+                                : ": " + Fehlerliste.erklaerung(e.getKey())) + " Anzahl unter den "
+                                + eintraege.size() + " Einträgen der Fehlerliste."));
         Fehlerliste.Eintrag neuester = eintraege.get(0);
         page.text("Letzter Eintrag", Fehlerliste.ZEITFORMAT.format(neuester.zeit()) + " · " + neuester.text())
                 .info("Fehlerliste des WPM (DIAGNOSE → FEHLERLISTE) mit 20 Plätzen, alle 10 Minuten gelesen. Ein "
@@ -189,7 +208,9 @@ public class StatusService {
                 .details("Alle " + eintraege.size() + " Einträge");
         for (Fehlerliste.Eintrag eintrag : eintraege) {
             page.text(Fehlerliste.ZEITFORMAT.format(eintrag.zeit()), eintrag.text())
-                    .info("Code " + eintrag.code() + ", Platz " + (eintrag.platz() + 1) + " im Ringspeicher des WPM.");
+                    .info("Code " + eintrag.code() + (Fehlerliste.erklaerung(eintrag.code()) == null ? ""
+                            : ": " + Fehlerliste.erklaerung(eintrag.code())) + " Platz " + (eintrag.platz() + 1)
+                            + " im Ringspeicher des WPM.");
         }
         page.detailsEnde();
     }
@@ -219,7 +240,8 @@ public class StatusService {
                 .formula(Waermepumpe.formelArbeitszahl())
                 .ersatz("aus")
                 .row("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
-                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180).")
+                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180). "
+                        + "Warnung unter 1,3 und über 2,5 bar; er sinkt um etwa 0,2 bar pro Jahr.")
                 .card("Kältekreis")
                 .row("Außentemperatur", "°C", 1, "Aussentemp", wp::getAussentemp)
                 .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
@@ -312,9 +334,11 @@ public class StatusService {
                 .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
                 .formula("Laufzeit Heizen ÷ Verdichterstarts")
                 .row("Laufzeit Verdichter Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)
-                .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514).")
+                .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514), zählt nur in "
+                        + "ganzen Stunden.")
                 .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
-                .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514).")
+                .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514), in ganzen Minuten. Eine Abtauung dauert "
+                        + "meist etwa 2 Minuten.")
                 .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", wp::getLaufzeit_DHC1)
                 .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
                 .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", wp::getLaufzeit_DHC2)
@@ -342,7 +366,22 @@ public class StatusService {
                         WaermebedarfVergleich.bewertung(alt, neu)));
             }
             page.table(List.of("Außen (Tage)", "Einstellung", "Starts/Tag", "h/Start", "h/Tag", "kWh/Tag",
-                    "kW im Lauf", "Bewertung"), zeilen, true);
+                    "kW im Lauf", "Bewertung"), zeilen, true, Map.of(
+                    "Außen (Tage)", "Bereich des Tagesmittels der Außentemperatur, in Klammern die Anzahl der Tage "
+                            + "(früher / jetzt).",
+                    "Einstellung", "Eingestellter Wärmebedarf im Wärmepumpenmanager, kein Messwert. Bei zwei "
+                            + "Einstellungen im Bereich: früher → jetzt.",
+                    "Starts/Tag", "Verdichterstarts pro Tag. Weniger bei gleicher Wärme ist besser.",
+                    "h/Start", "Mittlere Laufzeit eines Verdichterlaufs. Länger ist besser.",
+                    "h/Tag", "Laufzeit pro Tag. Nahe 24 h im kältesten Bereich heißt: Die Einstellung ist zu knapp.",
+                    "kWh/Tag", "Heizwärme pro Tag. Sollte bei gleicher Außentemperatur gleich bleiben.",
+                    "kW im Lauf", "Mittlere Wärmeleistung während der Verdichter läuft (Wärme ÷ Laufzeit). Kleiner "
+                            + "heißt gemächlicher und effizienter.",
+                    "Bewertung", "Ab " + WaermebedarfVergleich.MIN_TAGE + " Tagen je Einstellung: besser (≥ "
+                            + Math.round((1 - WaermebedarfVergleich.STARTS_BESSER) * 100) + " % weniger Starts), "
+                            + "schlechter (≥ 10 % mehr), zu knapp? (Wärme > "
+                            + Math.round(WaermebedarfVergleich.WAERME_TOLERANZ * 100) + " % niedriger oder > "
+                            + (int) WaermebedarfVergleich.MAX_LAUFZEIT_H + " h/Tag), sonst kaum Unterschied."));
         }
         page.note("Tage seit " + vergleich.getStart().format(DATUM) + " nach Tagesmittel der Außentemperatur und "
                         + "der Einstellung Wärmebedarf im Wärmepumpenmanager (eingestellter Wert, kein Messwert). "
@@ -402,7 +441,7 @@ public class StatusService {
                 .row("Antwortquote (berechnet)", "%", 0, "CAN_Antwortquote",
                         () -> can.minute(CanStatistik.Minute::antwortquote))
                 .info("Anteil der beantworteten Anfragen. Dauerhaft deutlich unter 100 % deutet auf Probleme am Bus "
-                        + "oder auf Werte hin, die kein Gerät kennt.")
+                        + "oder auf Werte hin, die kein Gerät kennt. Warnung unter 90 % für 10 Minuten.")
                 .formula("Antworten ÷ gesendete Anfragen der letzten Minute, höchstens 100 %")
                 .row("Empfangen", "/min", 0, "CAN_Empfangen", () -> can.minute(CanStatistik.Minute::empfangen))
                 .info("Alle empfangenen CAN-Nachrichten pro Minute. Mit can.logall=false nur die Antworten an den "
@@ -451,16 +490,22 @@ public class StatusService {
                     String.valueOf(saison.fehlstarts()), zahl(saison.jeMWh(), 1), zahl(saison.jeTausendMild(), 1),
                     String.valueOf(saison.tageMitDaten())));
         }
-        page.table(List.of("Saison", "Fehlstarts", "je MWh", "je 1000 Starts 0–15 °C", "Tage mit Daten"), zeilen);
+        page.table(List.of("Saison", "Fehlstarts", "je MWh", "je 1000 Starts 0–15 °C", "Tage mit Daten"), zeilen,
+                true, Map.of(
+                        "Saison", "Heizsaison von Juli bis Juni.",
+                        "Fehlstarts", "Erkannte Fehlstarts der Saison (Fehlerliste: INV H ROTORVEKTOR). Bisher 20–26 "
+                                + "pro Winter, auffällig wäre deutlich mehr als ~30.",
+                        "je MWh", "Fehlstarts je MWh erzeugter Wärme, unabhängig davon, wie oft die Anlage startet. "
+                                + "Bisher 1,0–1,9, auffällig wäre mehr als ~2,5.",
+                        "je 1000 Starts 0–15 °C", "Nur Tage mit diesem Tagesmittel, bei Frost gibt es praktisch "
+                                + "keine Fehlstarts. Erst ab 03/2022 (Außentemperatur). Bisher 13–16, auffällig wäre "
+                                + "mehr als ~20.",
+                        "Tage mit Daten", "Tage mit vollständigen Werten. Wenige Tage heißt Lücken, dann sind die "
+                                + "Zahlen zu klein."));
         List<Instant> letzte = fehlstarts.getLetzte();
-        page.note("Fehlstart: Der Verdichter kommt beim Anlauf nicht in Gang (Fehlerliste: INV H ROTORVEKTOR), "
-                + "die Wärmepumpe wartet etwa 23 Minuten und startet dann normal. Aus den gespeicherten Werten "
-                + "erkannt, Heizsaison Juli bis Juni. „je MWh“: je MWh erzeugter Wärme, unabhängig davon, wie oft die "
-                + "Anlage startet. „je 1000 Starts 0–15 °C“: nur Tage mit diesem Tagesmittel, denn bei Frost gibt es "
-                + "praktisch keine Fehlstarts; erst ab 03/2022 (Außentemperatur). Bisher 20–26 pro Winter, 1,0–1,9 "
-                + "je MWh und 13–16 je 1000 Starts bei 0–15 °C. Auffällig wäre deutlich mehr als ~30 pro Winter, "
-                + "~2,5 je MWh oder ~20 je 1000 Starts. Wenige „Tage mit Daten“ heißt Lücken, dann sind die Zahlen "
-                + "zu klein."
+        page.note("Fehlstart: Der Verdichter kommt beim Anlauf nicht in Gang, die Wärmepumpe wartet etwa 23 "
+                + "Minuten und startet dann normal. Aus den gespeicherten Werten erkannt (Hochdruck fällt beim "
+                + "Startversuch, kein Lauf, Neustart nach der Sperre)."
                 + (letzte.isEmpty() ? "" : " Zuletzt erkannt: " + String.join(", ", letzte.stream()
                 .map(t -> Fehlerliste.ZEITFORMAT.format(t.atZone(ZoneId.systemDefault()))).toList()) + ".")
                 + " Stand " + zeitpunkt(fehlstarts.getBerechnet()) + ".");
