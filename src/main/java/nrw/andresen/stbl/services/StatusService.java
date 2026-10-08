@@ -68,9 +68,8 @@ public class StatusService {
                 .kpi("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
-                .kpi("Verdichter", "Hz", 0, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl)
-                .info("Aktuelle Drehzahl des Inverter-Verdichters in der Außeneinheit (0x500). 0 bedeutet, der "
-                        + "Verdichter steht.")
+                .kpi("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
+                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180).")
                 .kpi("Inverter (berechnet)", "VA", 0, "LeistungInverter", wp::getLeistungInverter)
                 .info("Momentane Leistungsaufnahme des Verdichter-Inverters. Die echte Wirkleistung ist bei kleiner "
                         + "Last bis etwa 20 % niedriger.")
