@@ -100,16 +100,14 @@ public class ElsterTable {
     public static short SILENT_LUEFTER = (short)0x4ea0;
     // Settings that decide how often the compressor starts, at 0x514; checked on the display on 2026-10-08:
     // comfort 215 = 21.5 degC, eco 200 = 20.0 degC, heating curve 35 = 0.35, standstill 20 = 20 min, minimum run
-    // time 3; with the manual of the WPM 3: curve distance 30 = 3, room influence little endian 0x0500 = 5; the others
-    // are shown as raw values until checked
+    // time 3; with the manual of the WPM 3: curve distance 30 = 3, room influence little endian 0x0500 = 5.
+    // Not in the menu of this WPM (WPL 17 ACS): HYSTERESEZEIT 0x0022 = 50, INTEGRAL_REGELABWEICHUNG 0x033d = 21,
+    // FUSSPUNKT_HEIZKURVE 0x059f = 3, so they are not read
     public static short RAUMSOLLTEMP_I = (short)0x0005;
     public static short RAUMSOLLTEMP_NACHT = (short)0x0008;
     public static short HEIZKURVE = (short)0x010e;
-    public static short FUSSPUNKT_HEIZKURVE = (short)0x059f;
     public static short HZK_KURVENABSTAND = (short)0x0111;
     public static short RAUMEINFLUSS = (short)0x010f;
-    public static short HYSTERESEZEIT = (short)0x0022;
-    public static short INTEGRAL_REGELABWEICHUNG = (short)0x033d;
     public static short SPERRZEIT = (short)0x0026;
     public static short MINDESTLAUFZEIT_WE = (short)0x0914;
     // Reglerdynamik on the display (checked 2026-10-08: 25), little endian: 0x1900 = 25

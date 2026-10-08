@@ -74,9 +74,8 @@ public class Waermepumpe {
     };
     private static final short[] EINSTELLUNGEN_HEIZMODUL = {
             AUSLEGUNGSTEMPERATUR, WAERMEBEDARF, SOLLSPREIZUNG, BIVALENZTEMPERATUR_HZG, EINSATZGRENZE_HZG,
-            SILENT_LEISTUNG, SILENT_LUEFTER, RAUMSOLLTEMP_I, RAUMSOLLTEMP_NACHT, HEIZKURVE, FUSSPUNKT_HEIZKURVE,
-            HZK_KURVENABSTAND, RAUMEINFLUSS, HYSTERESEZEIT, INTEGRAL_REGELABWEICHUNG, SPERRZEIT, MINDESTLAUFZEIT_WE,
-            SCHALTWERKDYNAMIKZEIT
+            SILENT_LEISTUNG, SILENT_LUEFTER, RAUMSOLLTEMP_I, RAUMSOLLTEMP_NACHT, HEIZKURVE, HZK_KURVENABSTAND,
+            RAUMEINFLUSS, SPERRZEIT, MINDESTLAUFZEIT_WE, SCHALTWERKDYNAMIKZEIT
     };
     // Requested every 20 s from the manager, from the heat pump and from the external access
     private static final short[] MONITORING_MANAGER = {BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK};
@@ -465,7 +464,6 @@ public class Waermepumpe {
     }
 
     private static final String WPM = " Einstellung im Wärmepumpenmanager.";
-    private static final String ROH = " Rohwert, die Umrechnung ist noch nicht mit dem Display geprüft.";
 
     /**
      * All settings in the order of the status page; the first ones limit the power, the others decide how often the
@@ -497,21 +495,12 @@ public class Waermepumpe {
                 new Einstellung("Heizkurve", "Steigung Heizkurve", "", 2, () -> getScaledValue(HEIZKURVE, 100),
                         "Wie stark die Vorlauftemperatur mit sinkender Außentemperatur steigt. Eine steilere Kurve "
                                 + "heizt mehr, der Verdichter läuft öfter. Standard 0,6." + WPM),
-                new Einstellung("FusspunktHeizkurve", "Fußpunkt Heizkurve", "", 0,
-                        () -> getScaledValue(FUSSPUNKT_HEIZKURVE, 1), "Verschiebung der Heizkurve." + ROH),
                 new Einstellung("Kurvenabstand", "Abstand Heizkurve", "", 0,
                         () -> getScaledValue(HZK_KURVENABSTAND, 10),
                         "Abstand der Heizkurve, 1 bis 10, Standard 3 (Anleitung WPM 3)." + WPM),
                 new Einstellung("Raumeinfluss", "Raumeinfluss", "", 0, this::getRaumeinfluss,
                         "Wie stark die Raumtemperatur an der Fernbedienung die Vorlauftemperatur verändert, aus bis "
                                 + "20, Standard 5 (Anleitung WPM 3)." + WPM),
-                new Einstellung("Hysterese", "Hysterese", "", 0, () -> getScaledValue(HYSTERESEZEIT, 1),
-                        "Einschalthysterese der Wärmepumpe: wie weit die Temperatur vom Sollwert abweichen darf, "
-                                + "bevor der Verdichter startet. Größer heißt seltener starten. 1 bis 10, Standard 1."
-                                + ROH),
-                new Einstellung("Integral", "Integral", "", 0, () -> getScaledValue(INTEGRAL_REGELABWEICHUNG, 1),
-                        "Wie viel Regelabweichung sich über die Zeit ansammeln darf, bevor der Verdichter startet. "
-                                + "Größer heißt seltener starten." + ROH),
                 new Einstellung("Stillstandzeit", "Stillstandzeit", "min", 0, () -> getScaledValue(SPERRZEIT, 1),
                         "Mindestpause zwischen zwei Verdichterstarts. Standard 20 min." + WPM),
                 new Einstellung("Mindestlaufzeit", "Mindestlaufzeit", "min", 0,
