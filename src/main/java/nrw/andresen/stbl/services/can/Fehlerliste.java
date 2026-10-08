@@ -53,6 +53,22 @@ public class Fehlerliste {
         return knoten == KNOTEN && index >= ERSTES_FELD && index < ERSTES_FELD + FELDER;
     }
 
+    // What the codes mean, from the manual of the WPM 3 and the analysis of the stored values
+    private static final Map<Integer, String> ERKLAERUNGEN = Map.of(
+            8116, "Der Inverter erkennt beim Anlauf die Lage des Läufers im Verdichter nicht, der Verdichter läuft "
+                    + "nicht an (Fehlstart). Die Wärmepumpe sperrt etwa 23 Minuten und startet dann normal.",
+            8255, "Der Inverter begrenzt den Eingangsstrom.",
+            8256, "Der Inverter begrenzt den Ausgangsstrom zum Verdichter.",
+            8257, "Dem Inverter fehlt eine Phase.",
+            8258, "Fehler im Leistungsteil des Inverters.");
+
+    /**
+     * Meaning of the code, null if unknown
+     */
+    public static String erklaerung(int code) {
+        return ERKLAERUNGEN.get(code);
+    }
+
     public static String text(int code) {
         return TEXTE.getOrDefault(code, "Fehler " + code);
     }
