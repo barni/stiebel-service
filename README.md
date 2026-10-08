@@ -46,8 +46,9 @@ before you rely on it.
   `auswertung.aussentemp.bucket=home_assistant`, `auswertung.aussentemp.entity=aussen_temperatur`.
 - **Failed starts per heating season** (July to June) on the status page and as JSON from `/fehlstarts`: the
   compressor does not start (fault list INV H ROTORVEKTOR), the heat pump waits about 23 minutes. Found in the stored
-  values (drop of the high pressure after a standstill, no run, next run 18–30 minutes later), compared with the
-  starts after at least 3 minutes standstill. All seasons since `auswertung.fehlstarts.start` (default 2019-01-01)
+  values (drop of the high pressure after a standstill, no run, next run 18–30 minutes later). Shown per season as
+  count, per MWh of heat and per 1000 starts on days with 0–15 °C mean outdoor temperature (failed starts hardly
+  happen in frost), with the number of covered days. All seasons since `auswertung.fehlstarts.start` (default 2019-01-01)
   2 minutes after the start, then the current season every hour.
 - **Daily overview** on the status page and as JSON from `/tagesuebersicht`: compressor starts, run time, heat,
   estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
