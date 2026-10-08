@@ -227,4 +227,51 @@ public class StatusPageTest {
         assertTrue(html.contains("<table><thead><tr><th>Außen</th><th>kW</th></tr></thead>"));
         assertTrue(html.contains("<td>0 bis 5 °C</td><td>&lt;1&gt;</td>"));
     }
+
+    @Test
+    public void testBereiche() {
+        String html = new StatusPage()
+                .bereich("Übersicht")
+                .card("Fehlerliste")
+                .text("Letzter Eintrag", "14.05.26 18:53")
+                .details("Alle 20 Einträge")
+                .text("14.05.26 18:53", "INV H ROTORVEKTOR")
+                .detailsEnde()
+                .bereichKlappbar("Anlage", "Betrieb · Kältekreis", false)
+                .card("Kältekreis")
+                .bereichKlappbar("System", "Fehler: InfluxDB lesen", true)
+                .card("Dienst")
+                .render();
+        assertTrue(html.contains("<h2 class=\"bereich-titel\">Übersicht</h2>"));
+        assertTrue(html.contains("<details class=\"mehr\"><summary>Alle 20 Einträge</summary>"));
+        assertTrue(html.contains("<details class=\"bereich\" data-id=\"Anlage\"><summary><span>Anlage</span>"
+                + "<span class=\"zusammenfassung\">Betrieb · Kältekreis</span></summary>"));
+        // An area with a problem is opened and stays open
+        assertTrue(html.contains("<details class=\"bereich\" data-id=\"System\" open data-erzwingen>"));
+        assertTrue(html.contains("localStorage"));
+    }
+
+    @Test
+    public void testHinweiseUndErsatz() throws Exception {
+        Instant jetzt = Instant.now();
+        String html = new StatusPage()
+                .hinweis("Heizungsdruck niedrig", true)
+                .hinweis("keine Warnung", false)
+                .badgeWennAn("Abtauung", () -> new ValueContainer<>(true, jetzt))
+                .badgeWennAn("EVU-Sperre", () -> new ValueContainer<>(false, jetzt))
+                .badgeWennAn("Heizstab", () -> {
+                    throw new Exception("NO_VALUES_RECEIVED");
+                })
+                .kpi("Arbeitszahl", "", 1, () -> {
+                    throw new Exception("VERDICHTER_AUS");
+                })
+                .ersatz("aus")
+                .render();
+        assertTrue(html.contains("<span class=\"badge warn\"><span class=\"dot\"></span>Heizungsdruck niedrig"));
+        assertTrue(html.contains("<span class=\"badge ok\"><span class=\"dot\"></span>keine Warnung"));
+        assertTrue(html.contains(">Abtauung</span>"));
+        assertFalse(html.contains("EVU-Sperre"));
+        assertFalse(html.contains("Heizstab"));
+        assertTrue(html.contains("<span class=\"missing\">aus</span>"));
+    }
 }

@@ -29,7 +29,7 @@ public class StatusPage {
     private final ZoneId zone;
     private final List<String> headerBadges = new ArrayList<>();
     private final List<Item> kpis = new ArrayList<>();
-    private final List<Card> cards = new ArrayList<>();
+    private final List<Bereich> bereiche = new ArrayList<>();
     // Last added KPI, row or pill, formula() refers to it
     private Item last;
     private boolean hasHistory;
@@ -42,6 +42,24 @@ public class StatusPage {
     public StatusPage(Clock clock) {
         this.clock = clock;
         this.zone = clock.getZone();
+    }
+
+    /**
+     * Group of cards; a fixed one is always shown, the others can be folded and remember their state in the browser
+     */
+    private static class Bereich {
+        final String titel;
+        final String zusammenfassung;
+        final boolean klappbar;
+        final boolean erzwingen;
+        final List<Card> cards = new ArrayList<>();
+
+        Bereich(String titel, String zusammenfassung, boolean klappbar, boolean erzwingen) {
+            this.titel = titel;
+            this.zusammenfassung = zusammenfassung;
+            this.klappbar = klappbar;
+            this.erzwingen = erzwingen;
+        }
     }
 
     private static class Card {
@@ -71,13 +89,48 @@ public class StatusPage {
         String formula;
         // Text instead of a number, e.g. the firmware version
         String text;
+        // Shown instead of "keine Daten" if the value is missing, e.g. "aus"
+        String ersatz;
     }
 
     private Card current() {
-        if (cards.isEmpty()) {
+        if (bereiche.isEmpty() || bereiche.get(bereiche.size() - 1).cards.isEmpty()) {
             throw new IllegalStateException("card() has to be called first");
         }
+        List<Card> cards = bereiche.get(bereiche.size() - 1).cards;
         return cards.get(cards.size() - 1);
+    }
+
+    /**
+     * Area that is always shown, the following cards belong to it
+     */
+    public StatusPage bereich(String titel) {
+        bereiche.add(new Bereich(titel, null, false, false));
+        return this;
+    }
+
+    /**
+     * Area that can be folded, closed at first; the browser remembers whether it was opened
+     *
+     * @param zusammenfassung short state shown next to the title, e.g. "alles OK"
+     * @param erzwingen       open it in any case, e.g. when there is a problem
+     */
+    public StatusPage bereichKlappbar(String titel, String zusammenfassung, boolean erzwingen) {
+        bereiche.add(new Bereich(titel, zusammenfassung, true, erzwingen));
+        return this;
+    }
+
+    /**
+     * Starts a folded list within the card, e.g. all entries of the fault list, ended by detailsEnde()
+     */
+    public StatusPage details(String titel) {
+        current().content.add("<details class=\"mehr\"><summary>" + attr(titel) + "</summary>");
+        return this;
+    }
+
+    public StatusPage detailsEnde() {
+        current().content.add("</details>");
+        return this;
     }
 
     /**
@@ -95,6 +148,26 @@ public class StatusPage {
         return this;
     }
 
+    /**
+     * Badge only while the state is on, e.g. a defrost; nothing if it is off or unknown
+     */
+    public StatusPage badgeWennAn(String text, Callable<ValueContainer<Boolean>> value) {
+        ValueContainer<Boolean> container = call(value);
+        if (container != null && container.getValue()) {
+            headerBadges.add("<span class=\"badge on\"><span class=\"dot\"></span>" + attr(text) + "</span>");
+        }
+        return this;
+    }
+
+    /**
+     * Badge with a text, warn shows it as a problem, otherwise as fine
+     */
+    public StatusPage hinweis(String text, boolean warn) {
+        headerBadges.add("<span class=\"badge " + (warn ? "warn" : "ok") + "\"><span class=\"dot\"></span>"
+                + attr(text) + "</span>");
+        return this;
+    }
+
     public StatusPage kpi(String label, String unit, int decimals, Callable<ValueContainer<Double>> value) {
         return kpi(label, unit, decimals, null, value);
     }
@@ -109,7 +182,10 @@ public class StatusPage {
     }
 
     public StatusPage card(String title) {
-        cards.add(new Card(title));
+        if (bereiche.isEmpty()) {
+            bereiche.add(new Bereich(null, null, false, false));
+        }
+        bereiche.get(bereiche.size() - 1).cards.add(new Card(title));
         return this;
     }
 
@@ -179,6 +255,14 @@ public class StatusPage {
         return this;
     }
 
+    /**
+     * Text shown instead of "keine Daten" when the last added KPI or row has no value
+     */
+    public StatusPage ersatz(String text) {
+        lastItem().ersatz = text;
+        return this;
+    }
+
     private Item lastItem() {
         if (last == null) {
             throw new IllegalStateException("kpi(), row(), text() or pill() has to be called first");
@@ -223,7 +307,7 @@ public class StatusPage {
 
     private String renderKpi(Item kpi) {
         return "<div class=\"kpi\"" + history(kpi) + "><div class=\"label\">" + label(kpi) + "</div>"
-                + "<div class=\"value\"><span class=\"num\">" + number(kpi.value, kpi.decimals)
+                + "<div class=\"value\"><span class=\"num\">" + number(kpi)
                 + unit(kpi.value, kpi.unit) + "</span></div>" + age(kpi.value, kpi.maxAge) + "</div>";
     }
 
@@ -233,7 +317,7 @@ public class StatusPage {
                     + attr(row.text) + "</span></div>";
         }
         return "<div class=\"row\"" + history(row) + "><span class=\"label\">" + label(row) + "</span>"
-                + "<span class=\"value\"><span class=\"num\">" + number(row.value, row.decimals)
+                + "<span class=\"value\"><span class=\"num\">" + number(row)
                 + unit(row.value, row.unit) + "</span>" + age(row.value, row.maxAge) + "</span></div>";
     }
 
@@ -292,9 +376,11 @@ public class StatusPage {
         }
     }
 
-    private String number(ValueContainer<Double> container, int decimals) {
+    private String number(Item item) {
+        ValueContainer<Double> container = item.value;
+        int decimals = item.decimals;
         if (container == null) {
-            return "<span class=\"missing\">keine Daten</span>";
+            return "<span class=\"missing\">" + (item.ersatz == null ? "keine Daten" : attr(item.ersatz)) + "</span>";
         }
         DecimalFormat format = new DecimalFormat(decimals == 0 ? "#,##0" : "#,##0." + "0".repeat(decimals),
                 DecimalFormatSymbols.getInstance(GERMAN));
@@ -336,26 +422,51 @@ public class StatusPage {
 
         html.append("<section class=\"kpis\">");
         kpis.forEach(kpi -> html.append(renderKpi(kpi)));
-        html.append("</section><section class=\"cards\">");
-        for (Card card : cards) {
-            html.append("<article class=\"card\"><h2>").append(card.title).append("</h2>");
-            if (!card.pills.isEmpty()) {
-                html.append("<div class=\"pills\">");
-                card.pills.forEach(pill -> html.append(renderPill(pill)));
-                html.append("</div>");
+        html.append("</section>");
+        for (Bereich bereich : bereiche) {
+            if (bereich.klappbar) {
+                html.append("<details class=\"bereich\" data-id=\"").append(attr(bereich.titel)).append("\"")
+                        .append(bereich.erzwingen ? " open data-erzwingen" : "").append("><summary><span>")
+                        .append(attr(bereich.titel)).append("</span>")
+                        .append(bereich.zusammenfassung == null ? ""
+                                : "<span class=\"zusammenfassung\">" + attr(bereich.zusammenfassung) + "</span>")
+                        .append("</summary>");
+            } else if (bereich.titel != null) {
+                html.append("<h2 class=\"bereich-titel\">").append(attr(bereich.titel)).append("</h2>");
             }
-            for (Object content : card.content) {
-                html.append(content instanceof Item row ? renderRow(row) : content);
+            html.append("<section class=\"cards\">");
+            for (Card card : bereich.cards) {
+                html.append("<article class=\"card\"><h2>").append(card.title).append("</h2>");
+                if (!card.pills.isEmpty()) {
+                    html.append("<div class=\"pills\">");
+                    card.pills.forEach(pill -> html.append(renderPill(pill)));
+                    html.append("</div>");
+                }
+                for (Object content : card.content) {
+                    html.append(content instanceof Item row ? renderRow(row) : content);
+                }
+                html.append("</article>");
             }
-            html.append("</article>");
+            html.append("</section>").append(bereich.klappbar ? "</details>" : "");
         }
-        html.append("</section></main>");
+        html.append("</main><script>").append(BEREICH_SCRIPT).append("</script>");
         if (hasHistory) {
             html.append(HISTORY_DIALOG).append("<script>").append(HISTORY_SCRIPT).append("</script>");
         }
         html.append("</body></html>");
         return html.toString();
     }
+
+    // Restores the folded areas after the reload every 20 s, an area opened because of a problem stays open
+    private static final String BEREICH_SCRIPT = """
+            document.querySelectorAll('details.bereich').forEach(d => {
+              const key = 'bereich:' + d.dataset.id;
+              try {
+                const offen = localStorage.getItem(key);
+                if (offen !== null && !d.hasAttribute('data-erzwingen')) d.open = offen === '1';
+              } catch (e) { }
+              d.addEventListener('toggle', () => { try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) { } });
+            });""";
 
     private static final String TOOLTIP_CSS = """
             .calc { position: relative; cursor: help; outline: none; }
@@ -608,12 +719,14 @@ public class StatusPage {
             :root {
               --bg: #f4f5f2; --card: #ffffff; --text: #1d2321; --muted: #69726e; --line: #e4e7e2;
               --accent: #0f766e; --on: #15803d; --on-bg: #dcfce7; --off-bg: #eceeea; --stale: #b45309;
+              --warn: #b91c1c; --warn-bg: #fee2e2;
               color-scheme: light;
             }
             @media (prefers-color-scheme: dark) {
               :root {
                 --bg: #111514; --card: #1a201e; --text: #e6ebe8; --muted: #93a09a; --line: #2a3330;
                 --accent: #5eead4; --on: #4ade80; --on-bg: #14532d; --off-bg: #252d2a; --stale: #fbbf24;
+                --warn: #fca5a5; --warn-bg: #7f1d1d;
                 color-scheme: dark;
               }
             }
@@ -657,6 +770,19 @@ public class StatusPage {
             .pill b { font-weight: 600; }
             .pill.on { background: var(--on-bg); color: var(--on); }
             .note { margin: 4px 0 8px; font-size: 12px; color: var(--muted); }
+            .badge.ok { background: var(--on-bg); color: var(--on); }
+            .badge.warn { background: var(--warn-bg); color: var(--warn); }
+            .bereich-titel, details.bereich > summary { margin: 22px 0 10px; font-size: 15px; font-weight: 650;
+              color: var(--text); text-transform: none; letter-spacing: 0; }
+            details.bereich > summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer;
+              list-style: none; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+              background: var(--card); }
+            details.bereich > summary::-webkit-details-marker { display: none; }
+            details.bereich > summary::before { content: "▸"; color: var(--accent); transition: transform 0.15s; }
+            details.bereich[open] > summary::before { transform: rotate(90deg); }
+            details.bereich[open] > summary { margin-bottom: 10px; }
+            .zusammenfassung { font-size: 13px; font-weight: 400; color: var(--muted); }
+            details.mehr > summary { cursor: pointer; color: var(--accent); font-size: 13px; padding: 6px 0; }
             .tbl { overflow-x: auto; margin: 4px 0 8px; }
             .tbl table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
             .tbl th { color: var(--muted); font-weight: 500; text-align: right; padding: 4px 6px;
