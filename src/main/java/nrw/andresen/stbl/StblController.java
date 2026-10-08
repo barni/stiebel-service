@@ -2,6 +2,7 @@ package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.CanBus;
 import nrw.andresen.stbl.services.StatusService;
+import nrw.andresen.stbl.services.WaermebedarfVergleich;
 import nrw.andresen.stbl.services.Waermepumpe;
 import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.ValueContainer;
@@ -49,6 +50,8 @@ public class StblController {
     private CanBus canBus;
     @Autowired
     private StatusService statusService;
+    @Autowired
+    private WaermebedarfVergleich waermebedarfVergleich;
     @Autowired
     private InfluxController influxController;
 
@@ -106,6 +109,14 @@ public class StblController {
     @RequestMapping("/fehlerliste")
     public List<Fehlerliste.Eintrag> fehlerliste() {
         return canBus.getFehlerliste().eintraege();
+    }
+
+    /**
+     * Starts, run time and heat per day by outdoor temperature and setting Wärmebedarf, updated every 6 hours
+     */
+    @RequestMapping("/waermebedarf")
+    public List<WaermebedarfVergleich.Gruppe> waermebedarf() {
+        return waermebedarfVergleich.getGruppen();
     }
 
     @RequestMapping("/aufnahmeLeistung")

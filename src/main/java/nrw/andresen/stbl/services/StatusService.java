@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -22,6 +24,8 @@ public class StatusService {
     private Waermepumpe wp;
     @Autowired
     private CanBus can;
+    @Autowired
+    private WaermebedarfVergleich vergleich;
 
     // What the CAN nodes are, as far as known from the answered values
     private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
@@ -31,6 +35,12 @@ public class StatusService {
             0x514, "Außeneinheit, Zugang für externe Abfragen mit Zählern, Laufzeiten und Einstellungen.");
 
     private static final DateTimeFormatter ZEITPUNKT = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm:ss");
+
+    private static final DateTimeFormatter DATUM = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+    private static String zahl(double wert, int stellen) {
+        return String.format(Locale.GERMANY, "%." + stellen + "f", wert);
+    }
 
     private static String zeitpunkt(Instant zeit) {
         return zeit == null ? null : ZEITPUNKT.format(zeit.atZone(ZoneId.systemDefault()));
@@ -93,7 +103,7 @@ public class StatusService {
                 .row("Starts", "", 0, "VerdichterStarts", wp::getVerdichterStarts)
                 .info("Anzahl der Verdichterstarts seit Inbetriebnahme (0x514). Wenige, lange Läufe sind effizienter "
                         + "und schonen den Verdichter.")
-                .row("Laufzeit je Start (berechnet)", "h", 2, wp::getLaufzeitProStart)
+                .row("Laufzeit je Start (berechnet)", "h", 2, "LaufzeitProStart", wp::getLaufzeitProStart)
                 .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
                 .formula("Laufzeit Heizen ÷ Verdichterstarts")
                 .row("Laufzeit Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)
@@ -108,7 +118,7 @@ public class StatusService {
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
-                .row("Spreizung (berechnet)", "K", 1, wp::getSpreizung)
+                .row("Spreizung (berechnet)", "K", 1, "Spreizung", wp::getSpreizung)
                 .info("Temperaturunterschied zwischen Vor- und Rücklauf. Der Sollwert steht unter Einstellungen "
                         + "(Soll-Spreizung).")
                 .formula("Vorlauf − Rücklauf")
@@ -180,7 +190,7 @@ public class StatusService {
                         + "Spreizung überein.")
                 .row("Zusatzheizung", "MWh", 3, "WaermeZusatzheizung", wp::getWaermeZusatzheizung)
                 .info("Vom Heizstab erzeugte Wärme seit Inbetriebnahme (0x514).")
-                .row("Effizienz gesamt (Zähler, berechnet)", "", 2, wp::getEffizienz)
+                .row("Effizienz gesamt (Zähler, berechnet)", "", 2, "EffizienzZaehler", wp::getEffizienz)
                 .info("Arbeitszahl seit Inbetriebnahme nach den Zählern der Wärmepumpe. Zu hoch, weil der "
                         + "Stromzähler zu wenig zählt.")
                 .formula("Wärmeerzeugung ÷ Stromaufnahme, beides Zähler der Wärmepumpe")
@@ -213,6 +223,27 @@ public class StatusService {
                 .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", wp::getSilentLuefter, Waermepumpe.MAX_AGE_3600)
                 .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
                 .note("Heizlast bei Auslegungstemperatur und weitere Einstellungen, stündlich abgefragt.")
+                .card("Wärmebedarf-Vergleich");
+        List<WaermebedarfVergleich.Gruppe> gruppen = vergleich.getGruppen();
+        if (gruppen.isEmpty()) {
+            page.text("Tage", vergleich.getBerechnet() == null ? "wird berechnet" : "keine");
+        } else {
+            List<List<String>> zeilen = new ArrayList<>();
+            for (WaermebedarfVergleich.Gruppe g : gruppen) {
+                zeilen.add(List.of(g.band(), zahl(g.waermebedarf(), 1) + " kW", String.valueOf(g.tage()),
+                        zahl(g.startsProTag(), 1), zahl(g.laufzeitProTag(), 1), zahl(g.laufzeitProStart(), 2),
+                        zahl(g.waermeProTag(), 0), zahl(g.leistungKW(), 2)));
+            }
+            page.table(List.of("Außen", "Wärmebedarf", "Tage", "Starts/Tag", "h/Tag", "h/Start", "kWh/Tag",
+                    "kW im Lauf"), zeilen);
+        }
+        page.note("Tage seit " + vergleich.getStart().format(DATUM) + " nach Tagesmittel der Außentemperatur und "
+                        + "eingestelltem Wärmebedarf. Starts und Laufzeit aus der Inverterleistung, Wärme aus dem "
+                        + "Wärmezähler, „kW im Lauf“ = Wärme ÷ Laufzeit. Weniger Starts bei gleicher Wärme "
+                        + "bedeutet längere, effizientere Läufe. Die Einstellung wird erst seit 22.09.2026 "
+                        + "gespeichert, davor gilt der erste gespeicherte Wert. Tage mit Lücken fehlen. Berechnet "
+                        + (vergleich.getBerechnet() == null ? "nach dem Start" : zeitpunkt(vergleich.getBerechnet()))
+                        + ", alle 6 Stunden neu.")
                 .card("Fehlerliste");
         List<Fehlerliste.Eintrag> eintraege = can.getFehlerliste().eintraege();
         if (eintraege.isEmpty()) {

@@ -186,6 +186,22 @@ public class StatusPage {
         return last;
     }
 
+    /**
+     * Table with a header row, the texts are escaped; the first column is a label, the others are right aligned
+     */
+    public StatusPage table(List<String> kopf, List<List<String>> zeilen) {
+        StringBuilder html = new StringBuilder("<div class=\"tbl\"><table><thead><tr>");
+        kopf.forEach(spalte -> html.append("<th>").append(attr(spalte)).append("</th>"));
+        html.append("</tr></thead><tbody>");
+        for (List<String> zeile : zeilen) {
+            html.append("<tr>");
+            zeile.forEach(zelle -> html.append("<td>").append(attr(zelle)).append("</td>"));
+            html.append("</tr>");
+        }
+        current().content.add(html.append("</tbody></table></div>").toString());
+        return this;
+    }
+
     public StatusPage note(String text) {
         current().content.add("<p class=\"note\">" + text + "</p>");
         return this;
@@ -641,5 +657,11 @@ public class StatusPage {
             .pill b { font-weight: 600; }
             .pill.on { background: var(--on-bg); color: var(--on); }
             .note { margin: 4px 0 8px; font-size: 12px; color: var(--muted); }
+            .tbl { overflow-x: auto; margin: 4px 0 8px; }
+            .tbl table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+            .tbl th { color: var(--muted); font-weight: 500; text-align: right; padding: 4px 6px;
+              border-bottom: 1px solid var(--line); white-space: nowrap; }
+            .tbl td { text-align: right; padding: 5px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
+            .tbl th:first-child, .tbl td:first-child { text-align: left; padding-left: 0; }
             """;
 }

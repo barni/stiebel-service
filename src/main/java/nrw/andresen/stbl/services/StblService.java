@@ -140,6 +140,7 @@ public class StblService {
             addPoint(points, "StromInverter", wp::getStromInverter, MAX_AGE_20);
             addPoint(points, "LeistungInverter", wp::getLeistungInverter, MAX_AGE_20);
             addPoint(points, "VorlaufIstTemp", wp::getVorlaufIstTemp, MAX_AGE_20);
+            addPoint(points, "Spreizung", wp::getSpreizung, MAX_AGE_20);
             addPoint(points, "Aussentemp", wp::getAussentemp, MAX_AGE_20);
             addPoint(points, "HeissgasTemp", wp::getHeissgasTemp, MAX_AGE_20);
             addPoint(points, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl, MAX_AGE_20);
@@ -168,10 +169,12 @@ public class StblService {
             addPoint(points, "WaermeleistungBerechnet", wp::getWaermeleistung, MAX_AGE_60);
             addPoint(points, "ArbeitszahlGeschaetzt", wp::getArbeitszahl, MAX_AGE_60);
             addPoint(points, "EffizienzKorrigiert", wp::getEffizienzKorrigiert, MAX_AGE_60);
+            addPoint(points, "EffizienzZaehler", wp::getEffizienz, MAX_AGE_60);
             addPoint(points, "LaufzeitVerdichterHeizen", wp::getLaufzeitVerdichterHeizen, MAX_AGE_60);
             addPoint(points, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen, MAX_AGE_60);
             addPoint(points, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung, MAX_AGE_60);
             addPoint(points, "VerdichterStarts", wp::getVerdichterStarts, MAX_AGE_60);
+            addPoint(points, "LaufzeitProStart", wp::getLaufzeitProStart, MAX_AGE_60);
             addPoint(points, "VerdichterSollDrehzahlHz", wp::getVerdichterSollDrehzahl, MAX_AGE_60);
             addPoint(points, "UeberhitzungSoll", wp::getSollUeberhitzung, MAX_AGE_60);
             addPoint(points, "UeberhitzungIst", wp::getIstUeberhitzung, MAX_AGE_60);

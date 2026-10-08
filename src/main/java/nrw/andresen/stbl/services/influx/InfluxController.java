@@ -3,6 +3,7 @@ package nrw.andresen.stbl.services.influx;
 import com.influxdb.LogLevel;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
+import com.influxdb.client.InfluxDBClientOptions;
 import com.influxdb.client.WriteApi;
 import com.influxdb.client.WriteOptions;
 import com.influxdb.client.domain.WritePrecision;
@@ -10,6 +11,7 @@ import com.influxdb.client.write.Point;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import nrw.andresen.stbl.services.can.ValueContainer;
+import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +19,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Component
@@ -41,7 +45,10 @@ public class InfluxController {
                             @Value("${influx.org}") String org, @Value("${influx.bucket}") String bucket){
         this.bucket = bucket;
         this.org = org;
-        client = InfluxDBClientFactory.create(influxURL, token.toCharArray(), org, bucket)
+        // Daily values over several months take longer than the default of 10 s
+        OkHttpClient.Builder http = new OkHttpClient.Builder().readTimeout(Duration.ofSeconds(60));
+        client = InfluxDBClientFactory.create(InfluxDBClientOptions.builder().url(influxURL)
+                        .authenticateToken(token.toCharArray()).org(org).bucket(bucket).okHttpClient(http).build())
                 .setLogLevel(LogLevel.NONE);
         writeApi = client.getWriteApi(WriteOptions.builder().flushInterval(5_000).build());
 
@@ -83,6 +90,28 @@ public class InfluxController {
             value[i] = ((Number) records.get(i).getValue()).doubleValue();
         }
         return new History(name, time, value);
+    }
+
+    /**
+     * Values of a Flux query with one value per time, e.g. daily values, sorted by time. Missing values are skipped.
+     */
+    public Map<Instant, Double> werte(String flux) {
+        Map<Instant, Double> werte = new LinkedHashMap<>();
+        List<FluxRecord> records = new ArrayList<>();
+        for (FluxTable table : client.getQueryApi().query(flux, org)) {
+            records.addAll(table.getRecords());
+        }
+        records.sort(Comparator.comparing(FluxRecord::getTime));
+        for (FluxRecord record : records) {
+            if (record.getValue() instanceof Number wert && record.getTime() != null) {
+                werte.put(record.getTime(), wert.doubleValue());
+            }
+        }
+        return werte;
+    }
+
+    public String getBucket() {
+        return bucket;
     }
 
     static String flux(String bucket, String name, Duration range, Duration window) {
