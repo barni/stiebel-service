@@ -17,7 +17,8 @@ before you rely on it.
 
 - **InfluxDB 2**: every 20 s (pressures, temperatures, compressor, inverter, defrost), every 60 s (energy counters, run
   times, flow rate, calculated heat output and efficiency, fan, superheat, EXV) and every hour (settings). Measurement
-  `WP_<name>`, field `value`, e.g. `WP_Hochdruck`, `WP_AbgabeWaerme` (MWh), `WP_ArbeitszahlGeschaetzt`.
+  `WP_<name>`, field `value`, e.g. `WP_Hochdruck`, `WP_AbgabeWaerme` (MWh), `WP_ArbeitszahlGeschaetzt`, also the
+  spread `WP_Spreizung`, `WP_LaufzeitProStart` and the efficiency of the counters `WP_EffizienzZaehler`.
 - **REST API** (HTTP basic auth), JSON `{"timestamp": ..., "value": ..., "valueString": ...}`, e.g. `/hochdruck`,
   `/vorlaufIstTemp`, `/abgabeWaerme`, `/aufnahmeLeistung`, `/arbeitszahl`, `/heizungsdruck`; see `StblController` for
   all endpoints. A value that is missing or not meaningful (e.g. efficiency while the compressor stands still) is
@@ -36,6 +37,13 @@ before you rely on it.
   every 10 minutes from `FEHLERFELD_0..139` (0x0B00–0x0B8B at node 0x180, 7 values per entry: minute, hour, day,
   month, year, 0, code). Shown on the status page with text for known codes (e.g. 8116 `INV H ROTORVEKTOR`) and as
   JSON from `/fehlerliste`, newest first.
+- **Comparison of the setting Wärmebedarf** (heat demand at design temperature): every 6 hours the service calculates
+  compressor starts, run time and heat per day from InfluxDB (since `auswertung.start`, default 2023-07-01) and groups
+  the days by daily mean outdoor temperature (below −5, −5 to 0, … 10 to 15 °C) and by the setting of that day. Shown
+  on the status page and as JSON from `/waermebedarf`. Fewer starts at the same heat mean longer, more efficient runs.
+  The heat pump's own outdoor temperature `WP_Aussentemp` is only stored since 09/2026; for older days set a Home
+  Assistant entity (measurement `°C`), the token then needs read access to that bucket:
+  `auswertung.aussentemp.bucket=home_assistant`, `auswertung.aussentemp.entity=aussen_temperatur`.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, and when a
   new entry appears in the fault list.
 

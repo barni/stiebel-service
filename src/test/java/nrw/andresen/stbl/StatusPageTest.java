@@ -217,4 +217,14 @@ public class StatusPageTest {
                 + "<span class=\"value\">v1.9 / &lt;v1.0&gt;</span>"));
         assertTrue(html.contains("<span class=\"label\">Seriennummer</span><span class=\"value\">–</span>"));
     }
+
+    @Test
+    public void testTable() {
+        String html = new StatusPage()
+                .card("Vergleich")
+                .table(java.util.List.of("Außen", "kW"), java.util.List.of(java.util.List.of("0 bis 5 °C", "<1>")))
+                .render();
+        assertTrue(html.contains("<table><thead><tr><th>Außen</th><th>kW</th></tr></thead>"));
+        assertTrue(html.contains("<td>0 bis 5 °C</td><td>&lt;1&gt;</td>"));
+    }
 }
