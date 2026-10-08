@@ -203,19 +203,36 @@ public class StatusService {
                         + "Heizwasser. Der Dienst erkennt das selbst, weil die Wärmepumpe es nicht zuverlässig "
                         + "meldet.")
                 .formula(Waermepumpe.formelAbtauung())
+                .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
+                .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514).")
+                .card("Heizkreis")
+                .row("Vorlauf", "°C", 1, "VorlaufIstTemp", wp::getVorlaufIstTemp)
+                .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
+                        + "Schritten von etwa 1,1 K gemeldet.")
+                .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
+                .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
+                        + "Schritten von etwa 1,1 K gemeldet.")
                 .row("Spreizung (berechnet)", "K", 1, "Spreizung", wp::getSpreizung)
                 .info("Temperaturunterschied zwischen Vor- und Rücklauf. Der Sollwert steht unter Einstellungen "
                         + "(Soll-Spreizung).")
                 .formula("Vorlauf − Rücklauf")
                 .row("Volumenstrom", "l/min", 1, "WasserVolumenstrom", wp::getVolumenstrom)
                 .info("Heizwasser, das durch die Wärmepumpe fließt (0x500). Wird jede Minute abgefragt.")
-                .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", wp::getLaufzeit_DHC1)
-                .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
-                .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", wp::getLaufzeit_DHC2)
-                .info("Betriebsstunden der Heizstab-Stufe 2 seit Inbetriebnahme (0x500).")
-                .row("Laufzeit DHC 1+2", "h", 0, "LaufzeitDHZ12", wp::getLaufzeit_DHC12)
-                .info("Betriebsstunden mit beiden Heizstab-Stufen gleichzeitig seit Inbetriebnahme (0x500).")
+                .row("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
+                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt.")
+                .formula(Waermepumpe.formelWaermeleistung())
+                .ersatz("–")
+                .row("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
+                .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
+                        + "während der Verdichter läuft.")
+                .formula(Waermepumpe.formelArbeitszahl())
+                .ersatz("aus")
+                .row("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
+                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180).")
                 .card("Kältekreis")
+                .row("Außentemperatur", "°C", 1, "Aussentemp", wp::getAussentemp)
+                .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
+                        + "Wärmepumpenmanagers etwas abweichen, beim Abtauen steigt sie kurz um einige Kelvin.")
                 .row("Hochdruck", "bar", 2, "Hochdruck", wp::getHochdruck)
                 .info("Absoluter Druck auf der Hochdruckseite des Kältekreises (0x500). Entspricht der "
                         + "Kondensationstemperatur, die etwa der Vorlauftemperatur folgt.")
@@ -229,8 +246,6 @@ public class StatusService {
                 .row("Verdampfer", "°C", 1, "VerdampferTemp", wp::getVerdampferTemp)
                 .info("Temperatur am Austritt des Verdampfers in der Außeneinheit (0x500). Steigt beim Abtauen stark "
                         + "an.")
-                .row("Ölsumpf", "°C", 1, "OelsumpfTemp", wp::getOelsumpfTemp)
-                .info("Temperatur des Öls im Verdichter (0x500).")
                 .row("Überhitzung", "K", 1, "UeberhitzungIst", wp::getIstUeberhitzung)
                 .info("Wie viel wärmer das Kältemittel am Verdampferaustritt ist als seine Verdampfungstemperatur "
                         + "(0x514). Darauf regelt das Expansionsventil.")
@@ -264,25 +279,15 @@ public class StatusService {
                 .info("Temperatur in der Umgebung der Inverter-Elektronik (0x514).")
                 .row("Temperatur Verdichter", "°C", 1, "TempInverterVerdichter", wp::getTempInverterVerdichter)
                 .info("Vom Inverter gemessene Temperatur am Verdichter (0x514).")
-                .row("Laufzeit Heizen", "h", 0, "LaufzeitVerdichterHeizen", wp::getLaufzeitVerdichterHeizen)
-                .info("Betriebsstunden des Verdichters im Heizbetrieb seit Inbetriebnahme (0x514).")
-                .row("Starts", "", 0, "VerdichterStarts", wp::getVerdichterStarts)
-                .info("Anzahl der Verdichterstarts seit Inbetriebnahme (0x514). Wenige, lange Läufe sind effizienter "
-                        + "und schonen den Verdichter.")
-                .row("Laufzeit je Start (berechnet)", "h", 2, "LaufzeitProStart", wp::getLaufzeitProStart)
-                .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
-                .formula("Laufzeit Heizen ÷ Verdichterstarts")
-                .row("Laufzeit Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)
-                .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514).")
-                .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
-                .info("Dauer der letzten Abtauung (0x514).");
+                .row("Ölsumpf", "°C", 1, "OelsumpfTemp", wp::getOelsumpfTemp)
+                .info("Temperatur des Öls im Verdichter (0x500).");
     }
 
     private void auswertung(StatusPage page) {
         Duration stunde = Waermepumpe.MAX_AGE_3600;
-        page.bereichKlappbar("Auswertung", "Energie · Einstellungen · Vergleich Wärmebedarf", false)
+        page.bereichKlappbar("Auswertung", "Zähler · Einstellungen · Vergleich Wärmebedarf", false)
                 .zweiSpalten()
-                .card("Energie seit Inbetriebnahme")
+                .card("Zähler seit Inbetriebnahme")
                 .row("Stromaufnahme", "MWh", 3, "AufnahmeLeistung", wp::getAufnahmeLeistung)
                 .info("Elektrische Energie fürs Heizen laut Stromzähler der Wärmepumpe (0x514), aus Summe und "
                         + "Tageswert zusammengesetzt. Der Zähler zählt rund 15–20 % zu wenig.")
@@ -298,6 +303,22 @@ public class StatusService {
                 .info("Realistische Arbeitszahl mit korrigiertem Stromverbrauch.")
                 .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + Waermepumpe.zahl(Waermepumpe.STROMZAEHLER_KORREKTUR)
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
+                .row("Laufzeit Verdichter Heizen", "h", 0, "LaufzeitVerdichterHeizen", wp::getLaufzeitVerdichterHeizen)
+                .info("Betriebsstunden des Verdichters im Heizbetrieb seit Inbetriebnahme (0x514).")
+                .row("Verdichterstarts", "", 0, "VerdichterStarts", wp::getVerdichterStarts)
+                .info("Anzahl der Verdichterstarts seit Inbetriebnahme (0x514). Wenige, lange Läufe sind effizienter "
+                        + "und schonen den Verdichter.")
+                .row("Laufzeit je Start (berechnet)", "h", 2, "LaufzeitProStart", wp::getLaufzeitProStart)
+                .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
+                .formula("Laufzeit Heizen ÷ Verdichterstarts")
+                .row("Laufzeit Verdichter Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)
+                .info("Betriebsstunden des Verdichters beim Abtauen seit Inbetriebnahme (0x514).")
+                .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", wp::getLaufzeit_DHC1)
+                .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
+                .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", wp::getLaufzeit_DHC2)
+                .info("Betriebsstunden der Heizstab-Stufe 2 seit Inbetriebnahme (0x500).")
+                .row("Laufzeit DHC 1+2", "h", 0, "LaufzeitDHZ12", wp::getLaufzeit_DHC12)
+                .info("Betriebsstunden mit beiden Heizstab-Stufen gleichzeitig seit Inbetriebnahme (0x500).")
                 .card("Einstellungen")
                 .row("Auslegungstemperatur", "°C", 1, "Einstellung_Auslegungstemperatur",
                         wp::getAuslegungstemperatur, stunde)
