@@ -25,7 +25,7 @@ import java.util.Locale;
 @Component
 public class Ueberwachung {
 
-    // The pressure has to rise this much above the limit before a new warning is possible
+    // The pressure has to come back this much within the limit before a new warning is possible
     private static final double DRUCK_HYSTERESE_BAR = 0.1;
     // A USBtin without answer for this time counts as failed
     private static final Duration MAX_OHNE_ANTWORT = Duration.ofSeconds(60);
@@ -43,9 +43,11 @@ public class Ueberwachung {
     private WaermebedarfVergleich vergleich;
 
     private final double druckMin;
+    private final double druckMax;
     private final double antwortquoteMin;
     private final int startsProStundeMax;
     private final Warnung druck;
+    private final Warnung druckHoch;
     private final Warnung heizstab;
     private final Warnung antwortquote;
     private final Warnung starts;
@@ -62,13 +64,19 @@ public class Ueberwachung {
     }
 
     public Ueberwachung(@Value("${warnung.heizungsdruck.min:1.3}") double druckMin,
+                        @Value("${warnung.heizungsdruck.max:2.5}") double druckMax,
                         @Value("${warnung.antwortquote.min:90}") double antwortquoteMin,
                         @Value("${warnung.starts.proStunde:6}") int startsProStundeMax) {
         this.druckMin = druckMin;
+        this.druckMax = druckMax;
         this.antwortquoteMin = antwortquoteMin;
         this.startsProStundeMax = startsProStundeMax;
         druck = new Warnung("Heizungsdruck niedrig", "Heizungsdruck unter " + zahl(druckMin)
                 + " bar. Wasser nachfüllen; die Warnung endet ab " + zahl(druckMin + DRUCK_HYSTERESE_BAR) + " bar.",
+                Duration.ofMinutes(5));
+        druckHoch = new Warnung("Heizungsdruck hoch", "Heizungsdruck über " + zahl(druckMax)
+                + " bar, z. B. zu viel nachgefüllt oder Ausdehnungsgefäß ohne Vordruck. Das Sicherheitsventil öffnet "
+                + "meist bei 3 bar; die Warnung endet ab " + zahl(druckMax - DRUCK_HYSTERESE_BAR) + " bar.",
                 Duration.ofMinutes(5));
         heizstab = new Warnung("Heizstab läuft", "Stufe 1 oder 2 des Heizstabs (DHC) ist an. Das kam bisher "
                 + "praktisch nie vor, der Heizstab braucht für dieselbe Wärme ein Vielfaches an Strom.",
@@ -84,7 +92,7 @@ public class Ueberwachung {
     }
 
     public List<Warnung> getWarnungen() {
-        return List.of(druck, heizstab, antwortquote, starts, dienst);
+        return List.of(druck, druckHoch, heizstab, antwortquote, starts, dienst);
     }
 
     public List<Pruefung> getPruefungen() {
@@ -104,6 +112,8 @@ public class Ueberwachung {
         try {
             double bar = wp.getHeizungsdruck().getValue();
             melden(druck, bar < druckMin + (druck.isAktiv() ? DRUCK_HYSTERESE_BAR : 0),
+                    "Heizungsdruck " + zahl(bar) + " bar", jetzt);
+            melden(druckHoch, bar > druckMax - (druckHoch.isAktiv() ? DRUCK_HYSTERESE_BAR : 0),
                     "Heizungsdruck " + zahl(bar) + " bar", jetzt);
         } catch (Exception e) {
             // no current value, keep the state

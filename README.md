@@ -48,7 +48,8 @@ before you rely on it.
   estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
   the days of similar outdoor temperature (±1.5 K) from the comparison above. Updated every 10 minutes.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
-  warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar), heating element on,
+  warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above
+  `warnung.heizungsdruck.max` (default 2.5 bar), heating element on,
   answer rate below `warnung.antwortquote.min` % (default 90) for 10 minutes, more than `warnung.starts.proStunde`
   compressor starts within an hour (default 6), a failed check of the service.
 - **Check of the service** 30 s after the start and every 15 minutes: InfluxDB reachable, reading the bucket (and the
