@@ -53,6 +53,8 @@ public class StatusPage {
         final boolean klappbar;
         final boolean erzwingen;
         final List<Card> cards = new ArrayList<>();
+        // Two equal columns instead of as many as fit, e.g. two cards above a wide one
+        boolean zweiSpalten;
 
         Bereich(String titel, String zusammenfassung, boolean klappbar, boolean erzwingen) {
             this.titel = titel;
@@ -101,6 +103,17 @@ public class StatusPage {
         }
         List<Card> cards = bereiche.get(bereiche.size() - 1).cards;
         return cards.get(cards.size() - 1);
+    }
+
+    /**
+     * The current area shows its cards in two equal columns, one column on a narrow screen
+     */
+    public StatusPage zweiSpalten() {
+        if (bereiche.isEmpty()) {
+            throw new IllegalStateException("bereich() has to be called first");
+        }
+        bereiche.get(bereiche.size() - 1).zweiSpalten = true;
+        return this;
     }
 
     /**
@@ -455,7 +468,7 @@ public class StatusPage {
             } else if (bereich.titel != null) {
                 html.append("<h2 class=\"bereich-titel\">").append(attr(bereich.titel)).append("</h2>");
             }
-            html.append("<section class=\"cards\">");
+            html.append("<section class=\"cards").append(bereich.zweiSpalten ? " zwei" : "").append("\">");
             for (Card card : bereich.cards) {
                 html.append("<article class=\"card").append(card.breit ? " breit" : "").append("\"><h2>")
                         .append(card.title).append("</h2>");
@@ -812,6 +825,8 @@ public class StatusPage {
             .tbl td { text-align: right; padding: 5px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
             .tbl th:first-child, .tbl td:first-child { text-align: left; padding-left: 0; }
             .card.breit { grid-column: 1 / -1; }
+            .cards.zwei { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            @media (max-width: 640px) { .cards.zwei { grid-template-columns: 1fr; } }
             @media (max-width: 600px) {
               .tbl.stapeln thead { display: none; }
               .tbl.stapeln table, .tbl.stapeln tbody, .tbl.stapeln tr { display: block; }

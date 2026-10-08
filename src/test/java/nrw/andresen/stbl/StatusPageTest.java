@@ -235,6 +235,9 @@ public class StatusPageTest {
                 .render();
         assertTrue(breit.contains("<article class=\"card breit\">"));
         assertTrue(breit.contains("<div class=\"tbl stapeln\">"));
+
+        String zwei = new StatusPage().bereich("Auswertung").zweiSpalten().card("Energie").render();
+        assertTrue(zwei.contains("<section class=\"cards zwei\">"));
     }
 
     @Test

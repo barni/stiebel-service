@@ -280,7 +280,8 @@ public class StatusService {
 
     private void auswertung(StatusPage page) {
         Duration stunde = Waermepumpe.MAX_AGE_3600;
-        page.bereichKlappbar("Auswertung", "Energie · Vergleich Wärmebedarf · Einstellungen", false)
+        page.bereichKlappbar("Auswertung", "Energie · Einstellungen · Vergleich Wärmebedarf", false)
+                .zweiSpalten()
                 .card("Energie seit Inbetriebnahme")
                 .row("Stromaufnahme", "MWh", 3, "AufnahmeLeistung", wp::getAufnahmeLeistung)
                 .info("Elektrische Energie fürs Heizen laut Stromzähler der Wärmepumpe (0x514), aus Summe und "
@@ -297,6 +298,28 @@ public class StatusService {
                 .info("Realistische Arbeitszahl mit korrigiertem Stromverbrauch.")
                 .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + Waermepumpe.zahl(Waermepumpe.STROMZAEHLER_KORREKTUR)
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
+                .card("Einstellungen")
+                .row("Auslegungstemperatur", "°C", 1, "Einstellung_Auslegungstemperatur",
+                        wp::getAuslegungstemperatur, stunde)
+                .info("Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Einstellung im Wärmepumpenmanager, "
+                        + "gelesen von 0x514.")
+                .row("Wärmebedarf", "kW", 1, "Einstellung_Waermebedarf", wp::getWaermebedarf, stunde)
+                .info("Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
+                        + "hochregelt. Einstellung im Wärmepumpenmanager.")
+                .row("Soll-Spreizung", "K", 1, "Einstellung_SollSpreizung", wp::getSollSpreizung, stunde)
+                .info("Gewünschter Unterschied zwischen Vor- und Rücklauf. Einstellung im Wärmepumpenmanager.")
+                .row("Bivalenztemperatur", "°C", 1, "Einstellung_Bivalenztemperatur", wp::getBivalenztemperatur,
+                        stunde)
+                .info("Unterhalb dieser Außentemperatur darf der Heizstab zuheizen. Einstellung im Wärmepumpenmanager.")
+                .row("Einsatzgrenze Heizen", "°C", 1, "Einstellung_EinsatzgrenzeHeizen", wp::getEinsatzgrenzeHeizen,
+                        stunde)
+                .info("Unterhalb dieser Außentemperatur heizt die Wärmepumpe nicht mehr, nur noch der Heizstab. "
+                        + "Einstellung im Wärmepumpenmanager.")
+                .row("Silent Leistung", "%", 0, "Einstellung_SilentLeistung", wp::getSilentLeistung, stunde)
+                .info("Begrenzung der Verdichterleistung im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
+                .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", wp::getSilentLuefter, stunde)
+                .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
+                .note("Stündlich vom Wärmepumpenmanager gelesen.")
                 .card("Vergleich Einstellung Wärmebedarf")
                 .breit();
         List<WaermebedarfVergleich.Vergleich> vergleiche = vergleich.getVergleich();
@@ -323,29 +346,7 @@ public class StatusService {
                         + "Gibt es in einem Bereich Tage mit zwei Einstellungen, steht der frühere Wert vor dem Pfeil. "
                         + "Weniger Starts bei gleicher Wärme bedeutet längere, effizientere Läufe. „kW im Lauf“ = "
                         + "Wärme ÷ Laufzeit. Stand " + (vergleich.getBerechnet() == null ? "–"
-                        : zeitpunkt(vergleich.getBerechnet())) + ".")
-                .card("Einstellungen")
-                .row("Auslegungstemperatur", "°C", 1, "Einstellung_Auslegungstemperatur",
-                        wp::getAuslegungstemperatur, stunde)
-                .info("Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Einstellung im Wärmepumpenmanager, "
-                        + "gelesen von 0x514.")
-                .row("Wärmebedarf", "kW", 1, "Einstellung_Waermebedarf", wp::getWaermebedarf, stunde)
-                .info("Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
-                        + "hochregelt. Einstellung im Wärmepumpenmanager.")
-                .row("Soll-Spreizung", "K", 1, "Einstellung_SollSpreizung", wp::getSollSpreizung, stunde)
-                .info("Gewünschter Unterschied zwischen Vor- und Rücklauf. Einstellung im Wärmepumpenmanager.")
-                .row("Bivalenztemperatur", "°C", 1, "Einstellung_Bivalenztemperatur", wp::getBivalenztemperatur,
-                        stunde)
-                .info("Unterhalb dieser Außentemperatur darf der Heizstab zuheizen. Einstellung im Wärmepumpenmanager.")
-                .row("Einsatzgrenze Heizen", "°C", 1, "Einstellung_EinsatzgrenzeHeizen", wp::getEinsatzgrenzeHeizen,
-                        stunde)
-                .info("Unterhalb dieser Außentemperatur heizt die Wärmepumpe nicht mehr, nur noch der Heizstab. "
-                        + "Einstellung im Wärmepumpenmanager.")
-                .row("Silent Leistung", "%", 0, "Einstellung_SilentLeistung", wp::getSilentLeistung, stunde)
-                .info("Begrenzung der Verdichterleistung im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
-                .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", wp::getSilentLuefter, stunde)
-                .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
-                .note("Stündlich vom Wärmepumpenmanager gelesen.");
+                        : zeitpunkt(vergleich.getBerechnet())) + ".");
     }
 
     private void system(StatusPage page) {
