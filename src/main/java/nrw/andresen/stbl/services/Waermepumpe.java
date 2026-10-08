@@ -483,18 +483,21 @@ public class Waermepumpe {
                 new Einstellung("EinsatzgrenzeHeizen", "Einsatzgrenze Heizen", "°C", 1, this::getEinsatzgrenzeHeizen,
                         "Unterhalb dieser Außentemperatur heizt nur noch der Heizstab. Standard −20 °C." + WPM),
                 new Einstellung("SilentLeistung", "Silent Leistung", "%", 0, this::getSilentLeistung,
-                        "Begrenzung der Verdichterleistung im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE "
-                                + "an ist). Standard 100 %." + WPM),
+                        "Begrenzung der Verdichterleistung im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
+                                + "PROGRAMME → SILENTPROGRAMM 1. 70 % ist die Voreinstellung beim Aktivieren, bei der "
+                                + "WPL 17 höchstens etwa 5,0 kW bei A−7/W35." + WPM),
                 new Einstellung("SilentLuefter", "Silent Lüfter", "%", 0, this::getSilentLuefter,
-                        "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE an "
-                                + "ist). Standard 100 %." + WPM),
+                        "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
+                                + "PROGRAMME → SILENTPROGRAMM 1." + WPM),
                 new Einstellung("Komforttemperatur", "Komfort-Temperatur", "°C", 1,
-                        () -> getScaledValue(RAUMSOLLTEMP_I, 10), "Raum-Solltemperatur im Komfortbetrieb. Standard 20 °C." + WPM),
+                        () -> getScaledValue(RAUMSOLLTEMP_I, 10), "Raum-Solltemperatur im Komfortbetrieb, Richtwert 20 °C. Ist es in der Übergangszeit zu "
+                                + "kühl, laut Anleitung anheben; ohne Fernbedienung verschiebt das die Heizkurve." + WPM),
                 new Einstellung("Ecotemperatur", "Eco-Temperatur", "°C", 1,
                         () -> getScaledValue(RAUMSOLLTEMP_NACHT, 10), "Raum-Solltemperatur im Eco-Betrieb. Standard 20 °C." + WPM),
                 new Einstellung("Heizkurve", "Steigung Heizkurve", "", 2, () -> getScaledValue(HEIZKURVE, 100),
                         "Wie stark die Vorlauftemperatur mit sinkender Außentemperatur steigt. Eine steilere Kurve "
-                                + "heizt mehr, der Verdichter läuft öfter. Standard 0,6." + WPM),
+                                + "heizt mehr, der Verdichter läuft öfter. Richtwert WPL ACS bei Fußbodenheizung 0,4, "
+                                + "bei Radiatoren 0,8 (WPM-3-Standard 0,6)." + WPM),
                 new Einstellung("Kurvenabstand", "Abstand Heizkurve", "", 0,
                         () -> getScaledValue(HZK_KURVENABSTAND, 10),
                         "Abstand der Heizkurve, 1 bis 10, Standard 3 (Anleitung WPM 3)." + WPM),
@@ -506,8 +509,9 @@ public class Waermepumpe {
                 new Einstellung("Mindestlaufzeit", "Mindestlaufzeit", "min", 0,
                         () -> getScaledValue(MINDESTLAUFZEIT_WE, 1), "Mindestlaufzeit des Verdichters. Standard 10 min." + WPM),
                 new Einstellung("Reglerdynamik", "Reglerdynamik", "", 0, this::getReglerdynamik,
-                        "Schaltabstand zwischen Verdichter und den Stufen des Heizstabs: klein für schnell "
-                                + "reagierende, groß für träge Heizsysteme. 1 bis 500, Standard 100." + WPM));
+                        "Schaltabstand zwischen Verdichter und den Stufen des Heizstabs, 1 bis 500. Richtwert WPL ACS "
+                                + "bei Fußbodenheizung 25, bei Radiatoren 50 (ältere Anleitung: 10; WPM-3-Standard "
+                                + "100)." + WPM));
     }
 
     private ValueContainer<Double> getRaumeinfluss() throws Exception {
