@@ -497,10 +497,12 @@ public class Waermepumpe {
                                 + "heizt mehr, der Verdichter läuft öfter." + WPM),
                 new Einstellung("FusspunktHeizkurve", "Fußpunkt Heizkurve", "", 0,
                         () -> getScaledValue(FUSSPUNKT_HEIZKURVE, 1), "Verschiebung der Heizkurve." + ROH),
-                new Einstellung("Kurvenabstand", "Kurvenabstand", "", 0, () -> getScaledValue(HZK_KURVENABSTAND, 1),
-                        "Abstand der Heizkurve." + ROH),
-                new Einstellung("Raumeinfluss", "Raumeinfluss", "", 0, () -> getScaledValue(RAUMEINFLUSS, 1),
-                        "Wie stark die Raumtemperatur die Vorlauftemperatur verändert." + ROH),
+                new Einstellung("Kurvenabstand", "Abstand Heizkurve", "", 0,
+                        () -> getScaledValue(HZK_KURVENABSTAND, 10),
+                        "Abstand der Heizkurve, 1 bis 10, Standard 3 (Anleitung WPM 3)." + WPM),
+                new Einstellung("Raumeinfluss", "Raumeinfluss", "", 0, this::getRaumeinfluss,
+                        "Wie stark die Raumtemperatur an der Fernbedienung die Vorlauftemperatur verändert, aus bis "
+                                + "20, Standard 5 (Anleitung WPM 3)." + WPM),
                 new Einstellung("Hysterese", "Hysterese", "", 0, () -> getScaledValue(HYSTERESEZEIT, 1),
                         "Schaltabstand: wie weit die Temperatur vom Sollwert abweichen darf, bevor der Verdichter "
                                 + "startet oder stoppt. Größer heißt seltener starten." + ROH),
@@ -513,6 +515,11 @@ public class Waermepumpe {
                         () -> getScaledValue(MINDESTLAUFZEIT_WE, 1), "Mindestlaufzeit des Verdichters." + WPM),
                 new Einstellung("Schaltwerkdynamik", "Schaltwerkdynamik", "", 0, this::getSchaltwerkdynamik,
                         "Dynamikzeit des Schaltwerks." + ROH));
+    }
+
+    private ValueContainer<Double> getRaumeinfluss() throws Exception {
+        ElsterMessage msg = nachricht(RAUMEINFLUSS);
+        return new ValueContainer<>((double) littleEndian(msg.getRawValue()), msg.getTimestamp());
     }
 
     private ValueContainer<Double> getSchaltwerkdynamik() throws Exception {
