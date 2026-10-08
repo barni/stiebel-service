@@ -50,8 +50,12 @@ public class Ueberwachung {
     private final double druckMax;
     private final double antwortquoteMin;
     private final int startsProStundeMax;
+    private final double hochdruckMax;
+    private final double spreizungMax;
     private final Warnung druck;
     private final Warnung druckHoch;
+    private final Warnung hochdruck;
+    private final Warnung spreizung;
     private final Warnung heizstab;
     private final Warnung antwortquote;
     private final Warnung starts;
@@ -73,11 +77,23 @@ public class Ueberwachung {
     public Ueberwachung(@Value("${warnung.heizungsdruck.min:1.3}") double druckMin,
                         @Value("${warnung.heizungsdruck.max:2.5}") double druckMax,
                         @Value("${warnung.antwortquote.min:90}") double antwortquoteMin,
-                        @Value("${warnung.starts.proStunde:6}") int startsProStundeMax) {
+                        @Value("${warnung.starts.proStunde:6}") int startsProStundeMax,
+                        @Value("${warnung.hochdruck.max:38}") double hochdruckMax,
+                        @Value("${warnung.spreizung.max:10}") double spreizungMax) {
         this.druckMin = druckMin;
         this.druckMax = druckMax;
         this.antwortquoteMin = antwortquoteMin;
         this.startsProStundeMax = startsProStundeMax;
+        this.hochdruckMax = hochdruckMax;
+        this.spreizungMax = spreizungMax;
+        hochdruck = new Warnung("Hochdruck hoch", "Hochdruck im Kältekreis über " + (int) hochdruckMax
+                + " bar; im Betrieb sind es sonst höchstens etwa 30 bar, der Hochdruckwächter schaltet bei 45 bar ab. "
+                + "Meist fließt zu wenig Heizwasser durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe).",
+                Duration.ofMinutes(1));
+        spreizung = new Warnung("Spreizung groß", "Vorlauf mehr als " + (int) spreizungMax
+                + " K über dem Rücklauf, 5 Minuten lang bei laufendem Verdichter (Soll 5 K). Es fließt zu wenig "
+                + "Heizwasser durch die Wärmepumpe: Heizkreise, Entlüftung und Pumpe prüfen. So war es am "
+                + "24.04.2021 (Vorlauf bis 62 °C, Hochdruck 44 bar).", Duration.ofMinutes(5));
         druck = new Warnung("Heizungsdruck niedrig", "Heizungsdruck unter " + zahl(druckMin)
                 + " bar. Wasser nachfüllen; die Warnung endet ab " + zahl(druckMin + DRUCK_HYSTERESE_BAR) + " bar.",
                 Duration.ofMinutes(5));
@@ -99,7 +115,7 @@ public class Ueberwachung {
     }
 
     public List<Warnung> getWarnungen() {
-        return List.of(druck, druckHoch, heizstab, antwortquote, starts, dienst);
+        return List.of(druck, druckHoch, hochdruck, spreizung, heizstab, antwortquote, starts, dienst);
     }
 
     /**
@@ -194,6 +210,20 @@ public class Ueberwachung {
                     "Heizungsdruck " + zahl(bar) + " bar", jetzt);
             melden(druckHoch, bar > druckMax - (druckHoch.isAktiv() ? DRUCK_HYSTERESE_BAR : 0),
                     "Heizungsdruck " + zahl(bar) + " bar", jetzt);
+        } catch (Exception e) {
+            // no current value, keep the state
+        }
+        try {
+            double bar = wp.getHochdruck().getValue();
+            melden(hochdruck, bar > hochdruckMax, "Hochdruck " + zahl(bar) + " bar", jetzt);
+        } catch (Exception e) {
+            // no current value, keep the state
+        }
+        try {
+            // Only while the compressor heats: during the defrost the flow is colder than the return
+            double kelvin = wp.getSpreizung().getValue();
+            boolean laeuft = wp.getVerdichterDrehzahl().getValue() > 0;
+            melden(spreizung, laeuft && kelvin > spreizungMax, "Spreizung " + zahl(kelvin) + " K", jetzt);
         } catch (Exception e) {
             // no current value, keep the state
         }

@@ -115,4 +115,25 @@ public class CanStatistikTest {
         assertEquals("v1.8", CanStatistik.version("v1.8"));
         assertEquals(null, CanStatistik.version(null));
     }
+
+    @Test
+    public void testKurzeMinute() {
+        CanStatistik statistik = new CanStatistik();
+        statistik.minuteAbschliessen(START, BITRATE);
+        for (int i = 0; i < 20; i++) {
+            statistik.gesendet(7);
+            statistik.antwort(false, START.plusSeconds(1));
+        }
+        // Closed again after one second, e.g. the scheduler catching up after a start: no absurd rates
+        statistik.minuteAbschliessen(START.plusSeconds(1), BITRATE);
+        assertNull(statistik.getLetzteMinute());
+        // The messages are counted with the minute that follows
+        for (int i = 0; i < 20; i++) {
+            statistik.gesendet(7);
+            statistik.antwort(false, START.plusSeconds(30));
+        }
+        statistik.minuteAbschliessen(START.plusSeconds(60), BITRATE);
+        assertEquals(40, statistik.getLetzteMinute().gesendet(), 0.001);
+        assertEquals(100, statistik.getLetzteMinute().antwortquote(), 0.001);
+    }
 }

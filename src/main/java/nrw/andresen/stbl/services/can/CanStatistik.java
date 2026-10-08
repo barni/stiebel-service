@@ -18,6 +18,8 @@ public class CanStatistik {
     // Bits of a standard CAN frame without data: start, 11 bit id, control, CRC, ACK, end of frame, interframe space.
     // Bit stuffing is not counted, so the bus load is a lower estimate.
     private static final int BITS_PRO_RAHMEN = 47;
+    // A minute is closed only after at least half a minute
+    private static final double MIN_MINUTE = 0.5;
 
     private static final Map<Integer, String> KNOTEN_NAMEN = Map.of(
             0x180, "Kessel",
@@ -129,6 +131,12 @@ public class CanStatistik {
         long e = empfangen.get(), a = antworten.get(), n = nichtVerfuegbar.get(), g = gesendet.get(), b = bits.get();
         if (minuteVorher != null) {
             double minuten = Duration.between(minuteVorher, zeit).toMillis() / 60000d;
+            if (minuten < MIN_MINUTE) {
+                // Two closings shortly after each other, e.g. when the scheduler catches up after a start: the few
+                // messages in between would be extrapolated to absurd rates (bus load 266 % on 2026-10-08), so
+                // they are counted with the next minute
+                return;
+            }
             if (minuten > 0) {
                 double sekunden = minuten * 60;
                 long anfragen = g - gesendetVorher;
