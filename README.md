@@ -44,8 +44,17 @@ before you rely on it.
   The heat pump's own outdoor temperature `WP_Aussentemp` is only stored since 09/2026; for older days set a Home
   Assistant entity (measurement `°C`), the token then needs read access to that bucket:
   `auswertung.aussentemp.bucket=home_assistant`, `auswertung.aussentemp.entity=aussen_temperatur`.
-- **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, and when a
-  new entry appears in the fault list.
+- **Daily overview** on the status page and as JSON from `/tagesuebersicht`: compressor starts, run time, heat,
+  estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
+  the days of similar outdoor temperature (±1.5 K) from the comparison above. Updated every 10 minutes.
+- **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
+  warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar), heating element on,
+  answer rate below `warnung.antwortquote.min` % (default 90) for 10 minutes, more than `warnung.starts.proStunde`
+  compressor starts within an hour (default 6), a failed check of the service.
+- **Check of the service** 30 s after the start and every 15 minutes: InfluxDB reachable, reading the bucket (and the
+  bucket of the outdoor temperature), writing, USBtin connected and answering, mail configured.
+- **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, when a
+  new entry appears in the fault list and when a warning becomes active.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the
 real power estimated from the inverter's apparent power; both are skipped during the start phase and the defrost. The

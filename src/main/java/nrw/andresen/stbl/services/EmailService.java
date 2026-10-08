@@ -18,6 +18,7 @@ public class EmailService {
 
     private final ObjectProvider<JavaMailSender> emailSender;
     private final String to;
+    private volatile String letzterFehler;
 
     public EmailService(ObjectProvider<JavaMailSender> emailSender, @Value("${stbl.mail.to:}") String to) {
         this.emailSender = emailSender;
@@ -39,8 +40,21 @@ public class EmailService {
             message.setSubject(subject);
             message.setText(text);
             sender.send(message);
+            letzterFehler = null;
         } catch (Exception e) {
+            letzterFehler = e.getMessage();
             logger.warn("Sending mail failed: " + e.getMessage());
         }
+    }
+
+    public boolean isKonfiguriert() {
+        return !to.isBlank() && emailSender.getIfAvailable() != null;
+    }
+
+    /**
+     * Error of the last mail, null if it was sent
+     */
+    public String getLetzterFehler() {
+        return letzterFehler;
     }
 }

@@ -26,6 +26,10 @@ public class StatusService {
     private CanBus can;
     @Autowired
     private WaermebedarfVergleich vergleich;
+    @Autowired
+    private Tagesuebersicht tagesuebersicht;
+    @Autowired
+    private Ueberwachung ueberwachung;
 
     // What the CAN nodes are, as far as known from the answered values
     private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
@@ -38,8 +42,8 @@ public class StatusService {
 
     private static final DateTimeFormatter DATUM = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
-    private static String zahl(double wert, int stellen) {
-        return String.format(Locale.GERMANY, "%." + stellen + "f", wert);
+    private static String zahl(Double wert, int stellen) {
+        return wert == null ? "–" : String.format(Locale.GERMANY, "%." + stellen + "f", wert);
     }
 
     private static String zeitpunkt(Instant zeit) {
@@ -70,8 +74,10 @@ public class StatusService {
                 .kpi("Inverter (berechnet)", "VA", 0, "LeistungInverter", wp::getLeistungInverter)
                 .info("Momentane Leistungsaufnahme des Verdichter-Inverters. Die echte Wirkleistung ist bei kleiner "
                         + "Last bis etwa 20 % niedriger.")
-                .formula(Waermepumpe.FORMEL_SCHEINLEISTUNG)
-                .card("Betrieb")
+                .formula(Waermepumpe.FORMEL_SCHEINLEISTUNG);
+        tagesuebersicht(page);
+        warnungen(page);
+        page.card("Betrieb")
                 .pill("Verdichter", wp::isVerdichterOn)
                 .info("Verdichter läuft, aus dem Betriebsstatus des Wärmepumpenmanagers (0x180).")
                 .pill("Pufferladepumpe", wp::isPufferladepumpeOn)
@@ -256,7 +262,9 @@ public class StatusService {
         }
         page.note("Fehlerliste des WPM (DIAGNOSE → FEHLERLISTE), 20 Einträge, der neueste zuerst. Alle 10 Minuten "
                         + "gelesen, ein neuer Eintrag wird per Mail gemeldet.")
-                .card("USB-Adapter")
+;
+        dienst(page);
+        page.card("USB-Adapter")
                 .pill("Verbindung", can::isAdapterVerbunden)
                 .info("USBtin am Pi verbunden und CAN-Kanal geöffnet.")
                 .text("Port", can.getPort() + " · " + can.getBitrate() / 1000 + " kbit/s")
@@ -308,5 +316,64 @@ public class StatusService {
                 .note("Werte der letzten vollen Minute, je Gerät die Nachrichten pro Minute. Mit can.logall=false "
                         + "kommen nur die Antworten an diesen Dienst an.")
                 .render();
+    }
+
+    private void tagesuebersicht(StatusPage page) {
+        page.card("Tagesübersicht");
+        Tagesuebersicht.Tag heute = tagesuebersicht.getHeute();
+        Tagesuebersicht.Tag gestern = tagesuebersicht.getGestern();
+        if (heute == null || gestern == null) {
+            page.text("Tage", "wird berechnet");
+            return;
+        }
+        Tagesuebersicht.Vergleichstage aehnlich = tagesuebersicht.getAehnlicheTage();
+        List<List<String>> zeilen = new ArrayList<>();
+        zeilen.add(List.of("Außen °C", zahl(heute.aussentemp(), 1), zahl(gestern.aussentemp(), 1),
+                aehnlich == null ? "–" : zahl(aehnlich.aussentemp(), 1)));
+        zeilen.add(List.of("Starts", String.valueOf(heute.starts()), String.valueOf(gestern.starts()),
+                aehnlich == null ? "–" : zahl(aehnlich.starts(), 1)));
+        zeilen.add(List.of("Laufzeit h", zahl(heute.laufzeitH(), 1), zahl(gestern.laufzeitH(), 1),
+                aehnlich == null ? "–" : zahl(aehnlich.laufzeitH(), 1)));
+        zeilen.add(List.of("h je Start", zahl(heute.laufzeitProStart(), 2), zahl(gestern.laufzeitProStart(), 2),
+                aehnlich == null ? "–" : zahl(aehnlich.laufzeitProStart(), 2)));
+        zeilen.add(List.of("Wärme kWh", zahl(heute.waermeKWh(), 1), zahl(gestern.waermeKWh(), 1),
+                aehnlich == null ? "–" : zahl(aehnlich.waermeKWh(), 1)));
+        zeilen.add(List.of("Strom kWh", zahl(heute.stromKWh(), 1), zahl(gestern.stromKWh(), 1), "–"));
+        zeilen.add(List.of("Arbeitszahl", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1), "–"));
+        zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
+                "–"));
+        page.table(List.of("", "Heute", "Gestern", "Ähnliche Tage"), zeilen)
+                .note("Heute bis jetzt. Starts und Laufzeit aus der Inverterleistung, Wärme aus dem Wärmezähler. "
+                        + "Strom (berechnet) = geschätzte Wirkleistung des Verdichter-Inverters ohne Pumpe und "
+                        + "Regelung, Arbeitszahl = Wärme ÷ Strom. „Ähnliche Tage“: Mittel der Tage seit "
+                        + vergleich.getStart().format(DATUM) + " mit höchstens "
+                        + zahl(Tagesuebersicht.AEHNLICH_K, 1) + " K Unterschied zum Tagesmittel von gestern"
+                        + (aehnlich == null ? "" : " (" + aehnlich.tage() + " Tage)") + ". Berechnet "
+                        + zeitpunkt(tagesuebersicht.getBerechnet()) + ", alle 10 Minuten neu.");
+    }
+
+    private void warnungen(StatusPage page) {
+        page.card("Warnungen");
+        for (Warnung warnung : ueberwachung.getWarnungen()) {
+            String seit = warnung.isAktiv()
+                    ? Fehlerliste.ZEITFORMAT.format(warnung.getAktivSeit().atZone(ZoneId.systemDefault())) : null;
+            page.text(warnung.getName(), seit == null ? "nein" : "seit " + seit + ": " + warnung.getText())
+                    .info(warnung.getRegel());
+        }
+        page.note("Jede Minute geprüft. Wird eine Warnung aktiv, kommt eine Mail an stbl.mail.to. Neue Einträge der "
+                + "Fehlerliste werden ebenfalls gemeldet.");
+    }
+
+    private void dienst(StatusPage page) {
+        page.card("Dienst");
+        List<Ueberwachung.Pruefung> pruefungen = ueberwachung.getPruefungen();
+        if (pruefungen.isEmpty()) {
+            page.text("Prüfung", "läuft 30 s nach dem Start");
+        }
+        for (Ueberwachung.Pruefung pruefung : pruefungen) {
+            page.text(pruefung.name(), pruefung.text()).info(pruefung.erklaerung());
+        }
+        page.note("Geprüft " + (ueberwachung.getGeprueft() == null ? "noch nicht"
+                : zeitpunkt(ueberwachung.getGeprueft())) + ", alle 15 Minuten neu.");
     }
 }
