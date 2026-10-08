@@ -3,6 +3,7 @@ package nrw.andresen.stbl.services.can;
 import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -24,6 +25,8 @@ public class Fehlerliste {
     public static final int EINTRAEGE = 20;
     public static final int FELDER_JE_EINTRAG = 7;
     public static final int FELDER = EINTRAEGE * FELDER_JE_EINTRAG;
+    // Time of an entry as shown on the status page and in the mail
+    public static final DateTimeFormatter ZEITFORMAT = DateTimeFormatter.ofPattern("dd.MM.yy HH:mm");
 
     // Codes seen in the list and their text on the WPM display; 8255-8258 from the WPM 3 manual
     private static final Map<Integer, String> TEXTE = Map.of(
