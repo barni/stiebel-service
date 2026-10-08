@@ -474,27 +474,29 @@ public class Waermepumpe {
     public List<Einstellung> getEinstellungen() {
         return List.of(
                 new Einstellung("Auslegungstemperatur", "Auslegungstemperatur", "°C", 1, this::getAuslegungstemperatur,
-                        "Tiefste Außentemperatur, für die die Anlage ausgelegt ist." + WPM),
+                        "Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Standard −15 °C." + WPM),
                 new Einstellung("Waermebedarf", "Wärmebedarf", "kW", 1, this::getWaermebedarf,
                         "Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
-                                + "hochregelt." + WPM),
+                                + "hochregelt. Standard 15 kW, gemessen ~6,4 kW bei −7 °C." + WPM),
                 new Einstellung("SollSpreizung", "Soll-Spreizung", "K", 1, this::getSollSpreizung,
                         "Gewünschter Unterschied zwischen Vor- und Rücklauf." + WPM),
                 new Einstellung("Bivalenztemperatur", "Bivalenztemperatur", "°C", 1, this::getBivalenztemperatur,
-                        "Unterhalb dieser Außentemperatur darf der Heizstab zuheizen." + WPM),
+                        "Unterhalb dieser Außentemperatur darf der Heizstab zuheizen. Standard −20 °C." + WPM),
                 new Einstellung("EinsatzgrenzeHeizen", "Einsatzgrenze Heizen", "°C", 1, this::getEinsatzgrenzeHeizen,
-                        "Unterhalb dieser Außentemperatur heizt nur noch der Heizstab." + WPM),
+                        "Unterhalb dieser Außentemperatur heizt nur noch der Heizstab. Standard −20 °C." + WPM),
                 new Einstellung("SilentLeistung", "Silent Leistung", "%", 0, this::getSilentLeistung,
-                        "Begrenzung der Verdichterleistung im leisen Silent-Betrieb." + WPM),
+                        "Begrenzung der Verdichterleistung im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE "
+                                + "an ist). Standard 100 %." + WPM),
                 new Einstellung("SilentLuefter", "Silent Lüfter", "%", 0, this::getSilentLuefter,
-                        "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb." + WPM),
+                        "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE an "
+                                + "ist). Standard 100 %." + WPM),
                 new Einstellung("Komforttemperatur", "Komfort-Temperatur", "°C", 1,
-                        () -> getScaledValue(RAUMSOLLTEMP_I, 10), "Raum-Solltemperatur im Komfortbetrieb." + WPM),
+                        () -> getScaledValue(RAUMSOLLTEMP_I, 10), "Raum-Solltemperatur im Komfortbetrieb. Standard 20 °C." + WPM),
                 new Einstellung("Ecotemperatur", "Eco-Temperatur", "°C", 1,
-                        () -> getScaledValue(RAUMSOLLTEMP_NACHT, 10), "Raum-Solltemperatur im Eco-Betrieb." + WPM),
+                        () -> getScaledValue(RAUMSOLLTEMP_NACHT, 10), "Raum-Solltemperatur im Eco-Betrieb. Standard 20 °C." + WPM),
                 new Einstellung("Heizkurve", "Steigung Heizkurve", "", 2, () -> getScaledValue(HEIZKURVE, 100),
                         "Wie stark die Vorlauftemperatur mit sinkender Außentemperatur steigt. Eine steilere Kurve "
-                                + "heizt mehr, der Verdichter läuft öfter." + WPM),
+                                + "heizt mehr, der Verdichter läuft öfter. Standard 0,6." + WPM),
                 new Einstellung("FusspunktHeizkurve", "Fußpunkt Heizkurve", "", 0,
                         () -> getScaledValue(FUSSPUNKT_HEIZKURVE, 1), "Verschiebung der Heizkurve." + ROH),
                 new Einstellung("Kurvenabstand", "Abstand Heizkurve", "", 0,
@@ -504,17 +506,19 @@ public class Waermepumpe {
                         "Wie stark die Raumtemperatur an der Fernbedienung die Vorlauftemperatur verändert, aus bis "
                                 + "20, Standard 5 (Anleitung WPM 3)." + WPM),
                 new Einstellung("Hysterese", "Hysterese", "", 0, () -> getScaledValue(HYSTERESEZEIT, 1),
-                        "Schaltabstand: wie weit die Temperatur vom Sollwert abweichen darf, bevor der Verdichter "
-                                + "startet oder stoppt. Größer heißt seltener starten." + ROH),
+                        "Einschalthysterese der Wärmepumpe: wie weit die Temperatur vom Sollwert abweichen darf, "
+                                + "bevor der Verdichter startet. Größer heißt seltener starten. 1 bis 10, Standard 1."
+                                + ROH),
                 new Einstellung("Integral", "Integral", "", 0, () -> getScaledValue(INTEGRAL_REGELABWEICHUNG, 1),
                         "Wie viel Regelabweichung sich über die Zeit ansammeln darf, bevor der Verdichter startet. "
                                 + "Größer heißt seltener starten." + ROH),
                 new Einstellung("Stillstandzeit", "Stillstandzeit", "min", 0, () -> getScaledValue(SPERRZEIT, 1),
-                        "Mindestpause zwischen zwei Verdichterstarts." + WPM),
+                        "Mindestpause zwischen zwei Verdichterstarts. Standard 20 min." + WPM),
                 new Einstellung("Mindestlaufzeit", "Mindestlaufzeit", "min", 0,
-                        () -> getScaledValue(MINDESTLAUFZEIT_WE, 1), "Mindestlaufzeit des Verdichters." + WPM),
-                new Einstellung("Schaltwerkdynamik", "Schaltwerkdynamik", "", 0, this::getSchaltwerkdynamik,
-                        "Dynamikzeit des Schaltwerks." + ROH));
+                        () -> getScaledValue(MINDESTLAUFZEIT_WE, 1), "Mindestlaufzeit des Verdichters. Standard 10 min." + WPM),
+                new Einstellung("Reglerdynamik", "Reglerdynamik", "", 0, this::getReglerdynamik,
+                        "Schaltabstand zwischen Verdichter und den Stufen des Heizstabs: klein für schnell "
+                                + "reagierende, groß für träge Heizsysteme. 1 bis 500, Standard 100." + WPM));
     }
 
     private ValueContainer<Double> getRaumeinfluss() throws Exception {
@@ -522,7 +526,7 @@ public class Waermepumpe {
         return new ValueContainer<>((double) littleEndian(msg.getRawValue()), msg.getTimestamp());
     }
 
-    private ValueContainer<Double> getSchaltwerkdynamik() throws Exception {
+    private ValueContainer<Double> getReglerdynamik() throws Exception {
         ElsterMessage msg = nachricht(SCHALTWERKDYNAMIKZEIT);
         return new ValueContainer<>((double) littleEndian(msg.getRawValue()), msg.getTimestamp());
     }
