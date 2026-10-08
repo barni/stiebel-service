@@ -160,13 +160,22 @@ public class StatusPage {
      * Badge in the header, e.g. the compressor state
      */
     public StatusPage badge(String onText, String offText, Callable<ValueContainer<Boolean>> value) {
+        return badge(onText, offText, null, value);
+    }
+
+    /**
+     * Badge in the header with an explanation as tooltip
+     */
+    public StatusPage badge(String onText, String offText, String erklaerung,
+                            Callable<ValueContainer<Boolean>> value) {
         ValueContainer<Boolean> container = call(value);
         if (container == null) {
-            headerBadges.add("<span class=\"badge unknown\">" + offText + " unbekannt</span>");
+            headerBadges.add("<span class=\"badge unknown\">" + badgeText(offText + " unbekannt", erklaerung)
+                    + "</span>");
         } else {
             boolean on = container.getValue();
             headerBadges.add("<span class=\"badge " + (on ? "on" : "off") + "\"><span class=\"dot\"></span>"
-                    + (on ? onText : offText) + "</span>");
+                    + badgeText(on ? onText : offText, erklaerung) + "</span>");
         }
         return this;
     }
@@ -175,11 +184,28 @@ public class StatusPage {
      * Badge only while the state is on, e.g. a defrost; nothing if it is off or unknown
      */
     public StatusPage badgeWennAn(String text, Callable<ValueContainer<Boolean>> value) {
+        return badgeWennAn(text, null, value);
+    }
+
+    /**
+     * Badge only while the state is on, with an explanation as tooltip
+     */
+    public StatusPage badgeWennAn(String text, String erklaerung, Callable<ValueContainer<Boolean>> value) {
         ValueContainer<Boolean> container = call(value);
         if (container != null && container.getValue()) {
-            headerBadges.add("<span class=\"badge on\"><span class=\"dot\"></span>" + attr(text) + "</span>");
+            headerBadges.add("<span class=\"badge on\"><span class=\"dot\"></span>" + badgeText(text, erklaerung)
+                    + "</span>");
         }
         return this;
+    }
+
+    private String badgeText(String text, String erklaerung) {
+        if (erklaerung == null) {
+            return attr(text);
+        }
+        hasTooltip = true;
+        return "<span class=\"calc\" data-tip=\"" + attr(erklaerung) + "\" tabindex=\"0\">" + attr(text)
+                + "<span class=\"info\" aria-hidden=\"true\">ⓘ</span></span>";
     }
 
     /**
@@ -512,6 +538,10 @@ public class StatusPage {
               background: var(--card); color: var(--text); font-size: 12px; font-weight: 400; line-height: 1.4;
               text-transform: none; letter-spacing: 0; box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
             .pill .calc:hover::after, .pill .calc:focus::after { top: calc(100% + 8px); }
+            .badge .calc:hover::after, .badge .calc:focus::after { top: calc(100% + 10px); left: auto; right: 0; }
+            @media (max-width: 640px) {
+              .badge .calc:hover::after, .badge .calc:focus::after { left: 0; right: auto; }
+            }
             """;
 
     private static final String HISTORY_DIALOG = """
