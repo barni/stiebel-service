@@ -223,7 +223,7 @@ public class StatusService {
                 .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", wp::getSilentLuefter, Waermepumpe.MAX_AGE_3600)
                 .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
                 .note("Heizlast bei Auslegungstemperatur und weitere Einstellungen, stündlich abgefragt.")
-                .card("Wärmebedarf-Vergleich");
+                .card("Vergleich Einstellung Wärmebedarf");
         List<WaermebedarfVergleich.Gruppe> gruppen = vergleich.getGruppen();
         if (gruppen.isEmpty()) {
             page.text("Tage", vergleich.getBerechnet() == null ? "wird berechnet" : "keine");
@@ -234,11 +234,11 @@ public class StatusService {
                         zahl(g.startsProTag(), 1), zahl(g.laufzeitProTag(), 1), zahl(g.laufzeitProStart(), 2),
                         zahl(g.waermeProTag(), 0), zahl(g.leistungKW(), 2)));
             }
-            page.table(List.of("Außen", "Wärmebedarf", "Tage", "Starts/Tag", "h/Tag", "h/Start", "kWh/Tag",
+            page.table(List.of("Außen", "Einstellung", "Tage", "Starts/Tag", "h/Tag", "h/Start", "kWh/Tag",
                     "kW im Lauf"), zeilen);
         }
         page.note("Tage seit " + vergleich.getStart().format(DATUM) + " nach Tagesmittel der Außentemperatur und "
-                        + "eingestelltem Wärmebedarf. Starts und Laufzeit aus der Inverterleistung, Wärme aus dem "
+                        + "der Einstellung Wärmebedarf im Wärmepumpenmanager (eingestellter Wert, kein Messwert). Starts und Laufzeit aus der Inverterleistung, Wärme aus dem "
                         + "Wärmezähler, „kW im Lauf“ = Wärme ÷ Laufzeit. Weniger Starts bei gleicher Wärme "
                         + "bedeutet längere, effizientere Läufe. Die Einstellung wird erst seit 22.09.2026 "
                         + "gespeichert, davor gilt der erste gespeicherte Wert. Tage mit Lücken fehlen. Berechnet "
