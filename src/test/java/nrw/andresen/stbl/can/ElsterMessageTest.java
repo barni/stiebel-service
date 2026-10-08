@@ -552,4 +552,15 @@ public class ElsterMessageTest {
         assertEquals("a100fa063d0000", anfrage(0x500, VERDICHTER_DREHZAHL));
         assertEquals("a100fa063f0000", anfrage(0x500, VERDICHTER_EINTRITTSTEMP));
     }
+
+    /**
+     * Code field of the fault list with a code the Elster table does not know (8116 = 0x1fb4)
+     */
+    @Test
+    public void test_fehlercode_unbekannt() {
+        ElsterMessage sut = new ElsterMessage(0x180, new byte[]{(byte) 0xd2, (byte) 0x01, (byte) 0xfa, (byte) 0x0b,
+                (byte) 0x06, (byte) 0x1f, (byte) 0xb4});
+        assertEquals("FEHLERFELD_6", sut.getElsterIndex().getName());
+        assertEquals("INV H ROTORVEKTOR", sut.getValue());
+    }
 }
