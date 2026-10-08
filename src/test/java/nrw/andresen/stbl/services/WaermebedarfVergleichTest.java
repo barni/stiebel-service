@@ -91,4 +91,25 @@ public class WaermebedarfVergleichTest {
         assertThrows(IllegalArgumentException.class, () -> WaermebedarfVergleich.flux(Instant.EPOCH, Instant.EPOCH,
                 "home\") |> drop()", "WP_Aussentemp", null, "mean()", ""));
     }
+
+    @Test
+    public void testVorherNachher() {
+        List<WaermebedarfVergleich.Tag> tage = List.of(
+                new WaermebedarfVergleich.Tag(TAG1, 2, 30, 18, 110, 8.5),
+                new WaermebedarfVergleich.Tag(TAG2, 3, 20, 16, 90, 8.5),
+                new WaermebedarfVergleich.Tag(TAG3, 2, 10, 20, 100, 7.5),
+                new WaermebedarfVergleich.Tag(TAG1, 7, 12, 14, 60, 8.5));
+        List<WaermebedarfVergleich.Vergleich> zeilen =
+                WaermebedarfVergleich.vorherNachher(WaermebedarfVergleich.vergleich(tage));
+        assertEquals(2, zeilen.size());
+        // 0 to 5 degC: the old setting before the arrow, the setting used last after it
+        assertEquals("0 bis 5 °C", zeilen.get(0).band());
+        assertEquals(8.5, zeilen.get(0).vorher().waermebedarf());
+        assertEquals(TAG2, zeilen.get(0).vorher().bis());
+        assertEquals(7.5, zeilen.get(0).nachher().waermebedarf());
+        // Only days with the old setting: no value before
+        assertEquals("5 bis 10 °C", zeilen.get(1).band());
+        assertEquals(null, zeilen.get(1).vorher());
+        assertEquals(8.5, zeilen.get(1).nachher().waermebedarf());
+    }
 }

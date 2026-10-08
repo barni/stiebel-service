@@ -225,7 +225,16 @@ public class StatusPageTest {
                 .table(java.util.List.of("Außen", "kW"), java.util.List.of(java.util.List.of("0 bis 5 °C", "<1>")))
                 .render();
         assertTrue(html.contains("<table><thead><tr><th>Außen</th><th>kW</th></tr></thead>"));
-        assertTrue(html.contains("<td>0 bis 5 °C</td><td>&lt;1&gt;</td>"));
+        assertTrue(html.contains("<td data-label=\"Außen\">0 bis 5 °C</td><td data-label=\"kW\">&lt;1&gt;</td>"));
+        assertTrue(html.contains("<div class=\"tbl\">"));
+
+        String breit = new StatusPage()
+                .card("Vergleich")
+                .breit()
+                .table(java.util.List.of("Außen"), java.util.List.of(java.util.List.of("0 bis 5 °C")), true)
+                .render();
+        assertTrue(breit.contains("<article class=\"card breit\">"));
+        assertTrue(breit.contains("<div class=\"tbl stapeln\">"));
     }
 
     @Test

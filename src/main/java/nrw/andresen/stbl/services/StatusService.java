@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.ToDoubleFunction;
 
 /**
  * HTML status page with all current values, the fault list and the state of the CAN connection
@@ -296,22 +297,30 @@ public class StatusService {
                 .info("Realistische Arbeitszahl mit korrigiertem Stromverbrauch.")
                 .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + Waermepumpe.zahl(Waermepumpe.STROMZAEHLER_KORREKTUR)
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
-                .card("Vergleich Einstellung Wärmebedarf");
-        List<WaermebedarfVergleich.Gruppe> gruppen = vergleich.getGruppen();
-        if (gruppen.isEmpty()) {
+                .card("Vergleich Einstellung Wärmebedarf")
+                .breit();
+        List<WaermebedarfVergleich.Vergleich> vergleiche = vergleich.getVergleich();
+        if (vergleiche.isEmpty()) {
             page.text("Tage", vergleich.getBerechnet() == null ? "wird berechnet" : "keine");
         } else {
             List<List<String>> zeilen = new ArrayList<>();
-            for (WaermebedarfVergleich.Gruppe g : gruppen) {
-                zeilen.add(List.of(g.band(), zahl(g.waermebedarf(), 1) + " kW", String.valueOf(g.tage()),
-                        zahl(g.startsProTag(), 1), zahl(g.laufzeitProTag(), 1), zahl(g.laufzeitProStart(), 2),
-                        zahl(g.waermeProTag(), 0), zahl(g.leistungKW(), 2)));
+            for (WaermebedarfVergleich.Vergleich v : vergleiche) {
+                WaermebedarfVergleich.Gruppe alt = v.vorher();
+                WaermebedarfVergleich.Gruppe neu = v.nachher();
+                zeilen.add(List.of(
+                        v.band() + " (" + (alt == null ? "" : alt.tage() + " / ") + neu.tage() + ")",
+                        (alt == null ? "" : zahl(alt.waermebedarf(), 1) + " → ") + zahl(neu.waermebedarf(), 1) + " kW",
+                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::startsProTag, 1),
+                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::laufzeitProStart, 2),
+                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::waermeProTag, 0),
+                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::leistungKW, 2)));
             }
-            page.table(List.of("Außen", "Einstellung", "Tage", "Starts/Tag", "h/Tag", "h/Start", "kWh/Tag",
-                    "kW im Lauf"), zeilen);
+            page.table(List.of("Außen (Tage)", "Einstellung", "Starts/Tag", "h/Start", "kWh/Tag", "kW im Lauf"),
+                    zeilen, true);
         }
         page.note("Tage seit " + vergleich.getStart().format(DATUM) + " nach Tagesmittel der Außentemperatur und "
                         + "der Einstellung Wärmebedarf im Wärmepumpenmanager (eingestellter Wert, kein Messwert). "
+                        + "Gibt es in einem Bereich Tage mit zwei Einstellungen, steht der frühere Wert vor dem Pfeil. "
                         + "Weniger Starts bei gleicher Wärme bedeutet längere, effizientere Läufe. „kW im Lauf“ = "
                         + "Wärme ÷ Laufzeit. Stand " + (vergleich.getBerechnet() == null ? "–"
                         : zeitpunkt(vergleich.getBerechnet())) + ".")
@@ -407,5 +416,15 @@ public class StatusService {
                             + " Nachrichten pro Minute, „seit“ zeigt, wann es zuletzt gesendet hat.");
         }
         page.note("Werte der letzten vollen Minute.");
+    }
+
+    /**
+     * Value of the setting used before and the current one, e.g. "23,5 → 18,2", only the current one without days
+     * of an earlier setting
+     */
+    private static String vorherNachher(WaermebedarfVergleich.Gruppe vorher, WaermebedarfVergleich.Gruppe nachher,
+                                        ToDoubleFunction<WaermebedarfVergleich.Gruppe> wert, int stellen) {
+        String neu = zahl(wert.applyAsDouble(nachher), stellen);
+        return vorher == null ? neu : zahl(wert.applyAsDouble(vorher), stellen) + " → " + neu;
     }
 }

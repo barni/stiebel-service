@@ -55,10 +55,11 @@ public class WaermebedarfVergleich {
     }
 
     /**
-     * Mean values of the days of one temperature band with one setting
+     * Mean values of the days of one temperature band with one setting, bis is the last of these days
      */
     public record Gruppe(String band, double waermebedarf, int tage, double aussentemp, double startsProTag,
-                         double laufzeitProTag, double laufzeitProStart, double waermeProTag, double leistungKW) {
+                         double laufzeitProTag, double laufzeitProStart, double waermeProTag, double leistungKW,
+                         LocalDate bis) {
     }
 
     /**
@@ -190,9 +191,37 @@ public class WaermebedarfVergleich {
             Tag erster = gruppe.get(0);
             gruppen.add(new Gruppe(bandName(band(erster.aussentemp())), erster.waermebedarf(), n,
                     gruppe.stream().mapToDouble(Tag::aussentemp).average().orElse(0), starts / n, laufzeit / n,
-                    starts > 0 ? laufzeit / starts : 0, waerme / n, laufzeit > 0 ? waerme / laufzeit : 0));
+                    starts > 0 ? laufzeit / starts : 0, waerme / n, laufzeit > 0 ? waerme / laufzeit : 0,
+                    gruppe.stream().map(Tag::datum).max(Comparator.naturalOrder()).orElse(null)));
         }
         return gruppen;
+    }
+
+    /**
+     * One row per temperature band: the setting used last and, if the band also has days with another setting, the
+     * one used before it
+     */
+    public record Vergleich(String band, Gruppe vorher, Gruppe nachher) {
+    }
+
+    /**
+     * Groups by band for the table, the coldest band first
+     */
+    static List<Vergleich> vorherNachher(List<Gruppe> gruppen) {
+        Map<String, List<Gruppe>> jeBand = new LinkedHashMap<>();
+        gruppen.forEach(g -> jeBand.computeIfAbsent(g.band(), k -> new ArrayList<>()).add(g));
+        List<Vergleich> zeilen = new ArrayList<>();
+        for (Map.Entry<String, List<Gruppe>> band : jeBand.entrySet()) {
+            List<Gruppe> zeitlich = band.getValue().stream().sorted(Comparator.comparing(Gruppe::bis)).toList();
+            Gruppe nachher = zeitlich.get(zeitlich.size() - 1);
+            Gruppe vorher = zeitlich.size() > 1 ? zeitlich.get(zeitlich.size() - 2) : null;
+            zeilen.add(new Vergleich(band.getKey(), vorher, nachher));
+        }
+        return zeilen;
+    }
+
+    public List<Vergleich> getVergleich() {
+        return vorherNachher(gruppen);
     }
 
     /**
