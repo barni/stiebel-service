@@ -294,28 +294,14 @@ public class StatusService {
                 .info("Realistische Arbeitszahl mit korrigiertem Stromverbrauch.")
                 .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + Waermepumpe.zahl(Waermepumpe.STROMZAEHLER_KORREKTUR)
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
-                .card("Einstellungen")
-                .row("Auslegungstemperatur", "°C", 1, "Einstellung_Auslegungstemperatur",
-                        wp::getAuslegungstemperatur, stunde)
-                .info("Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Einstellung im Wärmepumpenmanager, "
-                        + "gelesen von 0x514.")
-                .row("Wärmebedarf", "kW", 1, "Einstellung_Waermebedarf", wp::getWaermebedarf, stunde)
-                .info("Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
-                        + "hochregelt. Einstellung im Wärmepumpenmanager.")
-                .row("Soll-Spreizung", "K", 1, "Einstellung_SollSpreizung", wp::getSollSpreizung, stunde)
-                .info("Gewünschter Unterschied zwischen Vor- und Rücklauf. Einstellung im Wärmepumpenmanager.")
-                .row("Bivalenztemperatur", "°C", 1, "Einstellung_Bivalenztemperatur", wp::getBivalenztemperatur,
-                        stunde)
-                .info("Unterhalb dieser Außentemperatur darf der Heizstab zuheizen. Einstellung im Wärmepumpenmanager.")
-                .row("Einsatzgrenze Heizen", "°C", 1, "Einstellung_EinsatzgrenzeHeizen", wp::getEinsatzgrenzeHeizen,
-                        stunde)
-                .info("Unterhalb dieser Außentemperatur heizt die Wärmepumpe nicht mehr, nur noch der Heizstab. "
-                        + "Einstellung im Wärmepumpenmanager.")
-                .row("Silent Leistung", "%", 0, "Einstellung_SilentLeistung", wp::getSilentLeistung, stunde)
-                .info("Begrenzung der Verdichterleistung im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
-                .row("Silent Lüfter", "%", 0, "Einstellung_SilentLuefter", wp::getSilentLuefter, stunde)
-                .info("Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb. Einstellung im Wärmepumpenmanager.")
-                .note("Stündlich vom Wärmepumpenmanager gelesen.")
+                .card("Einstellungen");
+        for (Waermepumpe.Einstellung einstellung : wp.getEinstellungen()) {
+            page.row(einstellung.label(), einstellung.unit(), einstellung.decimals(),
+                    "Einstellung_" + einstellung.name(), einstellung.wert(), stunde).info(einstellung.info());
+        }
+        page.note("Stündlich vom Wärmepumpenmanager gelesen, eine Änderung wird per Mail gemeldet."
+                        + (ueberwachung.getEinstellungsaenderungen().isEmpty() ? ""
+                        : " Zuletzt geändert: " + String.join("; ", ueberwachung.getEinstellungsaenderungen()) + "."))
                 .card("Laufzeiten seit Inbetriebnahme")
                 .row("Laufzeit Verdichter Heizen", "h", 0, "LaufzeitVerdichterHeizen", wp::getLaufzeitVerdichterHeizen)
                 .info("Betriebsstunden des Verdichters im Heizbetrieb seit Inbetriebnahme (0x514).")

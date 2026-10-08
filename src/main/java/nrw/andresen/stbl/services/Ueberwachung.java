@@ -1,6 +1,7 @@
 package nrw.andresen.stbl.services;
 
 import nrw.andresen.stbl.services.can.CanStatistik;
+import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
 import org.slf4j.Logger;
@@ -12,11 +13,14 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * Checks the heat pump and the service every minute and sends a mail when a warning becomes active. Every 15 minutes
@@ -55,6 +59,9 @@ public class Ueberwachung {
     // Compressor starts counter of the last hour
     private final Deque<ValueContainer<Double>> startsVerlauf = new ArrayDeque<>();
     private volatile List<Pruefung> pruefungen = List.of();
+    // Last known value of each setting and the last changes as text, the newest first
+    private final Map<String, Double> einstellungen = new HashMap<>();
+    private final Deque<String> einstellungsaenderungen = new ArrayDeque<>();
     private volatile Instant geprueft;
 
     /**
@@ -93,6 +100,75 @@ public class Ueberwachung {
 
     public List<Warnung> getWarnungen() {
         return List.of(druck, druckHoch, heizstab, antwortquote, starts, dienst);
+    }
+
+    /**
+     * Up to five changes of the settings seen since the start of the service, the newest first
+     */
+    public synchronized List<String> getEinstellungsaenderungen() {
+        return List.copyOf(einstellungsaenderungen);
+    }
+
+    /**
+     * Compares the settings with the values known before, 5 minutes after the start and then every hour. After a
+     * start the values stored in InfluxDB are the reference, so a change while the service was stopped is found too.
+     */
+    @Scheduled(initialDelay = 300000, fixedRate = 3600000)
+    public synchronized void einstellungenPruefen() {
+        List<String> geaendert = new ArrayList<>();
+        Instant jetzt = Instant.now();
+        for (Waermepumpe.Einstellung einstellung : wp.getEinstellungen()) {
+            Double wert;
+            try {
+                ValueContainer<Double> container = einstellung.wert().call();
+                if (container.getTimestamp().isBefore(jetzt.minus(Waermepumpe.MAX_AGE_3600))) {
+                    continue;
+                }
+                wert = container.getValue();
+            } catch (Exception e) {
+                continue;
+            }
+            Double vorher = einstellungen.get(einstellung.name());
+            if (vorher == null) {
+                try {
+                    vorher = influx.letzterWert("Einstellung_" + einstellung.name());
+                } catch (Exception e) {
+                    // no reference, the next hour compares with this value
+                }
+            }
+            einstellungen.put(einstellung.name(), wert);
+            String aenderung = aenderung(einstellung, vorher, wert);
+            if (aenderung != null) {
+                geaendert.add(aenderung);
+            }
+        }
+        if (!geaendert.isEmpty()) {
+            String text = String.join("\n", geaendert);
+            logger.warn("Settings changed: " + text.replace("\n", "; "));
+            mail.sendAlert("Wärmepumpe: Einstellung geändert", "Geänderte Einstellungen im Wärmepumpenmanager:\n"
+                    + text + "\n\nDie Auswirkung zeigen der Vergleich Einstellung Wärmebedarf und die Starts auf der "
+                    + "Statusseite.");
+            String zeit = Fehlerliste.ZEITFORMAT.format(jetzt.atZone(ZoneId.systemDefault()));
+            for (String aenderung : geaendert) {
+                einstellungsaenderungen.addFirst(zeit + " " + aenderung);
+            }
+            while (einstellungsaenderungen.size() > 5) {
+                einstellungsaenderungen.removeLast();
+            }
+        }
+    }
+
+    /**
+     * Text of a change, e.g. "Steigung Heizkurve: 0,35 → 0,40", null if the value is unchanged or unknown before
+     */
+    static String aenderung(Waermepumpe.Einstellung einstellung, Double vorher, double wert) {
+        if (vorher == null || Math.abs(vorher - wert) < 1e-6) {
+            return null;
+        }
+        String format = "%." + einstellung.decimals() + "f";
+        String einheit = einstellung.unit().isEmpty() ? "" : " " + einstellung.unit();
+        return einstellung.label() + ": " + String.format(Locale.GERMANY, format, vorher) + " → "
+                + String.format(Locale.GERMANY, format, wert) + einheit;
     }
 
     public List<Pruefung> getPruefungen() {

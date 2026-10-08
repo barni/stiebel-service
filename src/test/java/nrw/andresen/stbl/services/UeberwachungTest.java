@@ -70,4 +70,24 @@ public class UeberwachungTest {
         // The same answer is kept only once
         assertEquals(1, verlauf.size());
     }
+
+    @Test
+    public void testEinstellungAenderung() {
+        Waermepumpe.Einstellung heizkurve = new Waermepumpe.Einstellung("Heizkurve", "Steigung Heizkurve", "", 2,
+                null, "");
+        Waermepumpe.Einstellung stillstand = new Waermepumpe.Einstellung("Stillstandzeit", "Stillstandzeit", "min", 0,
+                null, "");
+        assertEquals("Steigung Heizkurve: 0,35 → 0,40", Ueberwachung.aenderung(heizkurve, 0.35, 0.40));
+        assertEquals("Stillstandzeit: 20 → 30 min", Ueberwachung.aenderung(stillstand, 20d, 30));
+        // Unchanged or nothing known before
+        assertNull(Ueberwachung.aenderung(heizkurve, 0.35, 0.35));
+        assertNull(Ueberwachung.aenderung(heizkurve, null, 0.35));
+    }
+
+    @Test
+    public void testLittleEndian() {
+        assertEquals(25, Waermepumpe.littleEndian((short) 0x1900));
+        assertEquals(1, Waermepumpe.littleEndian((short) 0x0100));
+        assertEquals(0x0201, Waermepumpe.littleEndian((short) 0x0102));
+    }
 }
