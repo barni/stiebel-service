@@ -44,6 +44,7 @@ public class WaermebedarfVergleich {
     private final String temperaturBucket;
     private final String temperaturEntity;
     private volatile List<Gruppe> gruppen = List.of();
+    private volatile List<Tag> tage = List.of();
     private volatile Instant berechnet;
 
     /**
@@ -80,7 +81,8 @@ public class WaermebedarfVergleich {
     @Scheduled(initialDelay = 60000, fixedRate = 6 * 3600000)
     public void berechnen() {
         try {
-            gruppen = vergleich(tage());
+            tage = tage();
+            gruppen = vergleich(tage);
             berechnet = Instant.now();
         } catch (Exception e) {
             logger.warn("Comparison of the setting Waermebedarf failed: " + e.getMessage());
@@ -89,6 +91,31 @@ public class WaermebedarfVergleich {
 
     public List<Gruppe> getGruppen() {
         return gruppen;
+    }
+
+    /**
+     * Complete days of the last calculation
+     */
+    public List<Tag> getTage() {
+        return tage;
+    }
+
+    /**
+     * Bucket of the outdoor temperature if it is not the bucket of the service, otherwise null
+     */
+    public String getTemperaturBucket() {
+        return temperaturEntity.isEmpty() || temperaturBucket.isEmpty() ? null : temperaturBucket;
+    }
+
+    /**
+     * Daily mean of the outdoor temperature from the configured source
+     */
+    public Map<LocalDate, Double> aussentemperatur(Instant von, Instant bis) {
+        String bucket = influx.getBucket();
+        return temperaturEntity.isEmpty()
+                ? tageswerte(von, bis, bucket, "WP_Aussentemp", null, "mean()", "")
+                : tageswerte(von, bis, temperaturBucket.isEmpty() ? bucket : temperaturBucket, "°C",
+                temperaturEntity, "mean()", "");
     }
 
     public LocalDate getStart() {
@@ -111,10 +138,7 @@ public class WaermebedarfVergleich {
                 "integral(unit: 1h)",
                 " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1.0 else 0.0}))");
         Map<LocalDate, Double> waerme = tageswerte(von, bis, bucket, "WP_AbgabeWaerme", null, "spread()", "");
-        Map<LocalDate, Double> temperatur = temperaturEntity.isEmpty()
-                ? tageswerte(von, bis, bucket, "WP_Aussentemp", null, "mean()", "")
-                : tageswerte(von, bis, temperaturBucket.isEmpty() ? bucket : temperaturBucket, "°C",
-                temperaturEntity, "mean()", "");
+        Map<LocalDate, Double> temperatur = aussentemperatur(von, bis);
         Map<LocalDate, Double> einstellung = tageswerte(von, bis, bucket, "WP_Einstellung_Waermebedarf", null,
                 "last()", "");
         return tage(werte, starts, laufzeit, waerme, temperatur, einstellung);

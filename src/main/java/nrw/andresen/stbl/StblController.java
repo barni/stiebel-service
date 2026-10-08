@@ -2,6 +2,8 @@ package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.CanBus;
 import nrw.andresen.stbl.services.StatusService;
+import nrw.andresen.stbl.services.Tagesuebersicht;
+import nrw.andresen.stbl.services.Ueberwachung;
 import nrw.andresen.stbl.services.WaermebedarfVergleich;
 import nrw.andresen.stbl.services.Waermepumpe;
 import nrw.andresen.stbl.services.can.Fehlerliste;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -52,6 +55,20 @@ public class StblController {
     private StatusService statusService;
     @Autowired
     private WaermebedarfVergleich waermebedarfVergleich;
+    @Autowired
+    private Tagesuebersicht tagesuebersicht;
+    @Autowired
+    private Ueberwachung ueberwachung;
+
+    record Tage(Tagesuebersicht.Tag heute, Tagesuebersicht.Tag gestern, Tagesuebersicht.Vergleichstage aehnlich) {
+    }
+
+    record WarnungStatus(String name, boolean aktiv, Instant seit, String text, String regel) {
+    }
+
+    record UeberwachungStatus(List<WarnungStatus> warnungen, List<Ueberwachung.Pruefung> pruefungen,
+                              Instant geprueft) {
+    }
     @Autowired
     private InfluxController influxController;
 
@@ -117,6 +134,24 @@ public class StblController {
     @RequestMapping("/waermebedarf")
     public List<WaermebedarfVergleich.Gruppe> waermebedarf() {
         return waermebedarfVergleich.getGruppen();
+    }
+
+    /**
+     * Starts, run time, heat, estimated electric energy, efficiency and defrosts of today and yesterday
+     */
+    @RequestMapping("/tagesuebersicht")
+    public Tage tagesuebersicht() {
+        return new Tage(tagesuebersicht.getHeute(), tagesuebersicht.getGestern(), tagesuebersicht.getAehnlicheTage());
+    }
+
+    /**
+     * Active warnings and the result of the checks of the service
+     */
+    @RequestMapping("/ueberwachung")
+    public UeberwachungStatus ueberwachung() {
+        return new UeberwachungStatus(ueberwachung.getWarnungen().stream()
+                .map(w -> new WarnungStatus(w.getName(), w.isAktiv(), w.getAktivSeit(), w.getText(), w.getRegel()))
+                .toList(), ueberwachung.getPruefungen(), ueberwachung.getGeprueft());
     }
 
     @RequestMapping("/aufnahmeLeistung")

@@ -7,6 +7,8 @@ import com.influxdb.client.InfluxDBClientOptions;
 import com.influxdb.client.WriteApi;
 import com.influxdb.client.WriteOptions;
 import com.influxdb.client.domain.WritePrecision;
+import com.influxdb.client.write.events.WriteErrorEvent;
+import com.influxdb.client.write.events.WriteSuccessEvent;
 import com.influxdb.client.write.Point;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
@@ -34,6 +36,10 @@ public class InfluxController {
     private String bucket;
     private String org;
     private WriteApi writeApi;
+    // Writing is asynchronous, the result of the last batch is kept for the check of the service
+    private volatile Instant letzterSchreiberfolg;
+    private volatile Instant letzterSchreibfehler;
+    private volatile String schreibfehler;
 
     /**
      * Time series of one stored value, times in epoch milliseconds
@@ -51,6 +57,11 @@ public class InfluxController {
                         .authenticateToken(token.toCharArray()).org(org).bucket(bucket).okHttpClient(http).build())
                 .setLogLevel(LogLevel.NONE);
         writeApi = client.getWriteApi(WriteOptions.builder().flushInterval(5_000).build());
+        writeApi.listenEvents(WriteSuccessEvent.class, event -> letzterSchreiberfolg = Instant.now());
+        writeApi.listenEvents(WriteErrorEvent.class, event -> {
+            letzterSchreibfehler = Instant.now();
+            schreibfehler = event.getThrowable().getMessage();
+        });
 
     }
 
@@ -108,6 +119,35 @@ public class InfluxController {
             }
         }
         return werte;
+    }
+
+    /**
+     * True if InfluxDB answers
+     */
+    public boolean erreichbar() {
+        return Boolean.TRUE.equals(client.ping());
+    }
+
+    /**
+     * Reads one value of the last day from the bucket, throws if the token has no read access
+     */
+    public void lesen(String bucket) {
+        if (!SERIES_NAME.matcher(bucket).matches()) {
+            throw new IllegalArgumentException("Unbekannter Bucket: " + bucket);
+        }
+        client.getQueryApi().query("from(bucket: \"" + bucket + "\") |> range(start: -1d) |> limit(n: 1)", org);
+    }
+
+    public Instant getLetzterSchreiberfolg() {
+        return letzterSchreiberfolg;
+    }
+
+    public Instant getLetzterSchreibfehler() {
+        return letzterSchreibfehler;
+    }
+
+    public String getSchreibfehler() {
+        return schreibfehler;
     }
 
     public String getBucket() {
