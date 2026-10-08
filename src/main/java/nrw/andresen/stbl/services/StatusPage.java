@@ -67,6 +67,8 @@ public class StatusPage {
         // Rows and notes in their order
         final List<Object> content = new ArrayList<>();
         final List<Item> pills = new ArrayList<>();
+        // Spans the whole width, e.g. for a wide table
+        boolean breit;
 
         Card(String title) {
             this.title = title;
@@ -99,6 +101,14 @@ public class StatusPage {
         }
         List<Card> cards = bereiche.get(bereiche.size() - 1).cards;
         return cards.get(cards.size() - 1);
+    }
+
+    /**
+     * The current card spans the whole width
+     */
+    public StatusPage breit() {
+        current().breit = true;
+        return this;
     }
 
     /**
@@ -274,12 +284,23 @@ public class StatusPage {
      * Table with a header row, the texts are escaped; the first column is a label, the others are right aligned
      */
     public StatusPage table(List<String> kopf, List<List<String>> zeilen) {
-        StringBuilder html = new StringBuilder("<div class=\"tbl\"><table><thead><tr>");
+        return table(kopf, zeilen, false);
+    }
+
+    /**
+     * Table; stapeln shows each row as a block with the column names on a narrow screen instead of a wide table
+     */
+    public StatusPage table(List<String> kopf, List<List<String>> zeilen, boolean stapeln) {
+        StringBuilder html = new StringBuilder("<div class=\"tbl" + (stapeln ? " stapeln" : "")
+                + "\"><table><thead><tr>");
         kopf.forEach(spalte -> html.append("<th>").append(attr(spalte)).append("</th>"));
         html.append("</tr></thead><tbody>");
         for (List<String> zeile : zeilen) {
             html.append("<tr>");
-            zeile.forEach(zelle -> html.append("<td>").append(attr(zelle)).append("</td>"));
+            for (int i = 0; i < zeile.size(); i++) {
+                html.append("<td data-label=\"").append(i < kopf.size() ? attr(kopf.get(i)) : "").append("\">")
+                        .append(attr(zeile.get(i))).append("</td>");
+            }
             html.append("</tr>");
         }
         current().content.add(html.append("</tbody></table></div>").toString());
@@ -436,7 +457,8 @@ public class StatusPage {
             }
             html.append("<section class=\"cards\">");
             for (Card card : bereich.cards) {
-                html.append("<article class=\"card\"><h2>").append(card.title).append("</h2>");
+                html.append("<article class=\"card").append(card.breit ? " breit" : "").append("\"><h2>")
+                        .append(card.title).append("</h2>");
                 if (!card.pills.isEmpty()) {
                     html.append("<div class=\"pills\">");
                     card.pills.forEach(pill -> html.append(renderPill(pill)));
@@ -789,5 +811,15 @@ public class StatusPage {
               border-bottom: 1px solid var(--line); white-space: nowrap; }
             .tbl td { text-align: right; padding: 5px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
             .tbl th:first-child, .tbl td:first-child { text-align: left; padding-left: 0; }
+            .card.breit { grid-column: 1 / -1; }
+            @media (max-width: 600px) {
+              .tbl.stapeln thead { display: none; }
+              .tbl.stapeln table, .tbl.stapeln tbody, .tbl.stapeln tr { display: block; }
+              .tbl.stapeln tr { padding: 8px 0; border-top: 1px solid var(--line); }
+              .tbl.stapeln td { display: inline-block; border: 0; padding: 2px 14px 2px 0; text-align: left; }
+              .tbl.stapeln td:first-child { display: block; font-weight: 600; }
+              .tbl.stapeln td:not(:first-child)::before { content: attr(data-label) " "; color: var(--muted);
+                font-weight: 400; }
+            }
             """;
 }
