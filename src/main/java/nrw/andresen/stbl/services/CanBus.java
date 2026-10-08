@@ -137,8 +137,10 @@ public class CanBus {
                 }
             }
         }
-        logger.debug(elsterMessage + " INDEX: " + elsterMessage.getElsterIndex().getName() +
-                " Payload: " + elsterMessage.getValue());
+        if (logger.isDebugEnabled()) {
+            logger.debug(elsterMessage + " INDEX: " + elsterMessage.getElsterIndex().getName() +
+                    " Payload: " + elsterMessage.getValue());
+        }
     }
 
     private void stopUsbTin() {

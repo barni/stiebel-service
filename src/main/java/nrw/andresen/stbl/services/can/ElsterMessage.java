@@ -251,7 +251,9 @@ public class ElsterMessage  {
                     value =  String.format("%d", (s + 1));
                 break;
             case et_err_nr:
-                value =  ErrorIndex.getErrorIndex(s).name;
+                // The table knows only the old codes, e.g. not 8116 INV H ROTORVEKTOR of the WPM3
+                ErrorIndex errorIndex = ErrorIndex.getErrorIndex(s);
+                value = errorIndex != null ? errorIndex.name : Fehlerliste.text(s);
                 break;
             case et_dec_val:
                 value =  String.format("%.1f",  (float)(s/10f));
