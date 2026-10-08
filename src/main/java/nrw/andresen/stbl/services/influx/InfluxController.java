@@ -138,6 +138,19 @@ public class InfluxController {
         client.getQueryApi().query("from(bucket: \"" + bucket + "\") |> range(start: -1d) |> limit(n: 1)", org);
     }
 
+    /**
+     * Last stored value of WP_name within the last 30 days, null if there is none
+     */
+    public Double letzterWert(String name) {
+        if (!SERIES_NAME.matcher(name).matches()) {
+            throw new IllegalArgumentException("Unbekannter Wert: " + name);
+        }
+        Map<Instant, Double> werte = werte("from(bucket: \"" + bucket + "\") |> range(start: -30d)"
+                + " |> filter(fn: (r) => r._measurement == \"WP_" + name + "\" and r._field == \"value\")"
+                + " |> last() |> keep(columns: [\"_time\", \"_value\"])");
+        return werte.isEmpty() ? null : werte.values().iterator().next();
+    }
+
     public Instant getLetzterSchreiberfolg() {
         return letzterSchreiberfolg;
     }

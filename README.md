@@ -57,6 +57,11 @@ before you rely on it.
   `warnung.heizungsdruck.max` (default 2.5 bar), heating element on,
   answer rate below `warnung.antwortquote.min` % (default 90) for 10 minutes, more than `warnung.starts.proStunde`
   compressor starts within an hour (default 6), a failed check of the service.
+- **Settings** of the heat pump manager, read every hour from 0x514 and stored as `WP_Einstellung_<name>`: design
+  temperature, heat demand, spread, bivalence, heating limit, silent mode, comfort and eco temperature, heating curve,
+  curve distance, room influence, standstill and minimum run time, controller dynamics, each with the default of the
+  WPM 3 manual in its tooltip. A change is sent by mail (also one made while the service was stopped, compared with
+  the last stored value).
 - **Check of the service** 30 s after the start and every 15 minutes: InfluxDB reachable, reading the bucket (and the
   bucket of the outdoor temperature), writing, USBtin connected and answering, mail configured.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, when a

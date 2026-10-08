@@ -213,13 +213,9 @@ public class StblService {
     private void storeValues3600() {
         try {
             List<Point> points = new ArrayList<>();
-            addPoint(points, "Einstellung_Auslegungstemperatur", wp::getAuslegungstemperatur, MAX_AGE_3600);
-            addPoint(points, "Einstellung_Waermebedarf", wp::getWaermebedarf, MAX_AGE_3600);
-            addPoint(points, "Einstellung_SollSpreizung", wp::getSollSpreizung, MAX_AGE_3600);
-            addPoint(points, "Einstellung_Bivalenztemperatur", wp::getBivalenztemperatur, MAX_AGE_3600);
-            addPoint(points, "Einstellung_EinsatzgrenzeHeizen", wp::getEinsatzgrenzeHeizen, MAX_AGE_3600);
-            addPoint(points, "Einstellung_SilentLeistung", wp::getSilentLeistung, MAX_AGE_3600);
-            addPoint(points, "Einstellung_SilentLuefter", wp::getSilentLuefter, MAX_AGE_3600);
+            for (Waermepumpe.Einstellung einstellung : wp.getEinstellungen()) {
+                addPoint(points, "Einstellung_" + einstellung.name(), einstellung.wert(), MAX_AGE_3600);
+            }
             influxController.storePoints(points);
 
         } catch (Exception e) {

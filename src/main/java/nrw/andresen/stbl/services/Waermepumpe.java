@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Callable;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -73,7 +74,8 @@ public class Waermepumpe {
     };
     private static final short[] EINSTELLUNGEN_HEIZMODUL = {
             AUSLEGUNGSTEMPERATUR, WAERMEBEDARF, SOLLSPREIZUNG, BIVALENZTEMPERATUR_HZG, EINSATZGRENZE_HZG,
-            SILENT_LEISTUNG, SILENT_LUEFTER
+            SILENT_LEISTUNG, SILENT_LUEFTER, RAUMSOLLTEMP_I, RAUMSOLLTEMP_NACHT, HEIZKURVE, HZK_KURVENABSTAND,
+            RAUMEINFLUSS, SPERRZEIT, MINDESTLAUFZEIT_WE, SCHALTWERKDYNAMIKZEIT
     };
     // Requested every 20 s from the manager, from the heat pump and from the external access
     private static final short[] MONITORING_MANAGER = {BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK};
@@ -452,6 +454,78 @@ public class Waermepumpe {
 
     public ValueContainer<Double> getSilentLuefter() throws Exception {
         return getScaledValue(SILENT_LUEFTER, 1);
+    }
+
+    /**
+     * Setting of the heat pump manager, stored hourly as WP_Einstellung_name; a change is reported by mail
+     */
+    public record Einstellung(String name, String label, String unit, int decimals,
+                              Callable<ValueContainer<Double>> wert, String info) {
+    }
+
+    private static final String WPM = " Einstellung im Wärmepumpenmanager.";
+
+    /**
+     * All settings in the order of the status page; the first ones limit the power, the others decide how often the
+     * compressor starts
+     */
+    public List<Einstellung> getEinstellungen() {
+        return List.of(
+                new Einstellung("Auslegungstemperatur", "Auslegungstemperatur", "°C", 1, this::getAuslegungstemperatur,
+                        "Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Standard −15 °C." + WPM),
+                new Einstellung("Waermebedarf", "Wärmebedarf", "kW", 1, this::getWaermebedarf,
+                        "Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
+                                + "hochregelt. Standard 15 kW, gemessen ~6,4 kW bei −7 °C." + WPM),
+                new Einstellung("SollSpreizung", "Soll-Spreizung", "K", 1, this::getSollSpreizung,
+                        "Gewünschter Unterschied zwischen Vor- und Rücklauf." + WPM),
+                new Einstellung("Bivalenztemperatur", "Bivalenztemperatur", "°C", 1, this::getBivalenztemperatur,
+                        "Unterhalb dieser Außentemperatur darf der Heizstab zuheizen. Standard −20 °C." + WPM),
+                new Einstellung("EinsatzgrenzeHeizen", "Einsatzgrenze Heizen", "°C", 1, this::getEinsatzgrenzeHeizen,
+                        "Unterhalb dieser Außentemperatur heizt nur noch der Heizstab. Standard −20 °C." + WPM),
+                new Einstellung("SilentLeistung", "Silent Leistung", "%", 0, this::getSilentLeistung,
+                        "Begrenzung der Verdichterleistung im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE "
+                                + "an ist). Standard 100 %." + WPM),
+                new Einstellung("SilentLuefter", "Silent Lüfter", "%", 0, this::getSilentLuefter,
+                        "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb (nur wirksam, wenn SILENT MODE an "
+                                + "ist). Standard 100 %." + WPM),
+                new Einstellung("Komforttemperatur", "Komfort-Temperatur", "°C", 1,
+                        () -> getScaledValue(RAUMSOLLTEMP_I, 10), "Raum-Solltemperatur im Komfortbetrieb. Standard 20 °C." + WPM),
+                new Einstellung("Ecotemperatur", "Eco-Temperatur", "°C", 1,
+                        () -> getScaledValue(RAUMSOLLTEMP_NACHT, 10), "Raum-Solltemperatur im Eco-Betrieb. Standard 20 °C." + WPM),
+                new Einstellung("Heizkurve", "Steigung Heizkurve", "", 2, () -> getScaledValue(HEIZKURVE, 100),
+                        "Wie stark die Vorlauftemperatur mit sinkender Außentemperatur steigt. Eine steilere Kurve "
+                                + "heizt mehr, der Verdichter läuft öfter. Standard 0,6." + WPM),
+                new Einstellung("Kurvenabstand", "Abstand Heizkurve", "", 0,
+                        () -> getScaledValue(HZK_KURVENABSTAND, 10),
+                        "Abstand der Heizkurve, 1 bis 10, Standard 3 (Anleitung WPM 3)." + WPM),
+                new Einstellung("Raumeinfluss", "Raumeinfluss", "", 0, this::getRaumeinfluss,
+                        "Wie stark die Raumtemperatur an der Fernbedienung die Vorlauftemperatur verändert, aus bis "
+                                + "20, Standard 5 (Anleitung WPM 3)." + WPM),
+                new Einstellung("Stillstandzeit", "Stillstandzeit", "min", 0, () -> getScaledValue(SPERRZEIT, 1),
+                        "Mindestpause zwischen zwei Verdichterstarts. Standard 20 min." + WPM),
+                new Einstellung("Mindestlaufzeit", "Mindestlaufzeit", "min", 0,
+                        () -> getScaledValue(MINDESTLAUFZEIT_WE, 1), "Mindestlaufzeit des Verdichters. Standard 10 min." + WPM),
+                new Einstellung("Reglerdynamik", "Reglerdynamik", "", 0, this::getReglerdynamik,
+                        "Schaltabstand zwischen Verdichter und den Stufen des Heizstabs: klein für schnell "
+                                + "reagierende, groß für träge Heizsysteme. 1 bis 500, Standard 100." + WPM));
+    }
+
+    private ValueContainer<Double> getRaumeinfluss() throws Exception {
+        ElsterMessage msg = nachricht(RAUMEINFLUSS);
+        return new ValueContainer<>((double) littleEndian(msg.getRawValue()), msg.getTimestamp());
+    }
+
+    private ValueContainer<Double> getReglerdynamik() throws Exception {
+        ElsterMessage msg = nachricht(SCHALTWERKDYNAMIKZEIT);
+        return new ValueContainer<>((double) littleEndian(msg.getRawValue()), msg.getTimestamp());
+    }
+
+    /**
+     * Value of an index with swapped bytes, e.g. 0x1900 = 25
+     */
+    static int littleEndian(short roh) {
+        int wert = roh & 0xffff;
+        return ((wert & 0xff) << 8) | (wert >> 8);
     }
 
     /**

@@ -98,6 +98,20 @@ public class ElsterTable {
     public static short EINSATZGRENZE_HZG = (short)0x01ae;
     public static short SILENT_LEISTUNG = (short)0x4e9f;
     public static short SILENT_LUEFTER = (short)0x4ea0;
+    // Settings that decide how often the compressor starts, at 0x514; checked on the display on 2026-10-08:
+    // comfort 215 = 21.5 degC, eco 200 = 20.0 degC, heating curve 35 = 0.35, standstill 20 = 20 min, minimum run
+    // time 3; with the manual of the WPM 3: curve distance 30 = 3, room influence little endian 0x0500 = 5.
+    // Not in the menu of this WPM (WPL 17 ACS): HYSTERESEZEIT 0x0022 = 50, INTEGRAL_REGELABWEICHUNG 0x033d = 21,
+    // FUSSPUNKT_HEIZKURVE 0x059f = 3, so they are not read
+    public static short RAUMSOLLTEMP_I = (short)0x0005;
+    public static short RAUMSOLLTEMP_NACHT = (short)0x0008;
+    public static short HEIZKURVE = (short)0x010e;
+    public static short HZK_KURVENABSTAND = (short)0x0111;
+    public static short RAUMEINFLUSS = (short)0x010f;
+    public static short SPERRZEIT = (short)0x0026;
+    public static short MINDESTLAUFZEIT_WE = (short)0x0914;
+    // Reglerdynamik on the display (checked 2026-10-08: 25), little endian: 0x1900 = 25
+    public static short SCHALTWERKDYNAMIKZEIT = (short)0xfdb0;
     // Not available at 0x180, 0x500 and 0x514 (0x8000): condenser temp 0x0a37, heating curve 0x4f2b, flow temp after
     // DHC 0x4f40, DHC relays 0xb3be-0xb3c0, superheat 0x4fa1/0x4fa2, 0x4ef0/0x4ef1/0x4efb/0x4efd/0x4f06.
     // Defrost starts 0x0806 is stuck at 9999.
