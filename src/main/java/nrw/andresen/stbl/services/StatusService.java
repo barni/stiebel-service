@@ -162,9 +162,9 @@ public class StatusService {
         zeilen.add(List.of("Arbeitszahl", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1), "–"));
         zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
                 "–"));
-        page.table(List.of("", "Heute", "Gestern", "Ø gleiche Außentemp."), zeilen, false, Map.of(
+        page.table(List.of("", "Heute", "Gestern", "Ø gleiche Temp."), zeilen, false, Map.of(
                         "Heute", "Von Mitternacht bis jetzt.",
-                        "Ø gleiche Außentemp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
+                        "Ø gleiche Temp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                                 + ", deren Tagesmittel der Außentemperatur höchstens "
                                 + zahl(Tagesuebersicht.AEHNLICH_K, 1) + " K von gestern abweicht. Zeigt, ob gestern "
                                 + "normal war. Strom, Arbeitszahl und Abtauungen liegen für alte Tage nicht vor.",
@@ -178,7 +178,7 @@ public class StatusService {
                                 + "Regelung, daher etwas zu niedrig.",
                         "Arbeitszahl", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch.",
                         "Abtauungen", "Vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa 2 Minuten)."))
-                .note("„Ø gleiche Außentemp.“: Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
+                .note("„Ø gleiche Temp.“: Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                         + ", deren Tagesmittel höchstens " + zahl(Tagesuebersicht.AEHNLICH_K, 1)
                         + " K von gestern abweicht" + (gleich == null ? "" : " (" + gleich.tage() + " Tage)")
                         + ". Daran siehst du, ob gestern normal war. Strom = geschätzte Wirkleistung des "

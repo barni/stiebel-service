@@ -874,7 +874,7 @@ public class StatusPage {
             .tbl { margin: 4px 0 8px; }
             .tbl table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
             .tbl th { color: var(--muted); font-weight: 500; text-align: right; padding: 4px 6px;
-              border-bottom: 1px solid var(--line); white-space: nowrap; }
+              border-bottom: 1px solid var(--line); vertical-align: bottom; }
             .tbl td { text-align: right; padding: 5px 6px; border-top: 1px solid var(--line); white-space: nowrap; }
             .tbl th:first-child, .tbl td:first-child { text-align: left; padding-left: 0; }
             .tbl th .calc:hover::after, .tbl th .calc:focus::after { left: auto; right: 0; }
