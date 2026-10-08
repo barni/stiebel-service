@@ -112,4 +112,26 @@ public class WaermebedarfVergleichTest {
         assertEquals(null, zeilen.get(1).vorher());
         assertEquals(8.5, zeilen.get(1).nachher().waermebedarf());
     }
+
+    private static WaermebedarfVergleich.Gruppe gruppe(double einstellung, int tage, double starts, double h,
+                                                       double kwh) {
+        return new WaermebedarfVergleich.Gruppe("0 bis 5 °C", einstellung, tage, 2, starts, h, h / starts, kwh,
+                kwh / h, TAG1);
+    }
+
+    @Test
+    public void testBewertung() {
+        WaermebedarfVergleich.Gruppe alt = gruppe(8.5, 124, 23.5, 17.5, 95);
+        // Fewer starts, same heat
+        assertEquals("besser", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 15, 19.5, 93)));
+        // Heat per day more than 10 % lower
+        assertEquals("zu knapp?", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 15, 19.5, 80)));
+        // Nearly a full day of run time, also without days of another setting
+        assertEquals("zu knapp?", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 10, 23, 96)));
+        assertEquals("zu knapp?", WaermebedarfVergleich.bewertung(null, gruppe(7.5, 9, 10, 23, 96)));
+        assertEquals("zu wenige Tage", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 4, 15, 19.5, 93)));
+        assertEquals("schlechter", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 27, 17.5, 95)));
+        assertEquals("kaum Unterschied", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 23, 17.5, 95)));
+        assertEquals("–", WaermebedarfVergleich.bewertung(null, alt));
+    }
 }

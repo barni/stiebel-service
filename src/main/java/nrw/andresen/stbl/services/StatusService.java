@@ -335,17 +335,25 @@ public class StatusService {
                         (alt == null ? "" : zahl(alt.waermebedarf(), 1) + " → ") + zahl(neu.waermebedarf(), 1) + " kW",
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::startsProTag, 1),
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::laufzeitProStart, 2),
+                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::laufzeitProTag, 1),
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::waermeProTag, 0),
-                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::leistungKW, 2)));
+                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::leistungKW, 2),
+                        WaermebedarfVergleich.bewertung(alt, neu)));
             }
-            page.table(List.of("Außen (Tage)", "Einstellung", "Starts/Tag", "h/Start", "kWh/Tag", "kW im Lauf"),
-                    zeilen, true);
+            page.table(List.of("Außen (Tage)", "Einstellung", "Starts/Tag", "h/Start", "h/Tag", "kWh/Tag",
+                    "kW im Lauf", "Bewertung"), zeilen, true);
         }
         page.note("Tage seit " + vergleich.getStart().format(DATUM) + " nach Tagesmittel der Außentemperatur und "
                         + "der Einstellung Wärmebedarf im Wärmepumpenmanager (eingestellter Wert, kein Messwert). "
                         + "Gibt es in einem Bereich Tage mit zwei Einstellungen, steht der frühere Wert vor dem Pfeil. "
-                        + "Weniger Starts bei gleicher Wärme bedeutet längere, effizientere Läufe. „kW im Lauf“ = "
-                        + "Wärme ÷ Laufzeit. Stand " + (vergleich.getBerechnet() == null ? "–"
+                        + "„kW im Lauf“ = Wärme ÷ Laufzeit. Bewertung ab " + WaermebedarfVergleich.MIN_TAGE
+                        + " Tagen je Einstellung: „besser“ bei mindestens "
+                        + Math.round((1 - WaermebedarfVergleich.STARTS_BESSER) * 100)
+                        + " % weniger Starts, „zu knapp?“ wenn die Wärme pro Tag um mehr als "
+                        + Math.round(WaermebedarfVergleich.WAERME_TOLERANZ * 100) + " % sinkt oder der Verdichter "
+                        + "mehr als " + (int) WaermebedarfVergleich.MAX_LAUFZEIT_H + " h am Tag läuft. Passt die "
+                        + "Einstellung, bleibt die Wärme gleich, die Starts sinken und die Läufe werden länger; dazu "
+                        + "bleiben die Räume warm und der Heizstab aus. Stand " + (vergleich.getBerechnet() == null ? "–"
                         : zeitpunkt(vergleich.getBerechnet())) + ".");
     }
 

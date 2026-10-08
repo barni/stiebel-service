@@ -35,6 +35,12 @@ public class WaermebedarfVergleich {
     // Bands of the daily mean outdoor temperature, above the last one the house hardly needs heat
     static final double[] BAENDER = {-5, 0, 5, 10, 15};
     private static final int TAGE_JE_ABFRAGE = 90;
+    // Rating of a setting: enough days on both sides, run time near a full day means the power is too low, the heat
+    // per day should stay the same because the house needs the same heat at the same outdoor temperature
+    static final int MIN_TAGE = 5;
+    static final double MAX_LAUFZEIT_H = 22;
+    static final double WAERME_TOLERANZ = 0.10;
+    static final double STARTS_BESSER = 0.9;
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_]{1,64}|°C");
 
     private final Logger logger = LoggerFactory.getLogger(WaermebedarfVergleich.class);
@@ -218,6 +224,31 @@ public class WaermebedarfVergleich {
             zeilen.add(new Vergleich(band.getKey(), vorher, nachher));
         }
         return zeilen;
+    }
+
+    /**
+     * Rating of the current setting against the one before in one temperature band
+     */
+    static String bewertung(Gruppe vorher, Gruppe nachher) {
+        if (nachher.tage() >= MIN_TAGE && nachher.laufzeitProTag() > MAX_LAUFZEIT_H) {
+            return "zu knapp?";
+        }
+        if (vorher == null) {
+            return "–";
+        }
+        if (vorher.tage() < MIN_TAGE || nachher.tage() < MIN_TAGE) {
+            return "zu wenige Tage";
+        }
+        if (nachher.waermeProTag() < vorher.waermeProTag() * (1 - WAERME_TOLERANZ)) {
+            return "zu knapp?";
+        }
+        if (nachher.startsProTag() <= vorher.startsProTag() * STARTS_BESSER) {
+            return "besser";
+        }
+        if (nachher.startsProTag() >= vorher.startsProTag() / STARTS_BESSER) {
+            return "schlechter";
+        }
+        return "kaum Unterschied";
     }
 
     public List<Vergleich> getVergleich() {
