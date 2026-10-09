@@ -29,6 +29,11 @@ import static nrw.andresen.stbl.services.can.ElsterTable.*;
 @Component
 public class StblService {
 
+    // The fault list (140 requests) and the settings are requested half a minute after the minute of the CAN
+    // statistics closes. Sent exactly at its end, the requests counted in one minute and their answers in the next,
+    // which showed an answer rate of 35 % every 10 minutes although everything was answered (seen 2026-10-09).
+    private static final long VERSATZ_MS = 30000;
+
     private final Logger logger = LoggerFactory.getLogger(StblService.class);
     @Autowired
     private EmailService emailService;
@@ -70,7 +75,7 @@ public class StblService {
     /**
      * Check the settings every hour, the values of the previous request are stored
      */
-    @Scheduled(fixedRate = 3600000)
+    @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 3600000)
     public synchronized void check3600() {
         try {
             wp.anfragen3600();
@@ -84,7 +89,7 @@ public class StblService {
      * Reads the fault list every 10 minutes. The answers of the previous request are checked first: a new entry is
      * logged and sent by mail. The first complete read only remembers the list.
      */
-    @Scheduled(fixedRate = 600000)
+    @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 600000)
     public synchronized void checkFehlerliste() {
         if (can.fehlerlisteVollstaendig()) {
             for (Fehlerliste.Eintrag eintrag : can.getFehlerliste().neueEintraege()) {
