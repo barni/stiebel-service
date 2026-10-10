@@ -110,6 +110,9 @@ public class Fehlstarts {
      */
     @Scheduled(initialDelay = 120000, fixedRate = 3600000)
     public void berechnen() {
+        if (!influx.isAktiv()) {
+            return;
+        }
         try {
             LocalDate saisonStart = saisonStart(LocalDate.now(ZONE));
             Instant jetzt = Instant.now();

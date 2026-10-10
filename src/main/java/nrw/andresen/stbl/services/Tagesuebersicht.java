@@ -78,6 +78,9 @@ public class Tagesuebersicht {
      */
     @Scheduled(initialDelay = 90000, fixedRate = 600000)
     public void berechnen() {
+        if (!influx.isAktiv()) {
+            return;
+        }
         try {
             LocalDate datum = LocalDate.now(ZONE);
             Instant mitternacht = datum.atStartOfDay(ZONE).toInstant();

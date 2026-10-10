@@ -145,7 +145,7 @@ public class Ueberwachung {
                 continue;
             }
             Double vorher = einstellungen.get(einstellung.name());
-            if (vorher == null) {
+            if (vorher == null && influx.isAktiv()) {
                 try {
                     vorher = influx.letzterWert("Einstellung_" + einstellung.name());
                 } catch (Exception e) {
@@ -285,11 +285,24 @@ public class Ueberwachung {
     }
 
     /**
-     * Checks InfluxDB, the USBtin and the mail 30 s after the start and then every 15 minutes
+     * Checks InfluxDB (if it is used), the USBtin and the mail 30 s after the start and then every 15 minutes
      */
     @Scheduled(initialDelay = 30000, fixedRate = 900000)
     public void dienstPruefen() {
         List<Pruefung> liste = new ArrayList<>();
+        if (influx.isAktiv()) {
+            influxPruefen(liste);
+        }
+        liste.add(adapter());
+        boolean mailOk = mail.isKonfiguriert() && mail.getLetzterFehler() == null;
+        liste.add(new Pruefung("Mail", mailOk, !mail.isKonfiguriert() ? "nicht eingerichtet"
+                : mail.getLetzterFehler() == null ? "OK" : "letzte Mail fehlgeschlagen: " + mail.getLetzterFehler(),
+                "Warnmails an stbl.mail.to über spring.mail.host. Ohne Mail stehen die Warnungen nur hier."));
+        pruefungen = liste;
+        geprueft = Instant.now();
+    }
+
+    private void influxPruefen(List<Pruefung> liste) {
         boolean erreichbar = false;
         try {
             erreichbar = influx.erreichbar();
@@ -306,13 +319,6 @@ public class Ueberwachung {
                     + temperaturBucket + " für den Vergleich der Einstellung Wärmebedarf und die Tagesübersicht."));
         }
         liste.add(schreiben());
-        liste.add(adapter());
-        boolean mailOk = mail.isKonfiguriert() && mail.getLetzterFehler() == null;
-        liste.add(new Pruefung("Mail", mailOk, !mail.isKonfiguriert() ? "nicht eingerichtet"
-                : mail.getLetzterFehler() == null ? "OK" : "letzte Mail fehlgeschlagen: " + mail.getLetzterFehler(),
-                "Warnmails an stbl.mail.to über spring.mail.host. Ohne Mail stehen die Warnungen nur hier."));
-        pruefungen = liste;
-        geprueft = Instant.now();
     }
 
     private Pruefung lesen(String name, String bucket, String erklaerung) {

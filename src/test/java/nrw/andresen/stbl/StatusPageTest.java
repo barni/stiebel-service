@@ -301,4 +301,17 @@ public class StatusPageTest {
         assertTrue(html.contains("<th>Saison</th>"));
         assertTrue(html.contains("<td data-label=\"Saison\">2024/25</td>"));
     }
+
+    @Test
+    public void testOhneVerlauf() {
+        // Without InfluxDB a value with a series is shown but not clickable, and the dialog is not on the page
+        String html = new StatusPage().ohneVerlauf()
+                .card("Heizkreis")
+                .row("Vorlauf", "°C", 1, "VorlaufIstTemp", () -> new ValueContainer<>(33.2, Instant.now()))
+                .render();
+        assertTrue(html.contains("Vorlauf"));
+        assertTrue(html.contains("33,2"));
+        assertFalse(html.contains("data-series"));
+        assertFalse(html.contains("<dialog id=\"verlauf\""));
+    }
 }

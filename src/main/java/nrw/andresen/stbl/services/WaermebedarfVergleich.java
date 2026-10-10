@@ -87,6 +87,9 @@ public class WaermebedarfVergleich {
      */
     @Scheduled(initialDelay = 60000, fixedRate = 6 * 3600000)
     public void berechnen() {
+        if (!influx.isAktiv()) {
+            return;
+        }
         try {
             tage = tage();
             gruppen = vergleich(tage);

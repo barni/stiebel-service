@@ -1,10 +1,14 @@
 package nrw.andresen.stbl.services.influx;
 
+import nrw.andresen.stbl.services.can.ValueContainer;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class InfluxControllerTest {
@@ -29,5 +33,18 @@ public class InfluxControllerTest {
         assertThrows(IllegalArgumentException.class, () -> InfluxController.flux("home", "../x", DAY, WINDOW));
         assertThrows(IllegalArgumentException.class, () -> InfluxController.flux("home", "", DAY, WINDOW));
         assertThrows(IllegalArgumentException.class, () -> InfluxController.flux("home", null, DAY, WINDOW));
+    }
+
+    @Test
+    public void testAusgeschaltet() {
+        // Without InfluxDB the other settings may be empty and nothing is contacted
+        InfluxController influx = new InfluxController(false, "", "", "", "");
+        assertFalse(influx.isAktiv());
+        influx.storePoints(List.of(influx.createPoint("Test", new ValueContainer<>(1d, Instant.now()))));
+        assertEquals(InfluxController.AUSGESCHALTET,
+                assertThrows(IllegalStateException.class, () -> influx.history("VorlaufIstTemp", DAY, WINDOW))
+                        .getMessage());
+        assertThrows(IllegalStateException.class, influx::erreichbar);
+        assertThrows(IllegalStateException.class, () -> influx.letzterWert("Einstellung_Heizkurve"));
     }
 }

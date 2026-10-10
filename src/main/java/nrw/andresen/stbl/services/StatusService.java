@@ -3,6 +3,7 @@ package nrw.andresen.stbl.services;
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.ValueContainer;
+import nrw.andresen.stbl.services.influx.InfluxController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +38,8 @@ public class StatusService {
     private Fehlstarts fehlstarts;
     @Autowired
     private Version version;
+    @Autowired
+    private InfluxController influx;
 
     // What the CAN nodes are, as far as known from the answered values
     private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
@@ -64,10 +67,16 @@ public class StatusService {
      */
     public String getStatus() {
         StatusPage page = new StatusPage();
+        if (!influx.isAktiv()) {
+            // Without InfluxDB: no courses of the values and none of the cards that are calculated from stored values
+            page.ohneVerlauf();
+        }
         kopf(page);
         page.bereich("Übersicht");
         warnungen(page);
-        tagesuebersicht(page);
+        if (influx.isAktiv()) {
+            tagesuebersicht(page);
+        }
         fehlerliste(page);
         anlage(page);
         auswertung(page);
@@ -330,7 +339,9 @@ public class StatusService {
 
     private void auswertung(StatusPage page) {
         Duration stunde = Waermepumpe.MAX_AGE_3600;
-        page.bereichKlappbar("Auswertung", "Energie · Einstellungen · Laufzeiten · Fehlstarts · Vergleich", false)
+        page.bereichKlappbar("Auswertung", influx.isAktiv()
+                        ? "Energie · Einstellungen · Laufzeiten · Fehlstarts · Vergleich"
+                        : "Energie · Einstellungen · Laufzeiten", false)
                 .zweiSpalten()
                 .card("Energie seit Inbetriebnahme")
                 .row("Stromaufnahme", "MWh", 3, "AufnahmeLeistung", wp::getAufnahmeLeistung)
@@ -387,6 +398,9 @@ public class StatusService {
                 .info("Betriebsstunden der Heizstab-Stufe 2 seit Inbetriebnahme (0x500).")
                 .row("Laufzeit DHC 1+2", "h", 0, "LaufzeitDHZ12", wp::getLaufzeit_DHC12)
                 .info("Betriebsstunden mit beiden Heizstab-Stufen gleichzeitig seit Inbetriebnahme (0x500).");
+        if (!influx.isAktiv()) {
+            return;
+        }
         fehlstarts(page);
         page.card("Vergleich Einstellung Wärmebedarf").breit();
         List<WaermebedarfVergleich.Vergleich> vergleiche = vergleich.getVergleich();

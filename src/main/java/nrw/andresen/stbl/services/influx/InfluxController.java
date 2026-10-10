@@ -32,6 +32,9 @@ public class InfluxController {
     // Only plain names are put into the Flux query, everything else is rejected
     private static final Pattern SERIES_NAME = Pattern.compile("[A-Za-z0-9_]{1,64}");
 
+    static final String AUSGESCHALTET = "InfluxDB ist ausgeschaltet (influx.enabled=false)";
+
+    private final boolean aktiv;
     private InfluxDBClient client;
     private String bucket;
     private String org;
@@ -47,10 +50,19 @@ public class InfluxController {
     public record History(String name, long[] time, double[] value) {
     }
 
-    public InfluxController(@Value("${influx.url}") String influxURL, @Value("${influx.token}") String token,
-                            @Value("${influx.org}") String org, @Value("${influx.bucket}") String bucket){
+    /**
+     * @param aktiv false runs the service without InfluxDB: nothing is stored, the evaluations and the courses of
+     *              the values are missing, the other settings are not needed
+     */
+    public InfluxController(@Value("${influx.enabled:true}") boolean aktiv,
+                            @Value("${influx.url:}") String influxURL, @Value("${influx.token:}") String token,
+                            @Value("${influx.org:}") String org, @Value("${influx.bucket:}") String bucket){
+        this.aktiv = aktiv;
         this.bucket = bucket;
         this.org = org;
+        if (!aktiv) {
+            return;
+        }
         // Daily values over several months take longer than the default of 10 s
         OkHttpClient.Builder http = new OkHttpClient.Builder().readTimeout(Duration.ofSeconds(60));
         client = InfluxDBClientFactory.create(InfluxDBClientOptions.builder().url(influxURL)
@@ -65,8 +77,22 @@ public class InfluxController {
 
     }
 
+    /**
+     * False if the service runs without InfluxDB (influx.enabled=false)
+     */
+    public boolean isAktiv() {
+        return aktiv;
+    }
+
+    private InfluxDBClient client() {
+        if (!aktiv) {
+            throw new IllegalStateException(AUSGESCHALTET);
+        }
+        return client;
+    }
+
     public void storePoints(List<Point> points){
-        if (points.isEmpty()) {
+        if (!aktiv || points.isEmpty()) {
             return;
         }
         writeApi.writePoints(bucket, org, points);
@@ -89,7 +115,7 @@ public class InfluxController {
      */
     public History history(String name, Duration range, Duration window) {
         List<FluxRecord> records = new ArrayList<>();
-        for (FluxTable table : client.getQueryApi().query(flux(bucket, name, range, window), org)) {
+        for (FluxTable table : client().getQueryApi().query(flux(bucket, name, range, window), org)) {
             records.addAll(table.getRecords());
         }
         records.sort(Comparator.comparing(FluxRecord::getTime));
@@ -109,7 +135,7 @@ public class InfluxController {
     public Map<Instant, Double> werte(String flux) {
         Map<Instant, Double> werte = new LinkedHashMap<>();
         List<FluxRecord> records = new ArrayList<>();
-        for (FluxTable table : client.getQueryApi().query(flux, org)) {
+        for (FluxTable table : client().getQueryApi().query(flux, org)) {
             records.addAll(table.getRecords());
         }
         records.sort(Comparator.comparing(FluxRecord::getTime));
@@ -125,7 +151,7 @@ public class InfluxController {
      * True if InfluxDB answers
      */
     public boolean erreichbar() {
-        return Boolean.TRUE.equals(client.ping());
+        return Boolean.TRUE.equals(client().ping());
     }
 
     /**
@@ -135,7 +161,7 @@ public class InfluxController {
         if (!SERIES_NAME.matcher(bucket).matches()) {
             throw new IllegalArgumentException("Unbekannter Bucket: " + bucket);
         }
-        client.getQueryApi().query("from(bucket: \"" + bucket + "\") |> range(start: -1d) |> limit(n: 1)", org);
+        client().getQueryApi().query("from(bucket: \"" + bucket + "\") |> range(start: -1d) |> limit(n: 1)", org);
     }
 
     /**
