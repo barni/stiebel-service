@@ -43,6 +43,11 @@ public class StblService {
     private CanBus can;
     @Autowired
     private Waermepumpe wp;
+    // The first run of each cycle only sends the requests: the answers are not there yet, storing would log a
+    // warning for every value at each start of the service
+    private boolean erster20 = true;
+    private boolean erster60 = true;
+    private boolean erster3600 = true;
 
     /**
      * Check every 20 seconds
@@ -55,6 +60,10 @@ public class StblService {
             logger.error("Request failure: ", e);
         }
         wp.aktualisieren();
+        if (erster20) {
+            erster20 = false;
+            return;
+        }
         storeValues20();
     }
 
@@ -69,6 +78,10 @@ public class StblService {
             logger.error("Request failure: ", e);
         }
         can.minuteAbschliessen();
+        if (erster60) {
+            erster60 = false;
+            return;
+        }
         storeValues60();
     }
 
@@ -81,6 +94,10 @@ public class StblService {
             wp.anfragen3600();
         } catch (Exception e) {
             logger.error("Request failure: ", e);
+        }
+        if (erster3600) {
+            erster3600 = false;
+            return;
         }
         storeValues3600();
     }
