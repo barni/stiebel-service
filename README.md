@@ -44,8 +44,6 @@ before you rely on it.
   A start counts after a standstill of at least 3 minutes: the restart after a defrost (about 2 minutes break, around
   20 a day near 0 °C) depends on the weather and not on the setting. The daily overview counts the same way.
   These restarts are shown as defrosts per day, also for the days before the service detected defrosts itself.
-  Their sum over all stored days is shown with the run times: the heat pump's own counter of the defrosts (0x0806,
-  STARTS ABTAUEN in the menu of the WPM 3) stopped at 9999.
   The heat pump's own outdoor temperature `WP_Aussentemp` is only stored since 09/2026; for older days set a Home
   Assistant entity (measurement `°C`), the token then needs read access to that bucket:
   `auswertung.aussentemp.bucket=home_assistant`, `auswertung.aussentemp.entity=aussen_temperatur`.
