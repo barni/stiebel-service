@@ -177,9 +177,13 @@ public class StatusService {
                                 + zahl(Tagesuebersicht.AEHNLICH_K, 1) + " K von gestern abweicht. Zeigt, ob gestern "
                                 + "normal war. Strom, Arbeitszahl und Abtauungen liegen für alte Tage nicht vor."),
                         Map.entry("Außen °C", "Tagesmittel der Außentemperatur."),
-                        Map.entry("Starts", "Verdichterstarts, gezählt aus der Inverterleistung (Wechsel von Stillstand zu Lauf)."),
+                        Map.entry("Starts", "Verdichterstarts nach einem Stillstand von mindestens "
+                                + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, gezählt aus der "
+                                + "Inverterleistung. Der Wiederanlauf nach einer Abtauung (etwa 2 Minuten Pause) "
+                                + "zählt nicht, er steht in der Zeile Abtauungen."),
                         Map.entry("Laufzeit h", "Stunden, in denen der Verdichter lief."),
-                        Map.entry("h je Start", "Mittlere Laufzeit eines Verdichterlaufs. Länger ist effizienter und schont den "
+                        Map.entry("h je Start", "Mittlere Laufzeit zwischen zwei echten Pausen, Abtauungen unterbrechen den "
+                                + "Lauf nicht. Länger ist effizienter und schont den "
                                 + "Verdichter."),
                         Map.entry("Wärme kWh", "Abgegebene Heizwärme laut Wärmezähler der Wärmepumpe."),
                         Map.entry("Strom kWh", "Geschätzte Wirkleistung des Verdichter-Inverters, aufsummiert; ohne Pumpe und "
@@ -406,8 +410,12 @@ public class StatusService {
                             + "(früher / jetzt).",
                     "Einstellung", "Eingestellter Wärmebedarf im Wärmepumpenmanager, kein Messwert. Bei zwei "
                             + "Einstellungen im Bereich: früher → jetzt.",
-                    "Starts/Tag", "Verdichterstarts pro Tag. Weniger bei gleicher Wärme ist besser.",
-                    "h/Start", "Mittlere Laufzeit eines Verdichterlaufs. Länger ist besser.",
+                    "Starts/Tag", "Verdichterstarts pro Tag nach einem Stillstand von mindestens "
+                            + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten. Der Wiederanlauf nach einer "
+                            + "Abtauung zählt nicht: Bei Kälte taut die Wärmepumpe rund 20 Mal am Tag ab, das hängt "
+                            + "vom Wetter ab und nicht von der Einstellung. Weniger bei gleicher Wärme ist besser.",
+                    "h/Start", "Mittlere Laufzeit zwischen zwei echten Pausen, Abtauungen unterbrechen den Lauf nicht. "
+                            + "Länger ist besser.",
                     "h/Tag", "Laufzeit pro Tag. Nahe 24 h im kältesten Bereich heißt: Die Einstellung ist zu knapp.",
                     "kWh/Tag", "Heizwärme pro Tag. Sollte bei gleicher Außentemperatur gleich bleiben.",
                     "kW im Lauf", "Mittlere Wärmeleistung während der Verdichter läuft (Wärme ÷ Laufzeit). Kleiner "

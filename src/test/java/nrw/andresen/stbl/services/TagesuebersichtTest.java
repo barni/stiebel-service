@@ -26,8 +26,15 @@ public class TagesuebersichtTest {
 
     @Test
     public void testTag() {
-        // Two runs with 1500 VA after a standstill; the first value already running is no start
-        Map<Instant, Double> leistung = werte(1500, 0, 1500, 1500, 1500, 0, 0, 1500, 1500, 0);
+        // Two runs with 1500 VA after a standstill of 5 minutes; the first value already running is no start
+        Map<Instant, Double> leistung = new LinkedHashMap<>();
+        double[] va = {1500, 0, 1500, 1500, 1500, 0, 0, 1500, 1500, 0};
+        Instant zeit = START;
+        for (int i = 0; i < va.length; i++) {
+            // 20 s between the values, 5 minutes before each start
+            zeit = zeit.plusSeconds(i > 0 && va[i] > 0 && va[i - 1] == 0 ? 300 : 20);
+            leistung.put(zeit, va[i]);
+        }
         Map<Instant, Double> abtauung = werte(0, 1, 1, 0, 0, 1, 0);
         Map<Instant, Double> waerme = werte(111.9, 111.95, 112.0);
         Tagesuebersicht.Tag tag = Tagesuebersicht.tag(DATUM, -2.0, leistung, abtauung, waerme);
@@ -39,6 +46,22 @@ public class TagesuebersichtTest {
         assertEquals(1500 * 120 / 3600d / 1000, tag.stromKWh(), 1e-9);
         assertEquals(2, tag.abtauungen());
         assertEquals(tag.waermeKWh() / tag.stromKWh(), tag.arbeitszahl(), 1e-9);
+    }
+
+    @Test
+    public void testAbtauungIstKeinStart() {
+        // Run, 2 minutes break of a defrost, run, 20 minutes standstill, run: one start
+        Map<Instant, Double> leistung = new LinkedHashMap<>();
+        leistung.put(START, 0d);
+        leistung.put(START.plusSeconds(600), 0d);
+        leistung.put(START.plusSeconds(620), 1500d);
+        leistung.put(START.plusSeconds(3000), 0d);
+        leistung.put(START.plusSeconds(3120), 1500d);
+        leistung.put(START.plusSeconds(5000), 0d);
+        leistung.put(START.plusSeconds(6200), 1500d);
+        leistung.put(START.plusSeconds(6220), 1500d);
+        // The first start has no stop before it on this day and counts, the restart after 120 s does not
+        assertEquals(2, Tagesuebersicht.tag(DATUM, 2.0, leistung, Map.of(), Map.of()).starts());
     }
 
     @Test

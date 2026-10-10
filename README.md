@@ -41,6 +41,8 @@ before you rely on it.
   compressor starts, run time and heat per day from InfluxDB (since `auswertung.start`, default 2023-07-01) and groups
   the days by daily mean outdoor temperature (below −5, −5 to 0, … 10 to 15 °C) and by the setting of that day. Shown
   on the status page and as JSON from `/waermebedarf`. Fewer starts at the same heat mean longer, more efficient runs.
+  A start counts after a standstill of at least 3 minutes: the restart after a defrost (about 2 minutes break, around
+  20 a day near 0 °C) depends on the weather and not on the setting. The daily overview counts the same way.
   The heat pump's own outdoor temperature `WP_Aussentemp` is only stored since 09/2026; for older days set a Home
   Assistant entity (measurement `°C`), the token then needs read access to that bucket:
   `auswertung.aussentemp.bucket=home_assistant`, `auswertung.aussentemp.entity=aussen_temperatur`.
