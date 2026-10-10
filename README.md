@@ -91,8 +91,10 @@ The page `/konfiguration`, linked with the status page in both directions, shows
 safe to change in the browser: the limits of the warnings, the start dates and the outdoor temperature of the
 evaluations, InfluxDB on or off and the recipient of the mails. Saving checks every value and writes it into
 `application.properties` in the working directory (another file with `stbl.config.datei`); comments and order stay, a
-copy of the file before is kept as `.bak`. The service reads its settings only at the start, so the page marks every
-value that differs from the running service until the service is restarted. Passwords, tokens, the login, the mail
+copy of the file before is kept as `.bak`. The service reads its settings only at the start: "Speichern und neu starten"
+restarts it within the running process (the Spring context is closed and started again, no systemd needed; the values
+have a gap of about a minute), "Nur speichern" marks every value that differs from the running service until the next
+restart. Passwords, tokens, the login, the mail
 server, the address of InfluxDB and the CAN adapter are not on the page. The user of the service needs write access to
 the file and its directory, otherwise the page is read-only.
 

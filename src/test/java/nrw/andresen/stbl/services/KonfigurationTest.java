@@ -140,7 +140,7 @@ public class KonfigurationTest {
         Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
         Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
         String html = KonfigurationSeite.render(konfiguration.stand(), Map.of("stbl.mail.to", "\"><script>"),
-                Map.of("stbl.mail.to", "ist keine Mailadresse"), false, "_csrf", "abc");
+                Map.of("stbl.mail.to", "ist keine Mailadresse"), null, "_csrf", "abc");
         assertTrue(html.contains("<a class=\"nav\" href=\"status\">"));
         assertTrue(html.contains("<input type=\"hidden\" name=\"_csrf\" value=\"abc\">"));
         assertTrue(html.contains("name=\"warnung.heizungsdruck.min\" value=\"1,3\""));
@@ -151,5 +151,22 @@ public class KonfigurationTest {
         assertFalse(html.contains("geheim"));
         assertFalse(html.contains("spring.mail.password"));
         assertNull(konfiguration.stand().hinweis());
+    }
+
+    @Test
+    public void testSeiteNeustart(@TempDir Path ordner) throws Exception {
+        Path datei = ordner.resolve("application.properties");
+        Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
+        Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
+        String html = KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(),
+                KonfigurationSeite.NEUGESTARTET, null, null);
+        assertTrue(html.contains("name=\"aktion\" value=\"neustart\">Speichern und neu starten</button>"));
+        assertTrue(html.contains("name=\"aktion\" value=\"speichern\">Nur speichern</button>"));
+        assertTrue(html.contains("der Dienst läuft mit den neuen Werten"));
+        // The waiting page compares with the start time of the service that ends
+        String warten = KonfigurationSeite.neustart("2026-10-10T18:13:57Z");
+        assertTrue(warten.contains("const alt = \"2026-10-10T18:13:57Z\";"));
+        assertTrue(warten.contains("fetch('konfiguration/gestartet'"));
+        assertTrue(warten.contains("location.replace('konfiguration?meldung=neugestartet')"));
     }
 }

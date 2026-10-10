@@ -12,6 +12,7 @@ import com.influxdb.client.write.events.WriteSuccessEvent;
 import com.influxdb.client.write.Point;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
+import jakarta.annotation.PreDestroy;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -75,6 +76,16 @@ public class InfluxController {
             schreibfehler = event.getThrowable().getMessage();
         });
 
+    }
+
+    /**
+     * Sends the values not yet written and ends the threads of the client, e.g. before a restart of the service
+     */
+    @PreDestroy
+    public void schliessen() {
+        if (client != null) {
+            client.close();
+        }
     }
 
     /**
