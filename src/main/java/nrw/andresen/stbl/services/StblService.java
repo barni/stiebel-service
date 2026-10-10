@@ -118,6 +118,9 @@ public class StblService {
                 return;
             }
             points.add(influxController.createPoint(name, valueContainer));
+        } catch (KeinMesswert e) {
+            // Expected, e.g. no efficiency while the compressor is off: a warning every minute would hide real ones
+            logger.debug("Not storing " + name + ": " + e.getMessage());
         } catch (Exception e) {
             logger.warn("Not storing " + name + ": " + e.getMessage());
         }
