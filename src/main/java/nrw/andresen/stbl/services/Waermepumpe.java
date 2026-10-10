@@ -575,10 +575,10 @@ public class Waermepumpe {
             return new ValueContainer<>(0d, drehzahl.getTimestamp());
         }
         if (!nachAnlauf(verdichterLaeuftSeit, Instant.now())) {
-            throw new Exception("VERDICHTER_STARTET");
+            throw new KeinMesswert("VERDICHTER_STARTET");
         }
         if (inAbtauung(letzteAbtauung, Instant.now())) {
-            throw new Exception("ABTAUUNG");
+            throw new KeinMesswert("ABTAUUNG");
         }
         ValueContainer<Double> volumenstrom = getVolumenstrom();
         // The flow rate is requested only every 60 s and can still be 0 from before the start
@@ -692,13 +692,13 @@ public class Waermepumpe {
      */
     public ValueContainer<Double> getArbeitszahl() throws Exception {
         if (!nachAnlauf(verdichterLaeuftSeit, Instant.now())) {
-            throw new Exception("VERDICHTER_AUS");
+            throw new KeinMesswert("VERDICHTER_AUS");
         }
         ValueContainer<Double> waermeleistung = getWaermeleistung();
         ValueContainer<Double> scheinleistung = getLeistungInverter();
         double wirkleistung = wirkleistung(scheinleistung.getValue());
         if (wirkleistung <= 0) {
-            throw new Exception("VERDICHTER_AUS");
+            throw new KeinMesswert("VERDICHTER_AUS");
         }
         return new ValueContainer<>(waermeleistung.getValue() * 1000d / wirkleistung,
                 Collections.min(Arrays.asList(waermeleistung.getTimestamp(), scheinleistung.getTimestamp())));
