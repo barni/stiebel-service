@@ -66,7 +66,7 @@ public class StatusService {
      * @return HTML page
      */
     public String getStatus() {
-        StatusPage page = new StatusPage();
+        StatusPage page = new StatusPage().navigation("Konfiguration", "konfiguration");
         if (!influx.isAktiv()) {
             // Without InfluxDB: no courses of the values and none of the cards that are calculated from stored values
             page.ohneVerlauf();

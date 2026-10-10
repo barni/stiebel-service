@@ -1,0 +1,151 @@
+package nrw.andresen.stbl.services;
+
+import java.util.Map;
+
+/**
+ * HTML of the configuration page: one form with the settings in groups, the value of the file in the input and the
+ * value of the running service next to it if they differ
+ */
+public final class KonfigurationSeite {
+
+    private KonfigurationSeite() {
+    }
+
+    /**
+     * @param stand       values of the file and of the running service
+     * @param eingabe     values typed into the form, shown again after an error; empty for the values of the file
+     * @param fehler      message per name of a setting
+     * @param gespeichert the values were just written to the file
+     * @param csrfName    name of the hidden form field against requests from other sites, null without protection
+     */
+    public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
+                                boolean gespeichert, String csrfName, String csrfToken) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+                .append("<title>Wärmepumpe · Konfiguration</title><style>").append(StatusPage.CSS).append(CSS)
+                .append("</style></head><body><main>")
+                .append("<header><div><h1>Konfiguration</h1><p class=\"sub\">Einstellungen dieses Dienstes, nicht ")
+                .append("der Wärmepumpe</p></div><nav><a class=\"nav\" href=\"status\">← Status</a></nav></header>");
+        // The empty name carries a message that belongs to no setting, e.g. the file could not be written
+        long ungueltig = fehler.keySet().stream().filter(name -> !name.isEmpty()).count();
+        if (fehler.containsKey("")) {
+            html.append("<p class=\"meldung fehler\">").append(text(fehler.get(""))).append("</p>");
+        }
+        if (ungueltig > 0) {
+            html.append("<p class=\"meldung fehler\">Nicht gespeichert: ").append(ungueltig)
+                    .append(ungueltig == 1 ? " Wert ist" : " Werte sind").append(" ungültig.</p>");
+        } else if (gespeichert) {
+            html.append("<p class=\"meldung ok\">In die Datei geschrieben.</p>");
+        }
+        if (stand.hinweis() != null) {
+            html.append("<p class=\"meldung fehler\">").append(text(stand.hinweis())).append("</p>");
+        }
+        if (stand.neustartNoetig()) {
+            html.append("<p class=\"meldung neustart\">Neustart nötig: Die Datei weicht vom laufenden Dienst ab. ")
+                    .append("Die markierten Werte gelten erst nach einem Neustart des Dienstes.</p>");
+        }
+        html.append("<form method=\"post\" action=\"konfiguration\">");
+        if (csrfName != null) {
+            html.append("<input type=\"hidden\" name=\"").append(text(csrfName)).append("\" value=\"")
+                    .append(text(csrfToken)).append("\">");
+        }
+        String gruppe = null;
+        for (Konfiguration.Wert wert : stand.werte()) {
+            Konfiguration.Feld feld = wert.feld();
+            if (!feld.gruppe().equals(gruppe)) {
+                html.append(gruppe == null ? "" : "</article>").append("<article class=\"card\"><h2>")
+                        .append(text(feld.gruppe())).append("</h2>");
+                gruppe = feld.gruppe();
+            }
+            html.append(feld(wert, eingabe.get(feld.name()), fehler.get(feld.name()), stand.schreibbar()));
+        }
+        html.append(gruppe == null ? "" : "</article>");
+        html.append("<p class=\"aktionen\"><button type=\"submit\"").append(stand.schreibbar() ? "" : " disabled")
+                .append(">Speichern</button><a class=\"nav\" href=\"status\">Zurück zum Status</a></p></form>")
+                .append("<p class=\"note\">Datei: ").append(text(stand.datei().toString()))
+                .append(". Vor jedem Speichern legt der Dienst daneben eine Kopie mit der Endung .bak an, Kommentare ")
+                .append("und Reihenfolge der Datei bleiben erhalten. Der Dienst liest seine Einstellungen nur beim ")
+                .append("Start. Passwörter, Token, das Login, der Mailserver, die Adresse der InfluxDB und der ")
+                .append("CAN-Adapter stehen nur in der Datei.</p>")
+                .append("</main></body></html>");
+        return html.toString();
+    }
+
+    private static String feld(Konfiguration.Wert wert, String eingabe, String fehler, boolean schreibbar) {
+        Konfiguration.Feld feld = wert.feld();
+        String id = feld.name().replace('.', '-');
+        String angezeigt = eingabe != null ? eingabe : Konfiguration.anzeige(feld, wert.datei());
+        StringBuilder html = new StringBuilder("<div class=\"feld").append(fehler == null ? "" : " ungueltig")
+                .append("\"><label for=\"").append(id).append("\">").append(text(feld.label())).append("</label>")
+                .append("<div class=\"eingabe\">");
+        String attribute = " id=\"" + id + "\" name=\"" + feld.name() + "\"" + (schreibbar ? "" : " disabled");
+        switch (feld.typ()) {
+            case SCHALTER -> {
+                boolean an = eingabe != null ? eingabe.equals("true") : Boolean.parseBoolean(wert.datei());
+                html.append("<select").append(attribute).append("><option value=\"true\"").append(an ? " selected" : "")
+                        .append(">an</option><option value=\"false\"").append(an ? "" : " selected")
+                        .append(">aus</option></select>");
+            }
+            case DATUM -> html.append("<input type=\"date\"").append(attribute).append(" value=\"")
+                    .append(text(angezeigt)).append("\">");
+            case ZAHL, GANZZAHL -> html.append("<input type=\"text\" inputmode=\"decimal\" class=\"zahl\"")
+                    .append(attribute).append(" value=\"").append(text(angezeigt)).append("\">");
+            case MAIL -> html.append("<input type=\"email\"").append(attribute).append(" value=\"")
+                    .append(text(angezeigt)).append("\">");
+            default -> html.append("<input type=\"text\"").append(attribute).append(" value=\"")
+                    .append(text(angezeigt)).append("\">");
+        }
+        html.append(feld.einheit().isEmpty() ? "" : "<span class=\"unit\">" + text(feld.einheit()) + "</span>")
+                .append("</div><p class=\"hilfe\">").append(text(feld.erklaerung()));
+        if (feld.typ() == Konfiguration.Typ.ZAHL || feld.typ() == Konfiguration.Typ.GANZZAHL
+                || feld.typ() == Konfiguration.Typ.DATUM) {
+            html.append(" Standard: ").append(text(Konfiguration.anzeige(feld, feld.standard()))).append(".");
+        }
+        html.append("</p>");
+        if (fehler != null) {
+            html.append("<p class=\"hilfe fehlertext\">").append(text(feld.label())).append(" ").append(text(fehler))
+                    .append(".</p>");
+        }
+        if (wert.neustartNoetig()) {
+            String laufend = Konfiguration.anzeige(feld, wert.laufend());
+            html.append("<p class=\"hilfe neustarttext\">Der Dienst läuft noch mit ")
+                    .append(laufend.isEmpty() ? "einem leeren Wert" : "„" + text(laufend) + "“").append(".</p>");
+        }
+        return html.append("</div>").toString();
+    }
+
+    private static String text(String text) {
+        return text.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private static final String CSS = """
+            .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
+            .nav:hover, .nav:focus { text-decoration: underline; }
+            form { display: grid; gap: 12px; }
+            .card { padding-bottom: 14px; }
+            .feld { padding: 10px 0; border-top: 1px solid var(--line); }
+            .feld:first-of-type { border-top: 0; }
+            .feld label { display: block; font-weight: 600; margin-bottom: 4px; }
+            .eingabe { display: flex; align-items: center; gap: 8px; }
+            input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+              border-radius: 8px; padding: 6px 10px; width: min(100%, 320px); }
+            input.zahl { width: 110px; text-align: right; font-variant-numeric: tabular-nums; }
+            select { width: auto; }
+            input:focus, select:focus, button:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+            input:disabled, select:disabled { color: var(--muted); }
+            .unit { color: var(--muted); }
+            .hilfe { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+            .ungueltig input, .ungueltig select { border-color: var(--warn); }
+            .fehlertext { color: var(--warn); font-weight: 600; }
+            .neustarttext { color: var(--stale); font-weight: 600; }
+            .meldung { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-weight: 600; }
+            .meldung.ok { background: var(--on-bg); color: var(--on); }
+            .meldung.fehler { background: var(--warn-bg); color: var(--warn); }
+            .meldung.neustart { background: var(--off-bg); color: var(--stale); }
+            .aktionen { display: flex; align-items: center; gap: 18px; margin: 4px 0 0; }
+            button { font: inherit; font-weight: 600; color: var(--card); background: var(--accent); border: 0;
+              border-radius: 10px; padding: 8px 18px; cursor: pointer; }
+            button:disabled { background: var(--off-bg); color: var(--muted); cursor: not-allowed; }
+            """;
+}
