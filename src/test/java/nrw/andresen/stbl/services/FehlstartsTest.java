@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -112,5 +113,21 @@ public class FehlstartsTest {
         assertEquals(false, Fehlstarts.mild(temperatur, Instant.parse("2026-01-11T12:00:00Z")));
         assertEquals(false, Fehlstarts.mild(temperatur, Instant.parse("2026-07-01T12:00:00Z")));
         assertEquals(false, Fehlstarts.mild(temperatur, Instant.parse("2026-03-01T12:00:00Z")));
+    }
+
+    @Test
+    public void testAbtauungen() {
+        LocalDate tag = LocalDate.of(2026, 1, 10);
+        // 34 run-ups and 13 starts are 21 defrosts; a day with more starts than run-ups counts 0, not -1
+        Fehlstarts.Abtauungen abtauungen = Fehlstarts.abtauungen(
+                Map.of(tag, 34d, tag.plusDays(1), 4d, tag.plusDays(2), 9d),
+                Map.of(tag, 13d, tag.plusDays(1), 5d));
+        assertEquals(21 + 0 + 9, abtauungen.anzahl());
+        assertEquals(tag, abtauungen.seit());
+        assertNull(Fehlstarts.abtauungen(Map.of(), Map.of()).seit());
+        // The first day comes from the closed seasons, without them from the current one
+        assertEquals(new Fehlstarts.Abtauungen(40, tag),
+                Fehlstarts.summe(abtauungen, new Fehlstarts.Abtauungen(10, tag.plusDays(200))));
+        assertEquals(tag, Fehlstarts.summe(new Fehlstarts.Abtauungen(0, null), abtauungen).seit());
     }
 }

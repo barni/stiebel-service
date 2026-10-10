@@ -66,6 +66,9 @@ public class Fehlstarts {
     private volatile List<Saison> abgeschlossen;
     private volatile Saison laufend;
     private volatile List<Instant> letzte = List.of();
+    // Defrosts of the seasons before the current one and of the current one, null until calculated
+    private volatile Abtauungen abtauungenAbgeschlossen;
+    private volatile Abtauungen abtauungenLaufend;
     private volatile Instant berechnet;
 
     /**
@@ -86,6 +89,12 @@ public class Fehlstarts {
             return tageMitTemperatur >= MIN_ANTEIL_TEMPERATUR * tageMitDaten && tageMitDaten > 0 && startsMild > 0
                     ? 1000d * fehlstartsMild / startsMild : null;
         }
+    }
+
+    /**
+     * Defrosts counted in the stored values and the first day with values, null without values
+     */
+    public record Abtauungen(int anzahl, LocalDate seit) {
     }
 
     /**
@@ -117,6 +126,8 @@ public class Fehlstarts {
                 List<Saison> saisons = saisons(ereignisse(start.atStartOfDay(ZONE).toInstant(),
                         saisonStart.atStartOfDay(ZONE).toInstant()), null);
                 abgeschlossen = saisons;
+                abtauungenAbgeschlossen = abtauungen(start.atStartOfDay(ZONE).toInstant(),
+                        saisonStart.atStartOfDay(ZONE).toInstant());
             }
             Ereignisse aktuell = ereignisse(saisonStart.atStartOfDay(ZONE).toInstant(), jetzt);
             List<Saison> saisons = saisons(aktuell, saisonName(saisonStart));
@@ -124,6 +135,7 @@ public class Fehlstarts {
                     : saisons.get(0);
             List<Instant> fehlstarts = erkennen(aktuell);
             letzte = fehlstarts.subList(Math.max(0, fehlstarts.size() - 5), fehlstarts.size());
+            abtauungenLaufend = abtauungen(saisonStart.atStartOfDay(ZONE).toInstant(), jetzt);
             berechnet = jetzt;
         } catch (Exception e) {
             logger.warn("Failed starts could not be calculated: " + e.getMessage());
@@ -144,6 +156,46 @@ public class Fehlstarts {
             liste.addAll(alt);
         }
         return liste;
+    }
+
+    /**
+     * All defrosts found in the stored values, null until the first calculation. The heat pump's own counter
+     * (0x0806, STARTS ABTAUEN in the menu) stopped at 9999.
+     */
+    public Abtauungen getAbtauungen() {
+        Abtauungen alt = abtauungenAbgeschlossen;
+        Abtauungen neu = abtauungenLaufend;
+        return alt == null || neu == null ? null : summe(alt, neu);
+    }
+
+    static Abtauungen summe(Abtauungen alt, Abtauungen neu) {
+        return new Abtauungen(alt.anzahl() + neu.anzahl(), alt.seit() != null ? alt.seit() : neu.seit());
+    }
+
+    private Abtauungen abtauungen(Instant von, Instant bis) {
+        String bucket = influx.getBucket();
+        return abtauungen(tageswerte(von, bis, bucket, "WP_LeistungInverter", "count()",
+                        WaermebedarfVergleich.FILTER_ANLAEUFE),
+                tageswerte(von, bis, bucket, "WP_LeistungInverter", "count()", WaermebedarfVergleich.FILTER_STARTS));
+    }
+
+    /**
+     * Defrosts are the run-ups of the compressor that are no start, i.e. follow a break below 3 minutes. Around
+     * midnight the two can be counted on different days, so a day never counts below 0.
+     *
+     * @param anlaeufe changes from standstill to running per day
+     * @param starts   starts after at least 3 minutes standstill per day
+     */
+    static Abtauungen abtauungen(Map<LocalDate, Double> anlaeufe, Map<LocalDate, Double> starts) {
+        int anzahl = 0;
+        LocalDate seit = null;
+        for (Map.Entry<LocalDate, Double> tag : new TreeMap<>(anlaeufe).entrySet()) {
+            if (seit == null) {
+                seit = tag.getKey();
+            }
+            anzahl += Math.max(0, tag.getValue().intValue() - starts.getOrDefault(tag.getKey(), 0d).intValue());
+        }
+        return new Abtauungen(anzahl, seit);
     }
 
     /**
@@ -200,11 +252,16 @@ public class Fehlstarts {
 
     private Map<LocalDate, Double> tageswerte(Instant von, Instant bis, String bucket, String measurement,
                                               String funktion) {
+        return tageswerte(von, bis, bucket, measurement, funktion, "");
+    }
+
+    private Map<LocalDate, Double> tageswerte(Instant von, Instant bis, String bucket, String measurement,
+                                              String funktion, String filter) {
         Map<LocalDate, Double> tage = new TreeMap<>();
         for (Instant teil = von; teil.isBefore(bis); teil = teil.plus(Duration.ofDays(TAGE_JE_ABFRAGE))) {
             Instant teilBis = teil.plus(Duration.ofDays(TAGE_JE_ABFRAGE));
             influx.werte(WaermebedarfVergleich.flux(teil, teilBis.isAfter(bis) ? bis : teilBis, bucket, measurement,
-                    null, funktion, "")).forEach((zeit, wert) -> tage.put(zeit.atZone(ZONE).toLocalDate(), wert));
+                    null, funktion, filter)).forEach((zeit, wert) -> tage.put(zeit.atZone(ZONE).toLocalDate(), wert));
         }
         return tage;
     }

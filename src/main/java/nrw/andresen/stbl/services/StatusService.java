@@ -381,6 +381,12 @@ public class StatusService {
                 .row("Dauer letzte Abtauung", "min", 0, "DauerLetzteAbtauung", wp::getDauerLetzteAbtauung)
                 .info("Dauer der letzten Abtauung laut Wärmepumpe (0x514), in ganzen Minuten. Eine Abtauung dauert "
                         + "meist etwa 2 Minuten.")
+                .text("Abtauungen (gezählt)", abtauungen())
+                .info("Summe der Abtauungen aus den gespeicherten Werten: Wiederanläufe des Verdichters nach einer "
+                        + "Pause unter " + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten. Der eigene "
+                        + "Zähler der Wärmepumpe (Menü INFO, STARTS ABTAUEN) ist bei 9999 stehen geblieben. Tage "
+                        + "vor Beginn der Aufzeichnung und Tage ohne Werte fehlen, die Zahl seit Inbetriebnahme ist "
+                        + "also etwas höher. Wird stündlich neu berechnet.")
                 .row("Laufzeit DHC 1", "h", 0, "LaufzeitDHZ1", wp::getLaufzeit_DHC1)
                 .info("Betriebsstunden der Heizstab-Stufe 1 seit Inbetriebnahme (0x500).")
                 .row("Laufzeit DHC 2", "h", 0, "LaufzeitDHZ2", wp::getLaufzeit_DHC2)
@@ -531,6 +537,15 @@ public class StatusService {
                                         ToDoubleFunction<WaermebedarfVergleich.Gruppe> wert, int stellen) {
         String neu = zahl(wert.applyAsDouble(nachher), stellen);
         return vorher == null ? neu : zahl(wert.applyAsDouble(vorher), stellen) + " → " + neu;
+    }
+
+    private String abtauungen() {
+        Fehlstarts.Abtauungen abtauungen = fehlstarts.getAbtauungen();
+        if (abtauungen == null) {
+            return "wird berechnet";
+        }
+        return String.format(Locale.GERMANY, "%,d", abtauungen.anzahl())
+                + (abtauungen.seit() == null ? "" : " seit " + abtauungen.seit().format(DATUM));
     }
 
     private void fehlstarts(StatusPage page) {
