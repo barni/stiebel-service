@@ -2,6 +2,8 @@ package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.CanBus;
 import nrw.andresen.stbl.services.Fehlstarts;
+import nrw.andresen.stbl.services.Konfiguration;
+import nrw.andresen.stbl.services.KonfigurationSeite;
 import nrw.andresen.stbl.services.StatusService;
 import nrw.andresen.stbl.services.Tagesuebersicht;
 import nrw.andresen.stbl.services.Ueberwachung;
@@ -13,16 +15,22 @@ import nrw.andresen.stbl.services.influx.InfluxController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -74,6 +82,8 @@ public class StblController {
     }
     @Autowired
     private InfluxController influxController;
+    @Autowired
+    private Konfiguration konfiguration;
 
     /**
      * The getters throw an exception if no current value is available, e.g. VERDICHTER_AUS or NO_VALUES_RECEIVED.
@@ -95,6 +105,47 @@ public class StblController {
     @RequestMapping(value = "/status", produces = "text/html;charset=UTF-8")
     public String status() throws Exception{
         return statusService.getStatus();
+    }
+
+    /**
+     * Configuration page: settings of this service from the configuration file, linked with the status page
+     */
+    @GetMapping(value = "/konfiguration", produces = "text/html;charset=UTF-8")
+    public String konfiguration(@RequestParam(required = false) String gespeichert, HttpServletRequest request) {
+        return konfigurationSeite(Map.of(), Map.of(), gespeichert != null, request);
+    }
+
+    /**
+     * Checks the form and writes the values into the configuration file. They take effect after a restart of the
+     * service. Answers with a redirect to the page, so a reload does not send the form again.
+     */
+    @PostMapping(value = "/konfiguration", produces = "text/html;charset=UTF-8")
+    public ResponseEntity<String> konfigurationSpeichern(@RequestParam Map<String, String> eingabe,
+                                                         HttpServletRequest request) {
+        Map<String, String> werte = new LinkedHashMap<>();
+        Map<String, String> fehler = new LinkedHashMap<>(Konfiguration.pruefen(eingabe, werte));
+        if (fehler.isEmpty()) {
+            try {
+                konfiguration.speichern(werte);
+                logger.info("Configuration file changed on the configuration page: " + werte.keySet());
+                return ResponseEntity.status(HttpStatus.SEE_OTHER)
+                        .header(HttpHeaders.LOCATION, "konfiguration?gespeichert=1").build();
+            } catch (Exception e) {
+                logger.warn("Configuration file could not be written: " + e.getMessage());
+                fehler.put("", "Die Datei ließ sich nicht schreiben: " + e.getMessage());
+            }
+        }
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(konfigurationSeite(eingabe, fehler, false, request));
+    }
+
+    private String konfigurationSeite(Map<String, String> eingabe, Map<String, String> fehler, boolean gespeichert,
+                                      HttpServletRequest request) {
+        // Token against forms sent from other sites, checked by Spring Security for every POST
+        Object csrf = request.getAttribute(CsrfToken.class.getName());
+        return KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, gespeichert,
+                csrf instanceof CsrfToken token ? token.getParameterName() : null,
+                csrf instanceof CsrfToken token ? token.getToken() : null);
     }
 
     /**

@@ -87,6 +87,15 @@ energy counters of the heat pump are combined from sum and day counters and neve
 Copy [application.properties](application.properties) next to the jar and fill in login, USBtin port and InfluxDB.
 The InfluxDB token is read from the environment variable `INFLUX_TOKEN`.
 
+The page `/konfiguration`, linked with the status page in both directions, shows the settings of the service that are
+safe to change in the browser: the limits of the warnings, the start dates and the outdoor temperature of the
+evaluations, InfluxDB on or off and the recipient of the mails. Saving checks every value and writes it into
+`application.properties` in the working directory (another file with `stbl.config.datei`); comments and order stay, a
+copy of the file before is kept as `.bak`. The service reads its settings only at the start, so the page marks every
+value that differs from the running service until the service is restarted. Passwords, tokens, the login, the mail
+server, the address of InfluxDB and the CAN adapter are not on the page. The user of the service needs write access to
+the file and its directory, otherwise the page is read-only.
+
 InfluxDB is optional. With `influx.enabled=false` the service only shows the live values from the CAN bus: nothing is
 stored, the values on the status page are not clickable, and the cards calculated from stored values are left out
 (daily overview, comparison of the setting Wärmebedarf, failed starts per season) as well as the checks of InfluxDB.

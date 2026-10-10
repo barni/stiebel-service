@@ -35,6 +35,8 @@ public class StatusPage {
     private Item last;
     private boolean hasHistory;
     private boolean verlauf = true;
+    private String navText;
+    private String navZiel;
     private boolean hasTooltip;
 
     public StatusPage() {
@@ -370,6 +372,17 @@ public class StatusPage {
     }
 
     /**
+     * Link in the header to another page of the service, e.g. the configuration
+     *
+     * @param ziel relative address, so it also works behind a reverse proxy with a path
+     */
+    public StatusPage navigation(String text, String ziel) {
+        navText = text;
+        navZiel = ziel;
+        return this;
+    }
+
+    /**
      * The values added after this call are not clickable: without InfluxDB there is no course to show
      */
     public StatusPage ohneVerlauf() {
@@ -507,7 +520,10 @@ public class StatusPage {
 
         html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
                 .append(TIME.format(Instant.now(clock).atZone(zone)))
-                .append(" · aktualisiert alle 20 s</p></div><div class=\"badges\">");
+                .append(" · aktualisiert alle 20 s")
+                .append(navText == null ? "" : " · <a class=\"nav\" href=\"" + attr(navZiel) + "\">"
+                        + attr(navText) + "</a>")
+                .append("</p></div><div class=\"badges\">");
         headerBadges.forEach(html::append);
         html.append("</div></header>");
 
@@ -812,7 +828,7 @@ public class StatusPage {
             })();
             """;
 
-    private static final String CSS = """
+    static final String CSS = """
             :root {
               --bg: #f4f5f2; --card: #ffffff; --text: #1d2321; --muted: #69726e; --line: #e4e7e2;
               --accent: #0f766e; --on: #15803d; --on-bg: #dcfce7; --off-bg: #eceeea; --stale: #b45309;
@@ -835,6 +851,8 @@ public class StatusPage {
               justify-content: space-between; margin-bottom: 20px; }
             h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
             .sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+            .sub .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
+            .sub .nav:hover, .sub .nav:focus { text-decoration: underline; }
             .badges { display: flex; flex-wrap: wrap; gap: 8px; }
             .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
               font-weight: 600; font-size: 14px; background: var(--off-bg); color: var(--muted); }
