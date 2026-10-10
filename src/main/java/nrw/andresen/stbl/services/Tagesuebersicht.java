@@ -1,5 +1,6 @@
 package nrw.andresen.stbl.services;
 
+import nrw.andresen.stbl.services.can.ValueContainer;
 import nrw.andresen.stbl.services.influx.InfluxController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,10 @@ public class Tagesuebersicht {
     private static final Duration MAX_ABSTAND = Duration.ofSeconds(60);
     // Days with a daily mean within this range of yesterday count as similar
     static final double AEHNLICH_K = 1.5;
+    // The pressure swing is only meaningful on a real heating day: the whole floor has to warm up and cool down,
+    // not only the sensors in the heat pump. Checked with the days of January 2026: 0.17 to 0.32 bar per 10 K.
+    static final double DRUCKHUB_MIN_LAUFZEIT_H = 12;
+    static final double DRUCKHUB_MIN_TEMPERATURHUB_K = 5;
 
     private final Logger logger = LoggerFactory.getLogger(Tagesuebersicht.class);
     @Autowired
@@ -38,6 +43,8 @@ public class Tagesuebersicht {
     private WaermebedarfVergleich vergleich;
     private volatile Tag heute;
     private volatile Tag gestern;
+    private volatile Double druckhubGestern;
+    private LocalDate druckhubGespeichert;
     private volatile Instant berechnet;
 
     /**
@@ -78,6 +85,7 @@ public class Tagesuebersicht {
             Map<LocalDate, Double> temperatur = vergleich.aussentemperatur(vorgestern, jetzt);
             gestern = tag(datum.minusDays(1), vorgestern, mitternacht, temperatur.get(datum.minusDays(1)));
             heute = tag(datum, mitternacht, jetzt, temperatur.get(datum));
+            druckhub(datum.minusDays(1), vorgestern, mitternacht);
             berechnet = jetzt;
         } catch (Exception e) {
             logger.warn("Daily overview failed: " + e.getMessage());
@@ -90,6 +98,13 @@ public class Tagesuebersicht {
 
     public Tag getGestern() {
         return gestern;
+    }
+
+    /**
+     * Pressure swing of yesterday in bar per 10 K, null if yesterday was no heating day
+     */
+    public Double getDruckhubGestern() {
+        return druckhubGestern;
     }
 
     public Instant getBerechnet() {
@@ -166,6 +181,63 @@ public class Tagesuebersicht {
         double waermeKWh = waerme.isEmpty() ? 0 : (waerme.values().stream().mapToDouble(Double::doubleValue).max()
                 .orElse(0) - waerme.values().stream().mapToDouble(Double::doubleValue).min().orElse(0)) * 1000;
         return new Tag(datum, aussentemp, starts, laufzeitS / 3600, waermeKWh, energieWs / 3600 / 1000, abtauungen);
+    }
+
+    /**
+     * Calculates the pressure swing of the day and stores it once as WP_DruckhubJe10K with the start of the day
+     */
+    private void druckhub(LocalDate datum, Instant von, Instant bis) {
+        Tag tag = gestern;
+        String bucket = influx.getBucket();
+        Double wert = tag == null ? null : druckhub(influx.werte(minutenmittel(bucket, "WP_Heizungsdruck", von, bis)),
+                influx.werte(minutenmittel(bucket, "WP_VorlaufIstTemp", von, bis)),
+                influx.werte(minutenmittel(bucket, "WP_RuecklaufIstTemp", von, bis)), tag.laufzeitH());
+        druckhubGestern = wert;
+        if (wert != null && !datum.equals(druckhubGespeichert)) {
+            influx.storePoints(List.of(influx.createPoint("DruckhubJe10K", new ValueContainer<>(wert, von))));
+            druckhubGespeichert = datum;
+        }
+    }
+
+    /**
+     * Pressure swing of the heating circuit: span of the pressure of the day divided by the span of the mean water
+     * temperature, in bar per 10 K. An expansion vessel that loses its gas charge has a smaller gas cushion, the
+     * same expansion of the water then changes the pressure more, so the value rises over the months.
+     *
+     * @param druck     pressure in bar, one mean value per minute
+     * @param vorlauf   flow temperature in °C per minute
+     * @param ruecklauf return temperature in °C per minute
+     * @param laufzeitH run time of the compressor on this day
+     * @return null on days with little heating or without values
+     */
+    static Double druckhub(Map<Instant, Double> druck, Map<Instant, Double> vorlauf, Map<Instant, Double> ruecklauf,
+                           double laufzeitH) {
+        if (laufzeitH < DRUCKHUB_MIN_LAUFZEIT_H || druck.isEmpty()) {
+            return null;
+        }
+        double tMin = Double.MAX_VALUE;
+        double tMax = -Double.MAX_VALUE;
+        for (Map.Entry<Instant, Double> v : vorlauf.entrySet()) {
+            Double r = ruecklauf.get(v.getKey());
+            if (r != null) {
+                double mittel = (v.getValue() + r) / 2;
+                tMin = Math.min(tMin, mittel);
+                tMax = Math.max(tMax, mittel);
+            }
+        }
+        if (tMax - tMin < DRUCKHUB_MIN_TEMPERATURHUB_K) {
+            return null;
+        }
+        double pMin = druck.values().stream().mapToDouble(Double::doubleValue).min().orElse(0);
+        double pMax = druck.values().stream().mapToDouble(Double::doubleValue).max().orElse(0);
+        return (pMax - pMin) / (tMax - tMin) * 10;
+    }
+
+    private static String minutenmittel(String bucket, String measurement, Instant von, Instant bis) {
+        return "from(bucket: \"" + bucket + "\") |> range(start: " + von + ", stop: " + bis + ")"
+                + " |> filter(fn: (r) => r._measurement == \"" + measurement + "\" and r._field == \"value\")"
+                + " |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)"
+                + " |> keep(columns: [\"_time\", \"_value\"])";
     }
 
     private static String roh(String bucket, String measurement, Instant von, Instant bis) {

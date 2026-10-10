@@ -35,6 +35,8 @@ public class StatusService {
     private Ueberwachung ueberwachung;
     @Autowired
     private Fehlstarts fehlstarts;
+    @Autowired
+    private Version version;
 
     // What the CAN nodes are, as far as known from the answered values
     private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
@@ -167,22 +169,30 @@ public class StatusService {
         zeilen.add(List.of("Arbeitszahl", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1), "–"));
         zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
                 "–"));
-        page.table(List.of("", "Heute", "Gestern", "Ø gleiche Temp."), zeilen, false, Map.of(
-                        "Heute", "Von Mitternacht bis jetzt.",
-                        "Ø gleiche Temp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
+        zeilen.add(List.of("Druckhub", "–", zahl(tagesuebersicht.getDruckhubGestern(), 2), "–"));
+        page.table(List.of("", "Heute", "Gestern", "Ø gleiche Temp."), zeilen, false, Map.ofEntries(
+                        Map.entry("Heute", "Von Mitternacht bis jetzt."),
+                        Map.entry("Ø gleiche Temp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                                 + ", deren Tagesmittel der Außentemperatur höchstens "
                                 + zahl(Tagesuebersicht.AEHNLICH_K, 1) + " K von gestern abweicht. Zeigt, ob gestern "
-                                + "normal war. Strom, Arbeitszahl und Abtauungen liegen für alte Tage nicht vor.",
-                        "Außen °C", "Tagesmittel der Außentemperatur.",
-                        "Starts", "Verdichterstarts, gezählt aus der Inverterleistung (Wechsel von Stillstand zu Lauf).",
-                        "Laufzeit h", "Stunden, in denen der Verdichter lief.",
-                        "h je Start", "Mittlere Laufzeit eines Verdichterlaufs. Länger ist effizienter und schont den "
-                                + "Verdichter.",
-                        "Wärme kWh", "Abgegebene Heizwärme laut Wärmezähler der Wärmepumpe.",
-                        "Strom kWh", "Geschätzte Wirkleistung des Verdichter-Inverters, aufsummiert; ohne Pumpe und "
-                                + "Regelung, daher etwas zu niedrig.",
-                        "Arbeitszahl", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch.",
-                        "Abtauungen", "Vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa 2 Minuten)."))
+                                + "normal war. Strom, Arbeitszahl und Abtauungen liegen für alte Tage nicht vor."),
+                        Map.entry("Außen °C", "Tagesmittel der Außentemperatur."),
+                        Map.entry("Starts", "Verdichterstarts, gezählt aus der Inverterleistung (Wechsel von Stillstand zu Lauf)."),
+                        Map.entry("Laufzeit h", "Stunden, in denen der Verdichter lief."),
+                        Map.entry("h je Start", "Mittlere Laufzeit eines Verdichterlaufs. Länger ist effizienter und schont den "
+                                + "Verdichter."),
+                        Map.entry("Wärme kWh", "Abgegebene Heizwärme laut Wärmezähler der Wärmepumpe."),
+                        Map.entry("Strom kWh", "Geschätzte Wirkleistung des Verdichter-Inverters, aufsummiert; ohne Pumpe und "
+                                + "Regelung, daher etwas zu niedrig."),
+                        Map.entry("Arbeitszahl", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch."),
+                        Map.entry("Abtauungen", "Vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa 2 Minuten)."),
+                        Map.entry("Druckhub", "Tagesspanne des Heizungsdrucks geteilt durch die Tagesspanne der mittleren "
+                                + "Wassertemperatur, in bar je 10 K. Zeigt den Zustand des Ausdehnungsgefäßes: "
+                                + "Verliert es Vordruck, steigt der Wert über die Monate. Im Januar 2026 lag er bei "
+                                + "0,17 bis 0,32. Nur für Tage mit mindestens "
+                                + zahl(Tagesuebersicht.DRUCKHUB_MIN_LAUFZEIT_H, 0) + " h Laufzeit und "
+                                + zahl(Tagesuebersicht.DRUCKHUB_MIN_TEMPERATURHUB_K, 0) + " K Temperaturspanne, sonst "
+                                + "„–“. Wird täglich als WP_DruckhubJe10K gespeichert.")))
                 .note("„Ø gleiche Temp.“: Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                         + ", deren Tagesmittel höchstens " + zahl(Tagesuebersicht.AEHNLICH_K, 1)
                         + " K von gestern abweicht" + (gleich == null ? "" : " (" + gleich.tage() + " Tage)")
@@ -436,6 +446,11 @@ public class StatusService {
         if (pruefungen.isEmpty()) {
             page.text("Prüfung", "läuft 30 s nach dem Start");
         }
+        page.text("Version", version.getText())
+                .info("Stand des laufenden Dienstes: Version, Git-Commit und Zeitpunkt des Builds. Steht beim Start "
+                        + "auch im Log.")
+                .text("Gestartet", zeitpunkt(version.getGestartet()))
+                .info("Start des Dienstes, zum Beispiel nach einem Deployment oder Neustart des Raspberry Pi.");
         for (Ueberwachung.Pruefung pruefung : pruefungen) {
             page.text(pruefung.name(), pruefung.text()).info(pruefung.erklaerung());
         }

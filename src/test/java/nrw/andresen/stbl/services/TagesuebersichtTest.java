@@ -73,4 +73,25 @@ public class TagesuebersichtTest {
         assertEquals(-2.2, aehnlich.aussentemp(), 1e-9);
         assertNull(Tagesuebersicht.aehnlicheTage(tage, DATUM, 20));
     }
+
+    @Test
+    public void testDruckhub() {
+        // Pressure 1.50 to 1.80 bar while the mean water temperature goes from 24 to 36 °C
+        Map<Instant, Double> druck = werte(1.50, 1.65, 1.80);
+        Map<Instant, Double> vorlauf = werte(26, 32, 38);
+        Map<Instant, Double> ruecklauf = werte(22, 28, 34);
+        assertEquals(0.25, Tagesuebersicht.druckhub(druck, vorlauf, ruecklauf, 14), 1e-9);
+    }
+
+    @Test
+    public void testDruckhubKeinHeiztag() {
+        Map<Instant, Double> druck = werte(1.50, 1.65, 1.80);
+        // Too little run time: only the sensors in the heat pump change, not the whole floor
+        assertNull(Tagesuebersicht.druckhub(druck, werte(26, 32, 38), werte(22, 28, 34), 5));
+        // Temperature span below 5 K
+        assertNull(Tagesuebersicht.druckhub(druck, werte(30, 31, 32), werte(26, 27, 28), 20));
+        // Flow and return do not share a time, no values
+        assertNull(Tagesuebersicht.druckhub(druck, werte(26, 32, 38), Map.of(), 20));
+        assertNull(Tagesuebersicht.druckhub(Map.of(), werte(26, 32, 38), werte(22, 28, 34), 20));
+    }
 }

@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import static nrw.andresen.stbl.services.Waermepumpe.MAX_AGE_20;
-import static nrw.andresen.stbl.services.Waermepumpe.MAX_AGE_3600;
 import static nrw.andresen.stbl.services.Waermepumpe.MAX_AGE_60;
 import static nrw.andresen.stbl.services.can.ElsterTable.*;
 
@@ -33,6 +32,10 @@ public class StblService {
     // statistics closes. Sent exactly at its end, the requests counted in one minute and their answers in the next,
     // which showed an answer rate of 35 % every 10 minutes although everything was answered (seen 2026-10-09).
     private static final long VERSATZ_MS = 30000;
+    // The settings are stored this long after their request, when the answers have arrived
+    private static final long SPEICHERN_3600_MS = 30000;
+    // An older setting means the last request was not answered
+    private static final Duration MAX_ALTER_EINSTELLUNG = Duration.ofMinutes(5);
 
     private final Logger logger = LoggerFactory.getLogger(StblService.class);
     @Autowired
@@ -47,7 +50,6 @@ public class StblService {
     // warning for every value at each start of the service
     private boolean erster20 = true;
     private boolean erster60 = true;
-    private boolean erster3600 = true;
 
     /**
      * Check every 20 seconds
@@ -86,7 +88,7 @@ public class StblService {
     }
 
     /**
-     * Check the settings every hour, the values of the previous request are stored
+     * Requests the settings every hour
      */
     @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 3600000)
     public synchronized void check3600() {
@@ -95,10 +97,14 @@ public class StblService {
         } catch (Exception e) {
             logger.error("Request failure: ", e);
         }
-        if (erster3600) {
-            erster3600 = false;
-            return;
-        }
+    }
+
+    /**
+     * Stores the settings half a minute after their request. Stored together with the next request they appeared
+     * an hour late in InfluxDB and a restart of the service lost one value.
+     */
+    @Scheduled(initialDelay = VERSATZ_MS + SPEICHERN_3600_MS, fixedRate = 3600000)
+    public synchronized void speichern3600() {
         storeValues3600();
     }
 
@@ -239,7 +245,7 @@ public class StblService {
         try {
             List<Point> points = new ArrayList<>();
             for (Waermepumpe.Einstellung einstellung : wp.getEinstellungen()) {
-                addPoint(points, "Einstellung_" + einstellung.name(), einstellung.wert(), MAX_AGE_3600);
+                addPoint(points, "Einstellung_" + einstellung.name(), einstellung.wert(), MAX_ALTER_EINSTELLUNG);
             }
             influxController.storePoints(points);
 
