@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -65,6 +66,71 @@ public class KonfigurationTest {
     }
 
     @Test
+    public void testWeitereEinstellungen() {
+        Map<String, String> eingabe = new LinkedHashMap<>();
+        eingabe.put("influx.enabled", "true");
+        eingabe.put("influx.url", "http://10.1.1.123:8086");
+        eingabe.put("influx.org", "andresen");
+        eingabe.put("influx.bucket", "home");
+        eingabe.put("spring.mail.host", "smtp.gmail.com");
+        eingabe.put("spring.mail.port", "587");
+        eingabe.put("spring.mail.username", "name@example.org");
+        eingabe.put("spring.mail.password", "abcd efgh ijkl mnop");
+        eingabe.put("spring.mail.properties.mail.smtp.auth", "true");
+        eingabe.put("USBtin.port", "/dev/ttyACM0");
+        eingabe.put("USBtin.speed", "20000");
+        eingabe.put("can.logall", "true");
+        Map<String, String> werte = new LinkedHashMap<>();
+        assertTrue(Konfiguration.pruefen(eingabe, werte).isEmpty());
+        assertEquals("20000", werte.get("USBtin.speed"));
+        assertEquals("abcd efgh ijkl mnop", werte.get("spring.mail.password"));
+
+        // An empty password is not changed, an empty optional value is taken as "not set"
+        werte.clear();
+        assertTrue(Konfiguration.pruefen(Map.of("spring.mail.password", "", "spring.mail.port", ""), werte).isEmpty());
+        assertFalse(werte.containsKey("spring.mail.password"));
+        assertEquals("", werte.get("spring.mail.port"));
+    }
+
+    @Test
+    public void testWeitereEinstellungenUngueltig() {
+        Map<String, String> eingabe = new LinkedHashMap<>();
+        eingabe.put("influx.enabled", "true");
+        eingabe.put("influx.url", "");
+        eingabe.put("influx.org", "x y");
+        eingabe.put("spring.mail.host", "smtp server");
+        eingabe.put("spring.mail.port", "70000");
+        // Spring would read ${...} as a placeholder, a backslash or line break would change the file
+        eingabe.put("spring.mail.password", "x${INFLUX_TOKEN}");
+        eingabe.put("USBtin.port", "");
+        eingabe.put("USBtin.speed", "");
+        Map<String, String> werte = new LinkedHashMap<>();
+        Map<String, String> fehler = Konfiguration.pruefen(eingabe, werte);
+        assertEquals(Set.of("influx.url", "influx.org", "spring.mail.host", "spring.mail.port",
+                "spring.mail.password", "USBtin.port", "USBtin.speed"), fehler.keySet());
+        assertEquals("wird gebraucht, solange InfluxDB verwendet wird", fehler.get("influx.url"));
+        assertEquals("darf nicht leer sein", fehler.get("USBtin.port"));
+        for (String passwort : new String[]{"a\\b", "a\nb=c", " vorn", "hinten ", "ümlaut"}) {
+            assertFalse(Konfiguration.pruefen(Map.of("spring.mail.password", passwort), new LinkedHashMap<>())
+                    .isEmpty(), passwort);
+        }
+    }
+
+    @Test
+    public void testErsetzenOhneStandard() {
+        List<String> datei = List.of("spring.mail.host=smtp.alt.de", "  spring.mail.port=25", "USBtin.speed=20000");
+        Map<String, String> werte = new LinkedHashMap<>();
+        werte.put("spring.mail.host", "smtp.neu.de");
+        // Empty and without a default of the service: the entry is commented out, not written empty
+        werte.put("spring.mail.port", "");
+        werte.put("spring.mail.username", "");
+        werte.put("spring.mail.password", "neu geheim");
+        werte.put("USBtin.speed", "20000");
+        assertEquals(List.of("spring.mail.host=smtp.neu.de", "#spring.mail.port=25", "USBtin.speed=20000", "",
+                Konfiguration.ANGEHAENGT, "spring.mail.password=neu geheim"), Konfiguration.ersetzen(datei, werte));
+    }
+
+    @Test
     public void testDruckGrenzenZueinander() {
         Map<String, String> werte = new LinkedHashMap<>();
         Map<String, String> fehler = Konfiguration.pruefen(Map.of("warnung.heizungsdruck.min", "2.5",
@@ -102,7 +168,8 @@ public class KonfigurationTest {
         Path datei = ordner.resolve("application.properties");
         Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
         // The running service was started with the values of the file
-        MockEnvironment environment = new MockEnvironment().withProperty("warnung.antwortquote.min", "90");
+        MockEnvironment environment = new MockEnvironment().withProperty("warnung.antwortquote.min", "90")
+                .withProperty("spring.mail.password", "geheim");
         Konfiguration konfiguration = new Konfiguration(environment, datei.toString());
         Konfiguration.Stand vorher = konfiguration.stand();
         assertTrue(vorher.schreibbar());
@@ -140,16 +207,35 @@ public class KonfigurationTest {
         Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
         Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
         String html = KonfigurationSeite.render(konfiguration.stand(), Map.of("stbl.mail.to", "\"><script>"),
-                Map.of("stbl.mail.to", "ist keine Mailadresse"), false, "_csrf", "abc");
+                Map.of("stbl.mail.to", "ist keine Mailadresse"), null, "_csrf", "abc");
         assertTrue(html.contains("<a class=\"nav\" href=\"status\">"));
         assertTrue(html.contains("<input type=\"hidden\" name=\"_csrf\" value=\"abc\">"));
         assertTrue(html.contains("name=\"warnung.heizungsdruck.min\" value=\"1,3\""));
         assertTrue(html.contains("Empfänger der Warnmails ist keine Mailadresse."));
         // What was typed is shown again, escaped
         assertTrue(html.contains("value=\"&quot;&gt;&lt;script&gt;\""));
-        // Passwords of the file are never on the page
+        // The password of the file is never on the page, its field is empty and only says that one is set
         assertFalse(html.contains("geheim"));
-        assertFalse(html.contains("spring.mail.password"));
+        assertTrue(html.contains("<input type=\"password\" autocomplete=\"new-password\" "
+                + "id=\"spring-mail-password\" name=\"spring.mail.password\" value=\"\" "
+                + "placeholder=\"unverändert\">"));
         assertNull(konfiguration.stand().hinweis());
+    }
+
+    @Test
+    public void testSeiteNeustart(@TempDir Path ordner) throws Exception {
+        Path datei = ordner.resolve("application.properties");
+        Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
+        Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
+        String html = KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(),
+                KonfigurationSeite.NEUGESTARTET, null, null);
+        assertTrue(html.contains("name=\"aktion\" value=\"neustart\">Speichern und neu starten</button>"));
+        assertTrue(html.contains("name=\"aktion\" value=\"speichern\">Nur speichern</button>"));
+        assertTrue(html.contains("der Dienst läuft mit den neuen Werten"));
+        // The waiting page compares with the start time of the service that ends
+        String warten = KonfigurationSeite.neustart("2026-10-10T18:13:57Z");
+        assertTrue(warten.contains("const alt = \"2026-10-10T18:13:57Z\";"));
+        assertTrue(warten.contains("fetch('konfiguration/gestartet'"));
+        assertTrue(warten.contains("location.replace('konfiguration?meldung=neugestartet')"));
     }
 }

@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -25,16 +26,21 @@ import java.util.regex.Pattern;
  * file next to the value the running service uses, checks new values and writes them back into the file. The
  * service reads its settings only at the start, so a change takes effect after a restart.
  *
- * Passwords, tokens, the login and the CAN adapter are not offered here. Nothing of this concerns the heat pump,
- * the service still only reads from it.
+ * Not offered here: the login and the address and port of the web server (a typo would lock the page out), the
+ * log file and the token of InfluxDB, which usually comes from the environment. The mail password can be set but is
+ * never shown. Nothing of this concerns the heat pump, the service still only reads from it.
  */
 @Component
 public class Konfiguration {
 
-    public enum Typ {ZAHL, GANZZAHL, DATUM, NAME, MAIL, SCHALTER}
+    /**
+     * GEHEIM is a password: never shown, an empty input leaves it unchanged
+     */
+    public enum Typ {ZAHL, GANZZAHL, DATUM, NAME, TEXT, MAIL, URL, HOST, PFAD, SCHALTER, GEHEIM}
 
     /**
-     * One setting; min and max only for numbers, standard is the value used without an entry in the file
+     * One setting; min and max only for numbers. standard is the value the service uses without an entry in the
+     * file, null if it has none: then the entry is always written, or commented out for an empty value.
      */
     public record Feld(String name, String gruppe, String label, String einheit, Typ typ, String standard,
                        double min, double max, String erklaerung) {
@@ -47,6 +53,13 @@ public class Konfiguration {
 
         public boolean neustartNoetig() {
             return !gleich(feld, datei, laufend);
+        }
+
+        /**
+         * True if the file has a value, for passwords the only thing the page tells about them
+         */
+        public boolean gesetzt() {
+            return !datei.isEmpty();
         }
     }
 
@@ -66,7 +79,9 @@ public class Konfiguration {
 
     private static final String WARNUNGEN = "Warnungen";
     private static final String AUSWERTUNG = "Auswertung";
-    private static final String DATEN = "Datenbank und Mail";
+    private static final String INFLUX = "InfluxDB";
+    private static final String MAILGRUPPE = "Mail";
+    private static final String CAN = "CAN-Adapter";
 
     static final List<Feld> FELDER = List.of(
             new Feld("warnung.heizungsdruck.min", WARNUNGEN, "Heizungsdruck mindestens", "bar", Typ.ZAHL, "1.3",
@@ -92,14 +107,50 @@ public class Konfiguration {
             new Feld("auswertung.aussentemp.entity", AUSWERTUNG, "Entity der Außentemperatur", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, der erst "
                     + "seit 09/2026 gespeichert wird."),
-            new Feld("influx.enabled", DATEN, "InfluxDB verwenden", "", Typ.SCHALTER, "true", 0, 0,
+            new Feld("influx.enabled", INFLUX, "InfluxDB verwenden", "", Typ.SCHALTER, "true", 0, 0,
                     "Aus: Es wird nichts gespeichert, Verläufe und Auswertungen fehlen auf der Statusseite."),
-            new Feld("stbl.mail.to", DATEN, "Empfänger der Warnmails", "", Typ.MAIL, "", 0, 0,
-                    "Eine Adresse. Leer: Es werden keine Mails gesendet. Server und Passwort stehen nur in der "
-                            + "Datei."));
+            new Feld("influx.url", INFLUX, "Adresse", "", Typ.URL, "", 0, 0,
+                    "Adresse des InfluxDB-2-Servers, zum Beispiel http://localhost:8086."),
+            new Feld("influx.org", INFLUX, "Organisation", "", Typ.TEXT, "", 0, 0,
+                    "Name oder ID der Organisation in InfluxDB."),
+            new Feld("influx.bucket", INFLUX, "Bucket", "", Typ.TEXT, "", 0, 0,
+                    "Bucket, in den der Dienst die Werte der Wärmepumpe schreibt. Der Token steht nur in der Datei "
+                            + "oder in der Umgebungsvariable INFLUX_TOKEN."),
+            new Feld("stbl.mail.to", MAILGRUPPE, "Empfänger der Warnmails", "", Typ.MAIL, "", 0, 0,
+                    "Eine Adresse. Leer: Es werden keine Mails gesendet."),
+            new Feld("spring.mail.host", MAILGRUPPE, "Mailserver", "", Typ.HOST, null, 0, 0,
+                    "Name des SMTP-Servers, zum Beispiel smtp.gmail.com. Leer: Es werden keine Mails gesendet."),
+            new Feld("spring.mail.port", MAILGRUPPE, "Port", "", Typ.GANZZAHL, null, 1, 65535,
+                    "Port des SMTP-Servers, meist 587. Leer: Standard des Servers."),
+            new Feld("spring.mail.username", MAILGRUPPE, "Benutzer", "", Typ.TEXT, null, 0, 0,
+                    "Benutzername am Mailserver, meist die eigene Adresse."),
+            new Feld("spring.mail.password", MAILGRUPPE, "Passwort", "", Typ.GEHEIM, null, 0, 0,
+                    "Passwort am Mailserver. Wird nie angezeigt; leer lassen, um es nicht zu ändern."),
+            new Feld("spring.mail.properties.mail.smtp.auth", MAILGRUPPE, "Anmeldung am Server", "", Typ.SCHALTER,
+                    "false", 0, 0, "An, wenn der Mailserver Benutzer und Passwort verlangt."),
+            new Feld("spring.mail.properties.mail.smtp.starttls.enable", MAILGRUPPE, "Verschlüsselung (STARTTLS)", "",
+                    Typ.SCHALTER, "false", 0, 0, "An für Server, die die Verbindung mit STARTTLS verschlüsseln."),
+            new Feld("USBtin.port", CAN, "Anschluss des USBtin", "", Typ.PFAD, null, 0, 0,
+                    "Serielle Schnittstelle des CAN-Adapters, zum Beispiel /dev/ttyACM0."),
+            new Feld("USBtin.speed", CAN, "Geschwindigkeit", "bit/s", Typ.GANZZAHL, null, 10000, 1000000,
+                    "Geschwindigkeit des CAN-Busses. Die Wärmepumpe arbeitet mit 20000."),
+            new Feld("can.logall", CAN, "Alle Nachrichten empfangen", "", Typ.SCHALTER, null, 0, 0,
+                    "An: Der Dienst empfängt alle CAN-Nachrichten und zeigt sie in der Statistik je Knoten. Aus: nur "
+                            + "die Antworten auf eigene Anfragen."));
+
+    // Without these the service does not start, they cannot be left empty
+    private static final Set<String> PFLICHT = Set.of("USBtin.port", "USBtin.speed", "can.logall");
 
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_]{0,64}");
     private static final Pattern MAIL = Pattern.compile("[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,180}\\.[A-Za-z]{2,24}");
+    private static final Pattern TEXT = Pattern.compile("[A-Za-z0-9._%+@-]{0,128}");
+    private static final Pattern URL = Pattern.compile("https?://[A-Za-z0-9.-]{1,253}(:\\d{1,5})?(/[A-Za-z0-9._~/-]*)?");
+    private static final Pattern HOST = Pattern.compile("[A-Za-z0-9.-]{1,253}");
+    private static final Pattern PFAD = Pattern.compile("[A-Za-z0-9/_.:-]{1,64}");
+    // Printable ASCII without backslash, no blank at the ends: written to the file as it is. "${" would be read by
+    // Spring as a placeholder.
+    private static final Pattern GEHEIM = Pattern.compile("[\\x21-\\x5B\\x5D-\\x7E]([\\x20-\\x5B\\x5D-\\x7E]{0,126}"
+            + "[\\x21-\\x5B\\x5D-\\x7E])?");
     private static final LocalDate FRUEHESTES_DATUM = LocalDate.of(2015, 1, 1);
     // Spring Boot reads application.properties in this encoding; the values written here are plain ASCII
     private static final Charset ZEICHENSATZ = StandardCharsets.ISO_8859_1;
@@ -140,10 +191,11 @@ public class Konfiguration {
         }
         List<Wert> werte = new ArrayList<>();
         for (Feld feld : FELDER) {
-            String laufend = environment.getProperty(feld.name(), feld.standard());
+            String standard = feld.standard() == null ? "" : feld.standard();
+            String laufend = environment.getProperty(feld.name(), standard);
             // Without a readable file the running value is the only one known
             String inDatei = hinweis != null && eintraege.isEmpty() ? laufend
-                    : eintraege.getProperty(feld.name(), feld.standard());
+                    : eintraege.getProperty(feld.name(), standard);
             werte.add(new Wert(feld, inDatei.trim(), laufend.trim()));
         }
         return new Stand(werte, datei, hinweis);
@@ -160,7 +212,8 @@ public class Konfiguration {
         Map<String, String> fehler = new LinkedHashMap<>();
         for (Feld feld : FELDER) {
             String roh = eingabe.get(feld.name());
-            if (roh == null) {
+            if (roh == null || (feld.typ() == Typ.GEHEIM && roh.isEmpty())) {
+                // Not in the form, or a password left empty: unchanged
                 continue;
             }
             try {
@@ -174,6 +227,14 @@ public class Konfiguration {
         if (min != null && max != null && Double.parseDouble(min) >= Double.parseDouble(max)) {
             fehler.put("warnung.heizungsdruck.min", "muss unter dem Höchstwert liegen");
         }
+        if ("true".equals(werte.get("influx.enabled"))) {
+            for (String name : List.of("influx.url", "influx.org", "influx.bucket")) {
+                if ("".equals(werte.get(name))) {
+                    fehler.put(name, "wird gebraucht, solange InfluxDB verwendet wird");
+                }
+            }
+        }
+        fehler.keySet().forEach(werte::remove);
         return fehler;
     }
 
@@ -183,7 +244,14 @@ public class Konfiguration {
      * @throws IllegalArgumentException with a message for the page if the value is not valid
      */
     static String normalisieren(Feld feld, String roh) {
-        String wert = roh.trim();
+        String wert = feld.typ() == Typ.GEHEIM ? roh : roh.trim();
+        if (wert.isEmpty() && PFLICHT.contains(feld.name())) {
+            throw new IllegalArgumentException("darf nicht leer sein");
+        }
+        if (wert.isEmpty() && feld.standard() == null && feld.typ() != Typ.GEHEIM) {
+            // Optional without a default of the service: the entry is commented out
+            return "";
+        }
         switch (feld.typ()) {
             case ZAHL, GANZZAHL -> {
                 BigDecimal zahl;
@@ -223,6 +291,26 @@ public class Konfiguration {
                 }
                 return wert;
             }
+            case TEXT -> {
+                return passend(TEXT, wert, "nur Buchstaben, Ziffern und . _ % + @ -, höchstens 128 Zeichen");
+            }
+            case URL -> {
+                return wert.isEmpty() ? wert
+                        : passend(URL, wert, "ist keine Adresse der Form http://name:port");
+            }
+            case HOST -> {
+                return passend(HOST, wert, "ist kein Servername");
+            }
+            case PFAD -> {
+                return passend(PFAD, wert, "nur Buchstaben, Ziffern und / _ . : -, höchstens 64 Zeichen");
+            }
+            case GEHEIM -> {
+                if (wert.contains("${")) {
+                    throw new IllegalArgumentException("darf die Zeichenfolge ${ nicht enthalten");
+                }
+                return passend(GEHEIM, wert, "nur druckbare Zeichen ohne Umlaute und ohne \\, kein Leerzeichen am "
+                        + "Anfang oder Ende, höchstens 128 Zeichen");
+            }
             case MAIL -> {
                 if (!wert.isEmpty() && !MAIL.matcher(wert).matches()) {
                     throw new IllegalArgumentException("ist keine Mailadresse");
@@ -237,6 +325,13 @@ public class Konfiguration {
             }
             default -> throw new IllegalArgumentException("unbekannter Typ");
         }
+    }
+
+    private static String passend(Pattern muster, String wert, String meldung) {
+        if (!muster.matcher(wert).matches()) {
+            throw new IllegalArgumentException(meldung);
+        }
+        return wert;
     }
 
     /**
@@ -268,14 +363,16 @@ public class Konfiguration {
             Pattern aktiv = Pattern.compile("^\\s*" + name + "\\s*[=:].*$");
             Pattern auskommentiert = Pattern.compile("^\\s*#\\s*" + name + "\\s*=.*$");
             String zeile = feld.name() + "=" + wert;
+            // An empty value of a setting without default means "not set": the entry is commented out
+            boolean entfernen = wert.isEmpty() && feld.standard() == null;
             boolean ersetzt = false;
             for (int i = 0; i < neu.size(); i++) {
                 if (aktiv.matcher(neu.get(i)).matches()) {
-                    neu.set(i, zeile);
+                    neu.set(i, entfernen ? "#" + neu.get(i).stripLeading() : zeile);
                     ersetzt = true;
                 }
             }
-            if (ersetzt || gleich(feld, wert, feld.standard())) {
+            if (ersetzt || entfernen || (feld.standard() != null && gleich(feld, wert, feld.standard()))) {
                 continue;
             }
             for (int i = 0; i < neu.size() && !ersetzt; i++) {
@@ -323,6 +420,7 @@ public class Konfiguration {
         return switch (feld.typ()) {
             case ZAHL, GANZZAHL -> wert.replace('.', ',');
             case SCHALTER -> Boolean.parseBoolean(wert) ? "an" : "aus";
+            case GEHEIM -> "";
             default -> wert;
         };
     }

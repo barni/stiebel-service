@@ -7,6 +7,7 @@ import nrw.andresen.stbl.services.KonfigurationSeite;
 import nrw.andresen.stbl.services.StatusService;
 import nrw.andresen.stbl.services.Tagesuebersicht;
 import nrw.andresen.stbl.services.Ueberwachung;
+import nrw.andresen.stbl.services.Version;
 import nrw.andresen.stbl.services.WaermebedarfVergleich;
 import nrw.andresen.stbl.services.Waermepumpe;
 import nrw.andresen.stbl.services.can.Fehlerliste;
@@ -84,6 +85,10 @@ public class StblController {
     private InfluxController influxController;
     @Autowired
     private Konfiguration konfiguration;
+    @Autowired
+    private Version version;
+    // The answer with the waiting page has to reach the browser before the service closes
+    private static final Duration NEUSTART_VERZOEGERUNG = Duration.ofSeconds(2);
 
     /**
      * The getters throw an exception if no current value is available, e.g. VERDICHTER_AUS or NO_VALUES_RECEIVED.
@@ -111,13 +116,22 @@ public class StblController {
      * Configuration page: settings of this service from the configuration file, linked with the status page
      */
     @GetMapping(value = "/konfiguration", produces = "text/html;charset=UTF-8")
-    public String konfiguration(@RequestParam(required = false) String gespeichert, HttpServletRequest request) {
-        return konfigurationSeite(Map.of(), Map.of(), gespeichert != null, request);
+    public String konfiguration(@RequestParam(required = false) String meldung, HttpServletRequest request) {
+        return konfigurationSeite(Map.of(), Map.of(), meldung, request);
     }
 
     /**
-     * Checks the form and writes the values into the configuration file. They take effect after a restart of the
-     * service. Answers with a redirect to the page, so a reload does not send the form again.
+     * Start time of the service; the page shown during a restart waits until it changes
+     */
+    @GetMapping(value = "/konfiguration/gestartet", produces = "text/plain;charset=UTF-8")
+    public String gestartet() {
+        return version.getGestartet().toString();
+    }
+
+    /**
+     * Checks the form and writes the values into the configuration file. With the button "Speichern und neu
+     * starten" the service then restarts itself if the file differs from the running service. "Nur speichern"
+     * answers with a redirect to the page, so a reload does not send the form again.
      */
     @PostMapping(value = "/konfiguration", produces = "text/html;charset=UTF-8")
     public ResponseEntity<String> konfigurationSpeichern(@RequestParam Map<String, String> eingabe,
@@ -128,22 +142,30 @@ public class StblController {
             try {
                 konfiguration.speichern(werte);
                 logger.info("Configuration file changed on the configuration page: " + werte.keySet());
+                String meldung = KonfigurationSeite.GESPEICHERT;
+                if (KonfigurationSeite.NEUSTART.equals(eingabe.get("aktion"))) {
+                    if (!konfiguration.stand().neustartNoetig()) {
+                        meldung = KonfigurationSeite.UNVERAENDERT;
+                    } else if (Application.neustarten(NEUSTART_VERZOEGERUNG)) {
+                        return ResponseEntity.ok(KonfigurationSeite.neustart(gestartet()));
+                    }
+                }
                 return ResponseEntity.status(HttpStatus.SEE_OTHER)
-                        .header(HttpHeaders.LOCATION, "konfiguration?gespeichert=1").build();
+                        .header(HttpHeaders.LOCATION, "konfiguration?meldung=" + meldung).build();
             } catch (Exception e) {
                 logger.warn("Configuration file could not be written: " + e.getMessage());
                 fehler.put("", "Die Datei ließ sich nicht schreiben: " + e.getMessage());
             }
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(konfigurationSeite(eingabe, fehler, false, request));
+                .body(konfigurationSeite(eingabe, fehler, null, request));
     }
 
-    private String konfigurationSeite(Map<String, String> eingabe, Map<String, String> fehler, boolean gespeichert,
+    private String konfigurationSeite(Map<String, String> eingabe, Map<String, String> fehler, String meldung,
                                       HttpServletRequest request) {
         // Token against forms sent from other sites, checked by Spring Security for every POST
         Object csrf = request.getAttribute(CsrfToken.class.getName());
-        return KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, gespeichert,
+        return KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, meldung,
                 csrf instanceof CsrfToken token ? token.getParameterName() : null,
                 csrf instanceof CsrfToken token ? token.getToken() : null);
     }
