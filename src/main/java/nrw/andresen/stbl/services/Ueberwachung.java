@@ -77,7 +77,7 @@ public class Ueberwachung {
     public Ueberwachung(@Value("${warnung.heizungsdruck.min:1.3}") double druckMin,
                         @Value("${warnung.heizungsdruck.max:2.5}") double druckMax,
                         @Value("${warnung.antwortquote.min:90}") double antwortquoteMin,
-                        @Value("${warnung.starts.proStunde:6}") int startsProStundeMax,
+                        @Value("${warnung.starts.proStunde:3}") int startsProStundeMax,
                         @Value("${warnung.hochdruck.max:38}") double hochdruckMax,
                         @Value("${warnung.spreizung.max:10}") double spreizungMax) {
         this.druckMin = druckMin;

@@ -97,7 +97,8 @@ public class Konfiguration {
             new Feld("warnung.antwortquote.min", WARNUNGEN, "Antwortquote mindestens", "%", Typ.ZAHL, "90", 0, 100,
                     "Warnung, wenn die Wärmepumpe 10 Minuten lang weniger Anfragen beantwortet."),
             new Feld("warnung.starts.proStunde", WARNUNGEN, "Verdichterstarts je Stunde höchstens", "", Typ.GANZZAHL,
-                    "6", 1, 20, "Warnung, wenn der Verdichter in einer Stunde öfter startet."),
+                    "3", 1, 20, "Warnung, wenn der Verdichter in einer Stunde öfter startet. Üblich ist höchstens "
+                    + "ein Start je Stunde, Abtauungen zählen nicht."),
             new Feld("auswertung.start", AUSWERTUNG, "Vergleich Wärmebedarf ab", "", Typ.DATUM, "2023-07-01", 0, 0,
                     "Erster Tag für den Vergleich der Einstellung Wärmebedarf und die Tagesübersicht."),
             new Feld("auswertung.fehlstarts.start", AUSWERTUNG, "Fehlstarts ab", "", Typ.DATUM, "2019-01-01", 0, 0,
