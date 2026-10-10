@@ -144,8 +144,8 @@ public class Tagesuebersicht {
     }
 
     /**
-     * Day from the stored values: starts are changes from standstill to running, the run time and the energy add up
-     * the time to the next value
+     * Day from the stored values: starts are changes from standstill to running after a standstill of at least 3
+     * minutes (not the restart after a defrost), the run time and the energy add up the time to the next value
      *
      * @param leistung apparent power of the inverter in VA
      * @param abtauung 1 during a defrost, 0 otherwise
@@ -157,10 +157,17 @@ public class Tagesuebersicht {
         double laufzeitS = 0;
         double energieWs = 0;
         List<Map.Entry<Instant, Double>> werte = new ArrayList<>(leistung.entrySet());
+        Instant stopp = null;
         for (int i = 0; i < werte.size(); i++) {
             double va = werte.get(i).getValue();
             boolean laeuft = va > LAEUFT_AB_W;
-            if (laeuft && i > 0 && werte.get(i - 1).getValue() <= LAEUFT_AB_W) {
+            boolean liefVorher = i > 0 && werte.get(i - 1).getValue() > LAEUFT_AB_W;
+            if (!laeuft && liefVorher) {
+                stopp = werte.get(i).getKey();
+            }
+            // The restart after the short break of a defrost belongs to the same run
+            if (laeuft && i > 0 && !liefVorher && (stopp == null || Duration.between(stopp, werte.get(i).getKey())
+                    .compareTo(Fehlstarts.MIN_STILLSTAND_START) >= 0)) {
                 starts++;
             }
             if (laeuft && i + 1 < werte.size()) {

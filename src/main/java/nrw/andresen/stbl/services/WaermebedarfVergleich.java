@@ -20,8 +20,8 @@ import java.util.TreeMap;
 import java.util.regex.Pattern;
 
 /**
- * Compares the days before and after a change of the setting Wärmebedarf: compressor starts, run time and heat per
- * day, grouped by the daily mean of the outdoor temperature. The daily values are calculated from InfluxDB every 6
+ * Compares the days before and after a change of the setting Wärmebedarf: compressor starts (without the restarts
+ * after a defrost), run time and heat per day, grouped by the daily mean of the outdoor temperature. The daily values are calculated from InfluxDB every 6
  * hours, only complete days are used.
  */
 @Component
@@ -138,8 +138,14 @@ public class WaermebedarfVergleich {
         Instant von = start.atStartOfDay(ZONE).toInstant();
         Instant bis = LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
         Map<LocalDate, Double> werte = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "count()", "");
+        // A start is counted when a standstill gets longer than the break of a defrost. Counting every change from
+        // standstill to running gave 23 to 30 "starts" on cold days, two thirds of them restarts after a defrost
+        // (winter 2025/26: 1116 of 1724), which says nothing about the setting.
         Map<LocalDate, Double> starts = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "count()",
                 " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1 else 0}))"
+                        + " |> stateDuration(fn: (r) => r._value == 0, column: \"aus\", unit: 1s)"
+                        + " |> map(fn: (r) => ({r with _value: if r.aus >= "
+                        + Fehlstarts.MIN_STILLSTAND_START.toSeconds() + " then 1 else 0}))"
                         + " |> difference() |> filter(fn: (r) => r._value == 1)");
         Map<LocalDate, Double> laufzeit = tageswerte(von, bis, bucket, "WP_LeistungInverter", null,
                 "integral(unit: 1h)",
