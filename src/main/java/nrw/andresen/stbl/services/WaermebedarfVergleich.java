@@ -42,19 +42,6 @@ public class WaermebedarfVergleich {
     static final double WAERME_TOLERANZ = 0.10;
     static final double STARTS_BESSER = 0.9;
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_]{1,64}|°C");
-    private static final String LAEUFT = " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W
-            + " then 1 else 0}))";
-    // Every change from standstill to running; those that are no start follow the short break of a defrost.
-    // WP_Abtauung is stored only since 2026-09-25, this way the defrosts of the older days are counted too.
-    static final String FILTER_ANLAEUFE = LAEUFT + " |> difference() |> filter(fn: (r) => r._value == 1)";
-    // A start is counted when a standstill gets longer than the break of a defrost. Counting every change from
-    // standstill to running gave 23 to 30 "starts" on cold days, two thirds of them restarts after a defrost
-    // (winter 2025/26: 1116 of 1724), which says nothing about the setting.
-    static final String FILTER_STARTS = LAEUFT
-            + " |> stateDuration(fn: (r) => r._value == 0, column: \"aus\", unit: 1s)"
-            + " |> map(fn: (r) => ({r with _value: if r.aus >= " + Fehlstarts.MIN_STILLSTAND_START.toSeconds()
-            + " then 1 else 0}))"
-            + " |> difference() |> filter(fn: (r) => r._value == 1)";
 
     private final Logger logger = LoggerFactory.getLogger(WaermebedarfVergleich.class);
     @Autowired
@@ -151,10 +138,20 @@ public class WaermebedarfVergleich {
         Instant von = start.atStartOfDay(ZONE).toInstant();
         Instant bis = LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
         Map<LocalDate, Double> werte = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "count()", "");
+        // A start is counted when a standstill gets longer than the break of a defrost. Counting every change from
+        // standstill to running gave 23 to 30 "starts" on cold days, two thirds of them restarts after a defrost
+        // (winter 2025/26: 1116 of 1724), which says nothing about the setting.
         Map<LocalDate, Double> starts = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "count()",
-                FILTER_STARTS);
+                " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1 else 0}))"
+                        + " |> stateDuration(fn: (r) => r._value == 0, column: \"aus\", unit: 1s)"
+                        + " |> map(fn: (r) => ({r with _value: if r.aus >= "
+                        + Fehlstarts.MIN_STILLSTAND_START.toSeconds() + " then 1 else 0}))"
+                        + " |> difference() |> filter(fn: (r) => r._value == 1)");
+        // Every change from standstill to running; those that are no start follow the short break of a defrost.
+        // WP_Abtauung is stored only since 2026-09-25, this way the defrosts of the older days are counted too.
         Map<LocalDate, Double> anlaeufe = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "count()",
-                FILTER_ANLAEUFE);
+                " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1 else 0}))"
+                        + " |> difference() |> filter(fn: (r) => r._value == 1)");
         Map<LocalDate, Double> laufzeit = tageswerte(von, bis, bucket, "WP_LeistungInverter", null,
                 "integral(unit: 1h)",
                 " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1.0 else 0.0}))");
