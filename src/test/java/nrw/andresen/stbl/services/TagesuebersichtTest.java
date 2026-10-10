@@ -83,13 +83,14 @@ public class TagesuebersichtTest {
     @Test
     public void testAehnlicheTage() {
         List<WaermebedarfVergleich.Tag> tage = List.of(
-                new WaermebedarfVergleich.Tag(DATUM, -2.0, 35, 16.7, 119, 8.5),
-                new WaermebedarfVergleich.Tag(DATUM.minusDays(1), -1.0, 30, 17, 110, 8.5),
-                new WaermebedarfVergleich.Tag(DATUM.minusDays(2), -3.4, 20, 18, 130, 8.5),
-                new WaermebedarfVergleich.Tag(DATUM.minusDays(3), 1.0, 10, 10, 60, 8.5));
+                new WaermebedarfVergleich.Tag(DATUM, -2.0, 35, 16.7, 119, 8.5, 20),
+                new WaermebedarfVergleich.Tag(DATUM.minusDays(1), -1.0, 30, 17, 110, 8.5, 22),
+                new WaermebedarfVergleich.Tag(DATUM.minusDays(2), -3.4, 20, 18, 130, 8.5, 18),
+                new WaermebedarfVergleich.Tag(DATUM.minusDays(3), 1.0, 10, 10, 60, 8.5, 5));
         // Yesterday itself is not compared with itself
         Tagesuebersicht.Vergleichstage aehnlich = Tagesuebersicht.aehnlicheTage(tage, DATUM, -2.0);
         assertEquals(2, aehnlich.tage());
+        assertEquals(20, aehnlich.abtauungen(), 1e-9);
         assertEquals(25, aehnlich.starts(), 1e-9);
         assertEquals(17.5, aehnlich.laufzeitH(), 1e-9);
         assertEquals(120, aehnlich.waermeKWh(), 1e-9);

@@ -43,6 +43,7 @@ before you rely on it.
   on the status page and as JSON from `/waermebedarf`. Fewer starts at the same heat mean longer, more efficient runs.
   A start counts after a standstill of at least 3 minutes: the restart after a defrost (about 2 minutes break, around
   20 a day near 0 °C) depends on the weather and not on the setting. The daily overview counts the same way.
+  These restarts are shown as defrosts per day, also for the days before the service detected defrosts itself.
   The heat pump's own outdoor temperature `WP_Aussentemp` is only stored since 09/2026; for older days set a Home
   Assistant entity (measurement `°C`), the token then needs read access to that bucket:
   `auswertung.aussentemp.bucket=home_assistant`, `auswertung.aussentemp.entity=aussen_temperatur`.
