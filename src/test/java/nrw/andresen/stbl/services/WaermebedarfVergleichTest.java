@@ -33,35 +33,39 @@ public class WaermebedarfVergleichTest {
     public void testTage() {
         // Values of 11.01.2026 from InfluxDB; 12.01. has a gap, 01.10. the new setting
         Map<LocalDate, Double> werte = Map.of(TAG1, 4320d, TAG2, 2000d, TAG3, 4320d);
-        Map<LocalDate, Double> starts = Map.of(TAG1, 35d, TAG2, 16d, TAG3, 10d);
+        Map<LocalDate, Double> starts = Map.of(TAG1, 12d, TAG2, 16d, TAG3, 10d);
         Map<LocalDate, Double> laufzeit = Map.of(TAG1, 16.74, TAG2, 19.9, TAG3, 5d);
         Map<LocalDate, Double> waerme = Map.of(TAG1, 0.1188, TAG2, 0.101, TAG3, 0.03);
         Map<LocalDate, Double> temperatur = Map.of(TAG1, -2.04, TAG2, 5.1, TAG3, 12d);
         Map<LocalDate, Double> einstellung = Map.of(LocalDate.of(2026, 9, 22), 8.5, LocalDate.of(2026, 9, 27), 7.5);
 
-        List<WaermebedarfVergleich.Tag> tage = WaermebedarfVergleich.tage(werte, starts, laufzeit, waerme,
-                temperatur, einstellung);
+        // 35 run-ups on 11.01., 12 of them starts
+        Map<LocalDate, Double> anlaeufe = Map.of(TAG1, 35d, TAG2, 30d, TAG3, 9d);
+        List<WaermebedarfVergleich.Tag> tage = WaermebedarfVergleich.tage(werte, starts, anlaeufe, laufzeit,
+                waerme, temperatur, einstellung);
         assertEquals(2, tage.size());
         // Before the first stored setting the first value applies
-        assertEquals(new WaermebedarfVergleich.Tag(TAG1, -2.04, 35, 16.74, 118.8, 8.5).toString(),
+        assertEquals(new WaermebedarfVergleich.Tag(TAG1, -2.04, 12, 16.74, 118.8, 8.5, 23).toString(),
                 tage.get(0).toString());
         assertEquals(7.5, tage.get(1).waermebedarf());
+        // Fewer run-ups than starts on a day (start counted the day before): no negative defrosts
+        assertEquals(0, tage.get(1).abtauungen());
     }
 
     @Test
     public void testOhneEinstellung() {
-        assertTrue(WaermebedarfVergleich.tage(Map.of(TAG1, 4320d), Map.of(), Map.of(), Map.of(TAG1, 0.1),
+        assertTrue(WaermebedarfVergleich.tage(Map.of(TAG1, 4320d), Map.of(), Map.of(), Map.of(), Map.of(TAG1, 0.1),
                 Map.of(TAG1, 0d), Map.of()).isEmpty());
     }
 
     @Test
     public void testVergleich() {
         List<WaermebedarfVergleich.Tag> tage = List.of(
-                new WaermebedarfVergleich.Tag(TAG3, 2, 10, 20, 100, 7.5),
-                new WaermebedarfVergleich.Tag(TAG1, 1, 30, 18, 110, 8.5),
-                new WaermebedarfVergleich.Tag(TAG2, 3, 20, 16, 90, 8.5),
-                new WaermebedarfVergleich.Tag(TAG2, -6, 40, 22, 150, 8.5),
-                new WaermebedarfVergleich.Tag(TAG2, 16, 2, 1, 5, 8.5));
+                new WaermebedarfVergleich.Tag(TAG3, 2, 10, 20, 100, 7.5, 0),
+                new WaermebedarfVergleich.Tag(TAG1, 1, 30, 18, 110, 8.5, 0),
+                new WaermebedarfVergleich.Tag(TAG2, 3, 20, 16, 90, 8.5, 0),
+                new WaermebedarfVergleich.Tag(TAG2, -6, 40, 22, 150, 8.5, 0),
+                new WaermebedarfVergleich.Tag(TAG2, 16, 2, 1, 5, 8.5, 0));
         List<WaermebedarfVergleich.Gruppe> gruppen = WaermebedarfVergleich.vergleich(tage);
         // The day above 15 degC is not used, coldest band first, the old setting before the new one
         assertEquals(3, gruppen.size());
@@ -95,10 +99,10 @@ public class WaermebedarfVergleichTest {
     @Test
     public void testVorherNachher() {
         List<WaermebedarfVergleich.Tag> tage = List.of(
-                new WaermebedarfVergleich.Tag(TAG1, 2, 30, 18, 110, 8.5),
-                new WaermebedarfVergleich.Tag(TAG2, 3, 20, 16, 90, 8.5),
-                new WaermebedarfVergleich.Tag(TAG3, 2, 10, 20, 100, 7.5),
-                new WaermebedarfVergleich.Tag(TAG1, 7, 12, 14, 60, 8.5));
+                new WaermebedarfVergleich.Tag(TAG1, 2, 30, 18, 110, 8.5, 0),
+                new WaermebedarfVergleich.Tag(TAG2, 3, 20, 16, 90, 8.5, 0),
+                new WaermebedarfVergleich.Tag(TAG3, 2, 10, 20, 100, 7.5, 0),
+                new WaermebedarfVergleich.Tag(TAG1, 7, 12, 14, 60, 8.5, 0));
         List<WaermebedarfVergleich.Vergleich> zeilen =
                 WaermebedarfVergleich.vorherNachher(WaermebedarfVergleich.vergleich(tage));
         assertEquals(2, zeilen.size());
@@ -116,7 +120,7 @@ public class WaermebedarfVergleichTest {
     private static WaermebedarfVergleich.Gruppe gruppe(double einstellung, int tage, double starts, double h,
                                                        double kwh) {
         return new WaermebedarfVergleich.Gruppe("0 bis 5 °C", einstellung, tage, 2, starts, h, h / starts, kwh,
-                kwh / h, TAG1);
+                kwh / h, TAG1, 0);
     }
 
     @Test

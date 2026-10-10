@@ -57,7 +57,7 @@ public class WaermebedarfVergleich {
      * Values of one complete day
      */
     public record Tag(LocalDate datum, double aussentemp, int starts, double laufzeitH, double waermeKWh,
-                      double waermebedarf) {
+                      double waermebedarf, int abtauungen) {
     }
 
     /**
@@ -65,7 +65,7 @@ public class WaermebedarfVergleich {
      */
     public record Gruppe(String band, double waermebedarf, int tage, double aussentemp, double startsProTag,
                          double laufzeitProTag, double laufzeitProStart, double waermeProTag, double leistungKW,
-                         LocalDate bis) {
+                         LocalDate bis, double abtauungenProTag) {
     }
 
     /**
@@ -147,6 +147,11 @@ public class WaermebedarfVergleich {
                         + " |> map(fn: (r) => ({r with _value: if r.aus >= "
                         + Fehlstarts.MIN_STILLSTAND_START.toSeconds() + " then 1 else 0}))"
                         + " |> difference() |> filter(fn: (r) => r._value == 1)");
+        // Every change from standstill to running; those that are no start follow the short break of a defrost.
+        // WP_Abtauung is stored only since 2026-09-25, this way the defrosts of the older days are counted too.
+        Map<LocalDate, Double> anlaeufe = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "count()",
+                " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1 else 0}))"
+                        + " |> difference() |> filter(fn: (r) => r._value == 1)");
         Map<LocalDate, Double> laufzeit = tageswerte(von, bis, bucket, "WP_LeistungInverter", null,
                 "integral(unit: 1h)",
                 " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1.0 else 0.0}))");
@@ -154,15 +159,17 @@ public class WaermebedarfVergleich {
         Map<LocalDate, Double> temperatur = aussentemperatur(von, bis);
         Map<LocalDate, Double> einstellung = tageswerte(von, bis, bucket, "WP_Einstellung_Waermebedarf", null,
                 "last()", "");
-        return tage(werte, starts, laufzeit, waerme, temperatur, einstellung);
+        return tage(werte, starts, anlaeufe, laufzeit, waerme, temperatur, einstellung);
     }
 
     /**
-     * Joins the daily values. Days with gaps or without temperature are skipped. The setting is taken from the last
+     * Joins the daily values. Days with gaps or without temperature are skipped. The defrosts are the run-ups that
+     * are no start. The setting is taken from the last
      * stored day before; before the first stored setting (2026-09-22) the first stored value is used.
      */
     static List<Tag> tage(Map<LocalDate, Double> werte, Map<LocalDate, Double> starts,
-                          Map<LocalDate, Double> laufzeit, Map<LocalDate, Double> waerme,
+                          Map<LocalDate, Double> anlaeufe, Map<LocalDate, Double> laufzeit,
+                          Map<LocalDate, Double> waerme,
                           Map<LocalDate, Double> temperatur, Map<LocalDate, Double> einstellung) {
         TreeMap<LocalDate, Double> einstellungen = new TreeMap<>(einstellung);
         List<Tag> tage = new ArrayList<>();
@@ -177,8 +184,12 @@ public class WaermebedarfVergleich {
             }
             Map.Entry<LocalDate, Double> gueltig = einstellungen.floorEntry(datum);
             double waermebedarf = gueltig != null ? gueltig.getValue() : einstellungen.firstEntry().getValue();
-            tage.add(new Tag(datum, aussentemp, starts.getOrDefault(datum, 0d).intValue(),
-                    laufzeit.getOrDefault(datum, 0d), waerme.get(datum) * 1000, waermebedarf));
+            int startsTag = starts.getOrDefault(datum, 0d).intValue();
+            // A start is counted when its standstill gets longer than 3 minutes, a run-up when the compressor runs
+            // again: around midnight the two can fall on different days, so the difference is not below 0
+            int abtauungen = Math.max(0, anlaeufe.getOrDefault(datum, 0d).intValue() - startsTag);
+            tage.add(new Tag(datum, aussentemp, startsTag, laufzeit.getOrDefault(datum, 0d),
+                    waerme.get(datum) * 1000, waermebedarf, abtauungen));
         }
         return tage;
     }
@@ -204,7 +215,8 @@ public class WaermebedarfVergleich {
             gruppen.add(new Gruppe(bandName(band(erster.aussentemp())), erster.waermebedarf(), n,
                     gruppe.stream().mapToDouble(Tag::aussentemp).average().orElse(0), starts / n, laufzeit / n,
                     starts > 0 ? laufzeit / starts : 0, waerme / n, laufzeit > 0 ? waerme / laufzeit : 0,
-                    gruppe.stream().map(Tag::datum).max(Comparator.naturalOrder()).orElse(null)));
+                    gruppe.stream().map(Tag::datum).max(Comparator.naturalOrder()).orElse(null),
+                    gruppe.stream().mapToInt(Tag::abtauungen).sum() / (double) n));
         }
         return gruppen;
     }

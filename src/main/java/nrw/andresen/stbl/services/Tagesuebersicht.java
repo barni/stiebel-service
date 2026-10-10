@@ -65,7 +65,8 @@ public class Tagesuebersicht {
     /**
      * Mean values of the days with similar outdoor temperature
      */
-    public record Vergleichstage(int tage, double aussentemp, double starts, double laufzeitH, double waermeKWh) {
+    public record Vergleichstage(int tage, double aussentemp, double starts, double laufzeitH, double waermeKWh,
+                                 double abtauungen) {
 
         public Double laufzeitProStart() {
             return starts > 0 ? laufzeitH / starts : null;
@@ -133,7 +134,8 @@ public class Tagesuebersicht {
         return new Vergleichstage(n, aehnlich.stream().mapToDouble(WaermebedarfVergleich.Tag::aussentemp).sum() / n,
                 aehnlich.stream().mapToInt(WaermebedarfVergleich.Tag::starts).sum() / (double) n,
                 aehnlich.stream().mapToDouble(WaermebedarfVergleich.Tag::laufzeitH).sum() / n,
-                aehnlich.stream().mapToDouble(WaermebedarfVergleich.Tag::waermeKWh).sum() / n);
+                aehnlich.stream().mapToDouble(WaermebedarfVergleich.Tag::waermeKWh).sum() / n,
+                aehnlich.stream().mapToInt(WaermebedarfVergleich.Tag::abtauungen).sum() / (double) n);
     }
 
     private Tag tag(LocalDate datum, Instant von, Instant bis, Double aussentemp) {

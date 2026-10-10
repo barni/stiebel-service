@@ -168,14 +168,14 @@ public class StatusService {
         zeilen.add(List.of("Strom kWh", zahl(heute.stromKWh(), 1), zahl(gestern.stromKWh(), 1), "–"));
         zeilen.add(List.of("Arbeitszahl", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1), "–"));
         zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
-                "–"));
+                gleich == null ? "–" : zahl(gleich.abtauungen(), 1)));
         zeilen.add(List.of("Druckhub", "–", zahl(tagesuebersicht.getDruckhubGestern(), 2), "–"));
         page.table(List.of("", "Heute", "Gestern", "Ø gleiche Temp."), zeilen, false, Map.ofEntries(
                         Map.entry("Heute", "Von Mitternacht bis jetzt."),
                         Map.entry("Ø gleiche Temp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                                 + ", deren Tagesmittel der Außentemperatur höchstens "
                                 + zahl(Tagesuebersicht.AEHNLICH_K, 1) + " K von gestern abweicht. Zeigt, ob gestern "
-                                + "normal war. Strom, Arbeitszahl und Abtauungen liegen für alte Tage nicht vor."),
+                                + "normal war. Strom und Arbeitszahl liegen für alte Tage nicht vor."),
                         Map.entry("Außen °C", "Tagesmittel der Außentemperatur."),
                         Map.entry("Starts", "Verdichterstarts nach einem Stillstand von mindestens "
                                 + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, gezählt aus der "
@@ -189,7 +189,10 @@ public class StatusService {
                         Map.entry("Strom kWh", "Geschätzte Wirkleistung des Verdichter-Inverters, aufsummiert; ohne Pumpe und "
                                 + "Regelung, daher etwas zu niedrig."),
                         Map.entry("Arbeitszahl", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch."),
-                        Map.entry("Abtauungen", "Vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa 2 Minuten)."),
+                        Map.entry("Abtauungen", "Heute und gestern: vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa "
+                                + "2 Minuten). Vergleichstage: Wiederanläufe nach einer Pause unter "
+                                + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, weil die Erkennung erst "
+                                + "seit 25.09.2026 gespeichert wird."),
                         Map.entry("Druckhub", "Tagesspanne des Heizungsdrucks geteilt durch die Tagesspanne der mittleren "
                                 + "Wassertemperatur, in bar je 10 K. Zeigt den Zustand des Ausdehnungsgefäßes: "
                                 + "Verliert es Vordruck, steigt der Wert über die Monate. Im Januar 2026 lag er bei "
@@ -399,13 +402,14 @@ public class StatusService {
                         (alt == null ? "" : zahl(alt.waermebedarf(), 1) + " → ") + zahl(neu.waermebedarf(), 1) + " kW",
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::startsProTag, 1),
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::laufzeitProStart, 2),
+                        vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::abtauungenProTag, 1),
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::laufzeitProTag, 1),
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::waermeProTag, 0),
                         vorherNachher(alt, neu, WaermebedarfVergleich.Gruppe::leistungKW, 2),
                         WaermebedarfVergleich.bewertung(alt, neu)));
             }
-            page.table(List.of("Außen (Tage)", "Einstellung", "Starts/Tag", "h/Start", "h/Tag", "kWh/Tag",
-                    "kW im Lauf", "Bewertung"), zeilen, true, Map.of(
+            page.table(List.of("Außen (Tage)", "Einstellung", "Starts/Tag", "h/Start", "Abtau./Tag", "h/Tag",
+                    "kWh/Tag", "kW im Lauf", "Bewertung"), zeilen, true, Map.of(
                     "Außen (Tage)", "Bereich des Tagesmittels der Außentemperatur, in Klammern die Anzahl der Tage "
                             + "(früher / jetzt).",
                     "Einstellung", "Eingestellter Wärmebedarf im Wärmepumpenmanager, kein Messwert. Bei zwei "
@@ -416,6 +420,10 @@ public class StatusService {
                             + "vom Wetter ab und nicht von der Einstellung. Weniger bei gleicher Wärme ist besser.",
                     "h/Start", "Mittlere Laufzeit zwischen zwei echten Pausen, Abtauungen unterbrechen den Lauf nicht. "
                             + "Länger ist besser.",
+                    "Abtau./Tag", "Abtauungen pro Tag: Wiederanläufe des Verdichters nach einer Pause unter "
+                            + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten (eine Abtauung dauert etwa 2 "
+                            + "Minuten). Hängt von Außentemperatur und Luftfeuchte ab, am meisten um 0 °C. Jede "
+                            + "Abtauung entzieht dem Heizwasser Wärme.",
                     "h/Tag", "Laufzeit pro Tag. Nahe 24 h im kältesten Bereich heißt: Die Einstellung ist zu knapp.",
                     "kWh/Tag", "Heizwärme pro Tag. Sollte bei gleicher Außentemperatur gleich bleiben.",
                     "kW im Lauf", "Mittlere Wärmeleistung während der Verdichter läuft (Wärme ÷ Laufzeit). Kleiner "
