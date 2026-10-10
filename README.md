@@ -65,6 +65,11 @@ before you rely on it.
   curve distance, room influence, standstill and minimum run time, controller dynamics, each with the default of the
   WPM 3 manual in its tooltip. A change is sent by mail (also one made while the service was stopped, compared with
   the last stored value).
+- **Pressure swing** of the heating circuit per day: span of the pressure divided by the span of the mean water
+  temperature in bar per 10 K, shown for yesterday and stored as `WP_DruckhubJe10K`. The value rises over the months
+  when the expansion vessel loses its gas charge. Only for days with at least 12 h run time of the compressor.
+- **Version**, git commit and build time are written to the log at the start and shown on the status page together
+  with the start time of the service.
 - **Check of the service** 30 s after the start and every 15 minutes: InfluxDB reachable, reading the bucket (and the
   bucket of the outdoor temperature), writing, USBtin connected and answering, mail configured.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, when a
