@@ -77,8 +77,8 @@ public final class KonfigurationSeite {
                 .append("<p class=\"note\">Datei: ").append(text(stand.datei().toString()))
                 .append(". Vor jedem Speichern legt der Dienst daneben eine Kopie mit der Endung .bak an, Kommentare ")
                 .append("und Reihenfolge der Datei bleiben erhalten. Der Dienst liest seine Einstellungen nur beim ")
-                .append("Start. Passwörter, Token, das Login, der Mailserver, die Adresse der InfluxDB und der ")
-                .append("CAN-Adapter stehen nur in der Datei.</p>")
+                .append("Start. Das Login, Adresse und Port dieser Seite, die Logdatei und der Token der InfluxDB ")
+                .append("stehen nur in der Datei: Ein Tippfehler dort würde die Seite aussperren.</p>")
                 .append("</main></body></html>");
         return html.toString();
     }
@@ -124,13 +124,17 @@ public final class KonfigurationSeite {
                     .append(attribute).append(" value=\"").append(text(angezeigt)).append("\">");
             case MAIL -> html.append("<input type=\"email\"").append(attribute).append(" value=\"")
                     .append(text(angezeigt)).append("\">");
+            // The value of a password never reaches the page, also not what was typed before an error
+            case GEHEIM -> html.append("<input type=\"password\" autocomplete=\"new-password\"").append(attribute)
+                    .append(" value=\"\" placeholder=\"").append(wert.gesetzt() ? "unverändert" : "nicht gesetzt")
+                    .append("\">");
             default -> html.append("<input type=\"text\"").append(attribute).append(" value=\"")
                     .append(text(angezeigt)).append("\">");
         }
         html.append(feld.einheit().isEmpty() ? "" : "<span class=\"unit\">" + text(feld.einheit()) + "</span>")
                 .append("</div><p class=\"hilfe\">").append(text(feld.erklaerung()));
-        if (feld.typ() == Konfiguration.Typ.ZAHL || feld.typ() == Konfiguration.Typ.GANZZAHL
-                || feld.typ() == Konfiguration.Typ.DATUM) {
+        if (feld.standard() != null && (feld.typ() == Konfiguration.Typ.ZAHL
+                || feld.typ() == Konfiguration.Typ.GANZZAHL || feld.typ() == Konfiguration.Typ.DATUM)) {
             html.append(" Standard: ").append(text(Konfiguration.anzeige(feld, feld.standard()))).append(".");
         }
         html.append("</p>");
@@ -141,7 +145,8 @@ public final class KonfigurationSeite {
         if (wert.neustartNoetig()) {
             String laufend = Konfiguration.anzeige(feld, wert.laufend());
             html.append("<p class=\"hilfe neustarttext\">Der Dienst läuft noch mit ")
-                    .append(laufend.isEmpty() ? "einem leeren Wert" : "„" + text(laufend) + "“").append(".</p>");
+                    .append(feld.typ() == Konfiguration.Typ.GEHEIM ? "dem bisherigen Passwort"
+                            : laufend.isEmpty() ? "einem leeren Wert" : "„" + text(laufend) + "“").append(".</p>");
         }
         return html.append("</div>").toString();
     }

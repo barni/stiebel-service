@@ -87,15 +87,17 @@ energy counters of the heat pump are combined from sum and day counters and neve
 Copy [application.properties](application.properties) next to the jar and fill in login, USBtin port and InfluxDB.
 The InfluxDB token is read from the environment variable `INFLUX_TOKEN`.
 
-The page `/konfiguration`, linked with the status page in both directions, shows the settings of the service that are
-safe to change in the browser: the limits of the warnings, the start dates and the outdoor temperature of the
-evaluations, InfluxDB on or off and the recipient of the mails. Saving checks every value and writes it into
+The page `/konfiguration`, linked with the status page in both directions, shows the settings of the service: the
+limits of the warnings, the start dates and the outdoor temperature of the evaluations, InfluxDB (on or off, address,
+organisation, bucket), mail (recipient, server, port, user, password, authentication, STARTTLS) and the CAN adapter
+(port, speed, receive all messages). The mail password can be set but is never shown. Saving checks every value and
+writes it into
 `application.properties` in the working directory (another file with `stbl.config.datei`); comments and order stay, a
 copy of the file before is kept as `.bak`. The service reads its settings only at the start: "Speichern und neu starten"
 restarts it within the running process (the Spring context is closed and started again, no systemd needed; the values
 have a gap of about a minute), "Nur speichern" marks every value that differs from the running service until the next
-restart. Passwords, tokens, the login, the mail
-server, the address of InfluxDB and the CAN adapter are not on the page. The user of the service needs write access to
+restart. Not on the page: the login, address and port of the web server (a typo
+would lock the page out), the log file and the token of InfluxDB. The user of the service needs write access to
 the file and its directory, otherwise the page is read-only.
 
 InfluxDB is optional. With `influx.enabled=false` the service only shows the live values from the CAN bus: nothing is
