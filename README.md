@@ -87,6 +87,12 @@ energy counters of the heat pump are combined from sum and day counters and neve
 Copy [application.properties](application.properties) next to the jar and fill in login, USBtin port and InfluxDB.
 The InfluxDB token is read from the environment variable `INFLUX_TOKEN`.
 
+InfluxDB is optional. With `influx.enabled=false` the service only shows the live values from the CAN bus: nothing is
+stored, the values on the status page are not clickable, and the cards calculated from stored values are left out
+(daily overview, comparison of the setting Wärmebedarf, failed starts per season) as well as the checks of InfluxDB.
+`/history` answers 503, the JSON of the evaluations is empty. Warnings, fault list and mails work as before; a setting
+changed while the service was stopped is not noticed, because the last stored value is the reference for that.
+
 ## Building
 
     mvn initialize

@@ -166,6 +166,9 @@ public class StblService {
     }
 
     private void storeValues20() {
+        if (!influxController.isAktiv()) {
+            return;
+        }
         try {
             List<Point> points = new ArrayList<>();
             addPoint(points, "Heizungsdruck", wp::getHeizungsdruck, MAX_AGE_20);
@@ -193,6 +196,9 @@ public class StblService {
     }
 
     private void storeValues60() {
+        if (!influxController.isAktiv()) {
+            return;
+        }
         try {
             List<Point> points = new ArrayList<>();
             addPoint(points, "AbgabeWaerme", wp::getAbgabeWaerme, MAX_AGE_60);
@@ -247,6 +253,9 @@ public class StblService {
     }
 
     private void storeValues3600() {
+        if (!influxController.isAktiv()) {
+            return;
+        }
         try {
             List<Point> points = new ArrayList<>();
             for (Waermepumpe.Einstellung einstellung : wp.getEinstellungen()) {

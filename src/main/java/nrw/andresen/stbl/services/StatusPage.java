@@ -34,6 +34,7 @@ public class StatusPage {
     // Last added KPI, row or pill, formula() refers to it
     private Item last;
     private boolean hasHistory;
+    private boolean verlauf = true;
     private boolean hasTooltip;
 
     public StatusPage() {
@@ -368,6 +369,14 @@ public class StatusPage {
         return this;
     }
 
+    /**
+     * The values added after this call are not clickable: without InfluxDB there is no course to show
+     */
+    public StatusPage ohneVerlauf() {
+        verlauf = false;
+        return this;
+    }
+
     public StatusPage note(String text) {
         current().content.add("<p class=\"note\">" + text + "</p>");
         return this;
@@ -379,10 +388,10 @@ public class StatusPage {
         item.label = label;
         item.unit = unit;
         item.decimals = decimals;
-        item.series = series;
+        item.series = verlauf ? series : null;
         item.value = value;
         item.maxAge = maxAge;
-        hasHistory |= series != null;
+        hasHistory |= item.series != null;
         last = item;
         return item;
     }
