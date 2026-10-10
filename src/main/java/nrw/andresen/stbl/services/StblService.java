@@ -32,6 +32,11 @@ public class StblService {
     // statistics closes. Sent exactly at its end, the requests counted in one minute and their answers in the next,
     // which showed an answer rate of 35 % every 10 minutes although everything was answered (seen 2026-10-09).
     private static final long VERSATZ_MS = 30000;
+    // The minute of the CAN statistics is closed between two runs of the 20 s cycle and before the requests of the
+    // 60 s cycle. Started together, the 15 requests of the 20 s cycle were counted sometimes before and sometimes
+    // after the end of the minute, their answers always after it: 89 requests and 74 answers showed an answer rate
+    // of 83 % in single minutes although everything was answered (seen 2026-10-10, 20 times in two hours).
+    private static final long VERSATZ_60_MS = 10000;
     // The settings are stored this long after their request, when the answers have arrived
     private static final long SPEICHERN_3600_MS = 30000;
     // An older setting means the last request was not answered
@@ -70,16 +75,16 @@ public class StblService {
     }
 
     /**
-     * Check every 60 seconds
+     * Check every 60 seconds, 10 s after a run of the 20 s cycle
      */
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(initialDelay = VERSATZ_60_MS, fixedRate = 60000)
     public synchronized void check60() {
+        can.minuteAbschliessen();
         try {
             wp.anfragen60();
         } catch (Exception e) {
             logger.error("Request failure: ", e);
         }
-        can.minuteAbschliessen();
         if (erster60) {
             erster60 = false;
             return;
