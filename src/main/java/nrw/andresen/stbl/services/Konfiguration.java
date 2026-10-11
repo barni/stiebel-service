@@ -119,6 +119,9 @@ public class Konfiguration {
                             + "oder in der Umgebungsvariable INFLUX_TOKEN."),
             new Feld("stbl.mail.to", MAILGRUPPE, "Empfänger der Warnmails", "", Typ.MAIL, "", 0, 0,
                     "Eine Adresse. Leer: Es werden keine Mails gesendet."),
+            new Feld("bericht.woche.mail", MAILGRUPPE, "Wochenbericht senden", "", Typ.SCHALTER, "true", 0, 0,
+                    "An: Jeden Sonntag um 20 Uhr kommt der Wochenbericht per Mail. Die Seite Wochenbericht gibt es "
+                            + "unabhängig davon."),
             new Feld("spring.mail.host", MAILGRUPPE, "Mailserver", "", Typ.HOST, null, 0, 0,
                     "Name des SMTP-Servers, zum Beispiel smtp.gmail.com. Leer: Es werden keine Mails gesendet."),
             new Feld("spring.mail.port", MAILGRUPPE, "Port", "", Typ.GANZZAHL, null, 1, 65535,

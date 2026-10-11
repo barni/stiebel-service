@@ -11,6 +11,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -35,8 +36,8 @@ public class StatusPage {
     private Item last;
     private boolean hasHistory;
     private boolean verlauf = true;
-    private String navText;
-    private String navZiel;
+    // Links in the header: text and relative address
+    private final List<String[]> nav = new ArrayList<>();
     private boolean hasTooltip;
 
     public StatusPage() {
@@ -372,13 +373,12 @@ public class StatusPage {
     }
 
     /**
-     * Link in the header to another page of the service, e.g. the configuration
+     * Adds a link in the header to another page of the service, e.g. the configuration
      *
      * @param ziel relative address, so it also works behind a reverse proxy with a path
      */
     public StatusPage navigation(String text, String ziel) {
-        navText = text;
-        navZiel = ziel;
+        nav.add(new String[]{text, ziel});
         return this;
     }
 
@@ -521,8 +521,8 @@ public class StatusPage {
         html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
                 .append(TIME.format(Instant.now(clock).atZone(zone)))
                 .append(" · aktualisiert alle 20 s")
-                .append(navText == null ? "" : " · <a class=\"nav\" href=\"" + attr(navZiel) + "\">"
-                        + attr(navText) + "</a>")
+                .append(nav.stream().map(link -> " · <a class=\"nav\" href=\"" + attr(link[1]) + "\">"
+                        + attr(link[0]) + "</a>").collect(Collectors.joining()))
                 .append("</p></div><div class=\"badges\">");
         headerBadges.forEach(html::append);
         html.append("</div></header>");

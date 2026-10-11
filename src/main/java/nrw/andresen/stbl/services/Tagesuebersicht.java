@@ -141,6 +141,16 @@ public class Tagesuebersicht {
                 aehnlich.stream().mapToInt(WaermebedarfVergleich.Tag::abtauungen).sum() / (double) n);
     }
 
+    /**
+     * Values of one complete day from the stored values, e.g. for the weekly report
+     *
+     * @param aussentemp daily mean of the outdoor temperature, null if unknown
+     */
+    public Tag tag(LocalDate datum, Double aussentemp) {
+        return tag(datum, datum.atStartOfDay(ZONE).toInstant(), datum.plusDays(1).atStartOfDay(ZONE).toInstant(),
+                aussentemp);
+    }
+
     private Tag tag(LocalDate datum, Instant von, Instant bis, Double aussentemp) {
         String bucket = influx.getBucket();
         return tag(datum, aussentemp, influx.werte(roh(bucket, "WP_LeistungInverter", von, bis)),

@@ -9,6 +9,8 @@ import nrw.andresen.stbl.services.Tagesuebersicht;
 import nrw.andresen.stbl.services.Ueberwachung;
 import nrw.andresen.stbl.services.Version;
 import nrw.andresen.stbl.services.WaermebedarfVergleich;
+import nrw.andresen.stbl.services.Wochenbericht;
+import nrw.andresen.stbl.services.WochenberichtSeite;
 import nrw.andresen.stbl.services.Waermepumpe;
 import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.ValueContainer;
@@ -86,6 +88,8 @@ public class StblController {
     @Autowired
     private Konfiguration konfiguration;
     @Autowired
+    private Wochenbericht wochenbericht;
+    @Autowired
     private Version version;
     // The answer with the waiting page has to reach the browser before the service closes
     private static final Duration NEUSTART_VERZOEGERUNG = Duration.ofSeconds(2);
@@ -110,6 +114,23 @@ public class StblController {
     @RequestMapping(value = "/status", produces = "text/html;charset=UTF-8")
     public String status() throws Exception{
         return statusService.getStatus();
+    }
+
+    /**
+     * Weekly report: the last 7 complete days against the week before and the usual values, as a page
+     */
+    @GetMapping(value = "/wochenbericht", produces = "text/html;charset=UTF-8")
+    public String wochenbericht() {
+        return WochenberichtSeite.render(wochenbericht.getBericht(), influxController.isAktiv() ? null
+                : "Für den Wochenbericht braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false).");
+    }
+
+    /**
+     * Weekly report as JSON, null until it is calculated
+     */
+    @GetMapping("/wochenbericht/daten")
+    public Wochenbericht.Bericht wochenberichtDaten() {
+        return wochenbericht.getBericht();
     }
 
     /**
