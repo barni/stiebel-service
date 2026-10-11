@@ -56,6 +56,11 @@ before you rely on it.
 - **Daily overview** on the status page and as JSON from `/tagesuebersicht`: compressor starts, run time, heat,
   estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
   the days of similar outdoor temperature (±1.5 K) from the comparison above. Updated every 10 minutes.
+- **Weekly report** on the page `/wochenbericht` (linked with the status and the configuration page) and as JSON
+  from `/wochenbericht/daten`: the last 7 complete days next to the 7 days before and to what is usual at the same
+  outdoor temperature (for each day the mean of the earlier days within ±1.5 K, added up): heat, estimated power,
+  efficiency, run time, starts, hours per start, defrosts, highest flow temperature and heating pressure, the single
+  days, and one sentence that sums it up. Sent by mail on Sunday at 20:00 unless `bericht.woche.mail=false`.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
   warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above
   `warnung.heizungsdruck.max` (default 2.5 bar), heating element on,
