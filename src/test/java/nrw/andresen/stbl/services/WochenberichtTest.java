@@ -94,7 +94,7 @@ public class WochenberichtTest {
 
     @Test
     public void testSatz() {
-        assertEquals("5,4 K kälter als die Vorwoche, weniger Starts als bei dieser Temperatur üblich (28 statt 40), "
+        assertEquals("5,4 K kälter als in den 7 Tagen davor, weniger Starts als bei dieser Temperatur üblich (28 statt 40), "
                         + "Heizungsdruck stabil, keine neuen Einträge in der Fehlerliste.",
                 Wochenbericht.satz(bericht(new Wochenbericht.Ueblich(150, 40, 45, 5), 0)));
         // Within 20 % of the usual number of starts; without usual values the part is left out
@@ -108,7 +108,7 @@ public class WochenberichtTest {
     public void testTextUndSeite() {
         Wochenbericht.Bericht bericht = bericht(new Wochenbericht.Ueblich(150, 40, 45, 5), 0);
         String text = Wochenbericht.text(bericht);
-        assertTrue(text.startsWith("Woche 04.10.–10.10.2026\n\n5,4 K kälter"));
+        assertTrue(text.startsWith("Letzte 7 Tage: 04.10.–10.10.2026\n\n5,4 K kälter"));
         assertTrue(text.contains("- Wärme kWh: 140 (35 / 150)\n"));
         assertTrue(text.contains("- Starts: 28 (7 / 40)\n"));
         assertTrue(text.contains("- Heizungsdruck bar: 1,54 → 1,56 (1,54 → 1,47 / –)\n"));
@@ -118,7 +118,8 @@ public class WochenberichtTest {
         assertTrue(html.contains("<a class=\"nav\" href=\"status\">← Status</a>"));
         assertTrue(html.contains("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a>"));
         assertTrue(html.contains("<td>Wärme kWh</td><td>140</td><td>35</td><td>150</td>"));
-        assertTrue(html.contains("Woche 04.10.–10.10.2026"));
+        assertTrue(html.contains("Letzte 7 Tage: 04.10.–10.10.2026"));
+        assertTrue(html.contains("<th>Letzte 7 Tage<br>04.10.–10.10.</th><th>7 Tage davor<br>27.09.–03.10.</th>"));
         // Not calculated yet, or InfluxDB switched off
         assertTrue(WochenberichtSeite.render(null, null).contains("wird berechnet"));
         assertTrue(WochenberichtSeite.render(null, "InfluxDB ist aus").contains("InfluxDB ist aus"));

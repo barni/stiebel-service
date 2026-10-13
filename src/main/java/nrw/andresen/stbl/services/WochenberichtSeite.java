@@ -26,7 +26,7 @@ public final class WochenberichtSeite {
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
                 .append("<title>Wärmepumpe · Wochenbericht</title><style>").append(StatusPage.CSS).append(CSS)
                 .append("</style></head><body><main><header><div><h1>Wochenbericht</h1><p class=\"sub\">")
-                .append(bericht == null ? "Die letzten 7 vollen Tage" : "Woche " + Wochenbericht.zeitraum(bericht.woche()))
+                .append(bericht == null ? "Die letzten 7 vollen Tage" : "Letzte 7 Tage: " + Wochenbericht.zeitraum(bericht.woche()))
                 .append("</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a></nav></header>");
         if (hinweis != null || bericht == null) {
@@ -37,9 +37,10 @@ public final class WochenberichtSeite {
         }
         html.append("<p class=\"meldung\">").append(text(Wochenbericht.satz(bericht))).append("</p>")
                 .append("<section class=\"cards\"><article class=\"card breit\"><h2>Vergleich</h2>")
-                .append(tabelle(List.of("", "Diese Woche", "Vorwoche", "Üblich"), Wochenbericht.zeilen(bericht)))
-                .append("<p class=\"note\">Vorwoche: ").append(Wochenbericht.zeitraum(bericht.vorwoche()))
-                .append(". Üblich: für jeden Tag der Woche das Mittel der früheren Tage, deren Tagesmittel der ")
+                .append(tabelle(List.of("", "Letzte 7 Tage\n" + Wochenbericht.zeitraumKurz(bericht.woche()),
+                        "7 Tage davor\n" + Wochenbericht.zeitraumKurz(bericht.vorwoche()), "Üblich"),
+                        Wochenbericht.zeilen(bericht)))
+                .append("<p class=\"note\">Üblich: für jeden der 7 Tage das Mittel der früheren Tage, deren Tagesmittel der ")
                 .append("Außentemperatur höchstens ").append(Wochenbericht.zahl(Tagesuebersicht.AEHNLICH_K, 1))
                 .append(" K abweicht, aufsummiert. Strom ist die geschätzte Wirkleistung des Verdichters ohne ")
                 .append("Pumpe und Regelung, die Arbeitszahl daraus liegt deshalb etwas zu hoch. Ein Start zählt ")
@@ -57,7 +58,7 @@ public final class WochenberichtSeite {
 
     private static String tabelle(List<String> kopf, List<List<String>> zeilen) {
         StringBuilder html = new StringBuilder("<div class=\"tbl\"><table><thead><tr>");
-        kopf.forEach(k -> html.append("<th>").append(text(k)).append("</th>"));
+        kopf.forEach(k -> html.append("<th>").append(text(k).replace("\n", "<br>")).append("</th>"));
         html.append("</tr></thead><tbody>");
         for (List<String> zeile : zeilen) {
             html.append("<tr>");

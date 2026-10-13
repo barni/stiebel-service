@@ -135,7 +135,7 @@ public class Wochenbericht {
             logger.warn("Weekly report not sent, it could not be calculated");
             return;
         }
-        mail.sendAlert("Wärmepumpe: Woche " + zeitraum(b.woche()), text(b));
+        mail.sendAlert("Wärmepumpe: Wochenbericht " + zeitraum(b.woche()), text(b));
     }
 
     /**
@@ -233,8 +233,8 @@ public class Wochenbericht {
         Woche w = b.woche();
         if (w.aussentemp() != null && b.vorwoche().aussentemp() != null) {
             double diff = w.aussentemp() - b.vorwoche().aussentemp();
-            teile.add(Math.abs(diff) < 1 ? "Etwa so warm wie die Vorwoche"
-                    : zahl(Math.abs(diff), 1) + " K " + (diff < 0 ? "kälter" : "wärmer") + " als die Vorwoche");
+            teile.add(Math.abs(diff) < 1 ? "Etwa so warm wie in den 7 Tagen davor"
+                    : zahl(Math.abs(diff), 1) + " K " + (diff < 0 ? "kälter" : "wärmer") + " als in den 7 Tagen davor");
         }
         if (b.ueblich() != null && b.ueblich().starts() >= 1) {
             double anteil = w.starts() / b.ueblich().starts();
@@ -298,8 +298,9 @@ public class Wochenbericht {
      * Report as plain text for the mail
      */
     public static String text(Bericht b) {
-        StringBuilder text = new StringBuilder("Woche " + zeitraum(b.woche()) + "\n\n" + satz(b) + "\n\n"
-                + "Diese Woche (Vorwoche " + zeitraum(b.vorwoche()) + " / üblich bei gleicher Außentemperatur):\n");
+        StringBuilder text = new StringBuilder("Letzte 7 Tage: " + zeitraum(b.woche()) + "\n\n" + satz(b) + "\n\n"
+                + "Letzte 7 Tage (7 Tage davor, " + zeitraum(b.vorwoche())
+                + " / üblich bei gleicher Außentemperatur):\n");
         for (List<String> zeile : zeilen(b)) {
             text.append("- ").append(zeile.get(0)).append(": ").append(zeile.get(1)).append(" (")
                     .append(zeile.get(2)).append(" / ").append(zeile.get(3)).append(")\n");
@@ -315,6 +316,13 @@ public class Wochenbericht {
 
     public static String zeitraum(Woche woche) {
         return woche.von().format(DATUM) + "–" + woche.bis().format(DATUM_JAHR);
+    }
+
+    /**
+     * Period without the year, for the head of a column
+     */
+    public static String zeitraumKurz(Woche woche) {
+        return woche.von().format(DATUM) + "–" + woche.bis().format(DATUM);
     }
 
     private static String druck(Woche woche) {
