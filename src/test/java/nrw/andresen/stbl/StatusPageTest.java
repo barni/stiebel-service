@@ -149,8 +149,10 @@ public class StatusPageTest {
         for (String range : new String[]{"6h", "24h", "7d", "30d", "1y"}) {
             assertTrue(html.contains("data-range=\"" + range + "\""));
         }
-        // The page is reloaded by the script, not while the dialog is open
+        // The page is reloaded by the script, not while the dialog is open or the tab is hidden
         assertTrue(html.contains("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"));
+        assertTrue(html.contains("document.hidden"));
+        assertTrue(html.contains("dlg.addEventListener('close', reload)"));
     }
 
     @Test
@@ -161,7 +163,9 @@ public class StatusPageTest {
                 .render();
         assertFalse(html.contains("data-series"));
         assertFalse(html.contains("<dialog"));
-        assertTrue(html.contains("<meta http-equiv=\"refresh\" content=\"20\">"));
+        // Also without the dialog the script reloads the page, so a hidden tab is not reloaded
+        assertTrue(html.contains("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"));
+        assertTrue(html.contains("document.addEventListener('visibilitychange', reload)"));
     }
 
     @Test
