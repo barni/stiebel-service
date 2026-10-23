@@ -74,6 +74,10 @@
         <!-- The OWASP check needs an NVD API key and is skipped by default, run it with
              mvn verify -Ddependency-check.skip=false -DnvdApiKey=... -->
         <dependency-check.skip>true</dependency-check.skip>
+        <!-- Maven 3.10 sets a fixed date (1980-02-01) for reproducible builds, the status page shows the real
+             build time -->
+        <maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
+        <project.build.outputTimestamp>${maven.build.timestamp}</project.build.outputTimestamp>
     </properties>
 
 
