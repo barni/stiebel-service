@@ -511,9 +511,8 @@ public class StatusPage {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                // With the course dialog the script reloads the page, but not while the dialog is open
-                .append(hasHistory ? "<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"
-                        : "<meta http-equiv=\"refresh\" content=\"20\">")
+                // The script reloads the page, the meta refresh is only the fallback without JavaScript
+                .append("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>")
                 .append("<title>Wärmepumpe</title><style>").append(CSS)
                 .append(hasTooltip ? TOOLTIP_CSS : "").append(hasHistory ? HISTORY_CSS : "")
                 .append("</style></head><body><main>");
@@ -557,7 +556,7 @@ public class StatusPage {
             }
             html.append("</section>").append(bereich.klappbar ? "</details>" : "");
         }
-        html.append("</main><script>").append(BEREICH_SCRIPT).append("</script>");
+        html.append("</main><script>").append(BEREICH_SCRIPT).append(RELOAD_SCRIPT).append("</script>");
         if (hasHistory) {
             html.append(HISTORY_DIALOG).append("<script>").append(HISTORY_SCRIPT).append("</script>");
         }
@@ -575,6 +574,18 @@ public class StatusPage {
               } catch (e) { }
               d.addEventListener('toggle', () => { try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) { } });
             });""";
+
+    // Reloads the page after 20 s, but not in a hidden tab or while the course dialog is open; then right when the
+    // tab is visible again or the dialog is closed
+    private static final String RELOAD_SCRIPT = """
+            (() => {
+              const dlg = document.getElementById('verlauf');
+              let due = false;
+              const reload = () => { if (due && !document.hidden && !(dlg && dlg.open)) location.reload(); };
+              setTimeout(() => { due = true; reload(); }, 20000);
+              document.addEventListener('visibilitychange', reload);
+              if (dlg) dlg.addEventListener('close', reload);
+            })();""";
 
     private static final String TOOLTIP_CSS = """
             .calc { position: relative; cursor: help; outline: none; }
@@ -664,9 +675,6 @@ public class StatusPage {
               try { if (RANGES[localStorage.getItem('verlaufBereich')]) range = localStorage.getItem('verlaufBereich'); }
               catch (e) { }
 
-              let reloadDue = false;
-              setTimeout(() => { reloadDue = true; if (!dlg.open) location.reload(); }, 20000);
-              dlg.addEventListener('close', () => { if (reloadDue) location.reload(); });
               dlg.querySelector('.v-close').addEventListener('click', () => dlg.close());
               dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
               dlg.querySelectorAll('.v-ranges button').forEach(b => b.addEventListener('click', () => {
