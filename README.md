@@ -11,7 +11,7 @@ before you rely on it.
 
 - [USBtin](https://www.fischl.de/usbtin/) USB-CAN adapter connected to the CAN bus of the heat pump (20 kbit/s), it
   shows up as serial port, e.g. `/dev/ttyACM0`
-- A small Linux computer, e.g. a Raspberry Pi, with Java 17 or newer
+- A small Linux computer, e.g. a Raspberry Pi, with Java 25 or newer
 
 ## What it provides
 
