@@ -138,14 +138,15 @@ public class StblController {
     }
 
     /**
-     * Electricity of the heating per month in the last three years as a page, with ?haushalt=ja also the
-     * household electricity
+     * Electricity of the heating per month in the last three years as a page, with haushalt=ja and wallbox=ja also
+     * the household electricity and the wallbox
      */
     @GetMapping(value = "/jahresvergleich", produces = "text/html;charset=UTF-8")
-    public String jahresvergleich(@RequestParam(required = false) String haushalt) {
+    public String jahresvergleich(@RequestParam(required = false) String haushalt,
+                                  @RequestParam(required = false) String wallbox) {
         return JahresvergleichSeite.render(jahresvergleich.getVergleich(), influxController.isAktiv() ? null
                 : "Für den Jahresvergleich braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false).",
-                "ja".equals(haushalt));
+                "ja".equals(haushalt), "ja".equals(wallbox));
     }
 
     /**
