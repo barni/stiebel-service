@@ -129,6 +129,45 @@ public class JahresvergleichTest {
     }
 
     @Test
+    public void testPrognose() {
+        Jahresvergleich.Vergleich v = vergleich(true);
+        java.util.List<Jahresvergleich.Prognose> p = v.prognose();
+        assertEquals(java.util.List.of("Gesamt", "Heizung", "Rest (Haushalt)", "Wallbox"),
+                p.stream().map(Jahresvergleich.Prognose::name).toList());
+        // Heating: rest of 2025 (1200 - 950) and of 2024 (1080 - 850), mean 240
+        Jahresvergleich.Prognose heizung = p.get(1);
+        assertEquals(1050, heizung.bisher(), 1e-9);
+        assertEquals(240, heizung.erwartet(), 1e-9);
+        assertEquals(1290, heizung.jahr(), 1e-9);
+        assertEquals((1290.0 / 1200 - 1) * 100, heizung.aenderung(), 1e-9);
+        // Household: so far 7800 - 1050 - 830, the rest of 2025 is 3600 - (8000 - 950)... not below 0
+        Jahresvergleich.Prognose rest = p.get(2);
+        assertEquals(5920, rest.bisher(), 1e-9);
+        assertEquals(0, rest.erwartet(), 1e-9);
+        // Wallbox: July to September 450 kWh in 92 days, 69 days left including today
+        Jahresvergleich.Prognose wallbox = p.get(3);
+        assertEquals(450.0 / 92, v.wallboxJeTag(), 1e-9);
+        assertEquals(830 + 450.0 / 92 * 69, wallbox.jahr(), 1e-9);
+        assertNull(wallbox.aenderung());
+        // The total is the sum of the parts
+        assertEquals(heizung.jahr() + rest.jahr() + wallbox.jahr(), p.get(0).jahr(), 1e-9);
+        assertEquals(1200 + 3600, p.get(0).vorjahr(), 1e-9);
+
+        // Without the house meter only the heating
+        assertEquals(java.util.List.of("Heizung"), vergleich(false).prognose().stream()
+                .map(Jahresvergleich.Prognose::name).toList());
+        String karte = JahresvergleichSeite.prognose(vergleich(false));
+        assertTrue(karte.contains("<h2>Prognose bis Jahresende</h2>"));
+        assertTrue(karte.contains("Die Heizung wird 2026 voraussichtlich 1.290 kWh brauchen, 7,5 % mehr als 2025 "
+                + "(1.200 kWh)."));
+        assertTrue(karte.contains("<td>Heizung</td><td>1.050</td><td>240</td><td>1.290</td><td>1.200</td>"
+                + "<td>+7,5 %</td>"));
+        assertTrue(JahresvergleichSeite.render(vergleich(true), null, false, false).contains("Das Haus wird 2026 "
+                + "voraussichtlich"));
+        assertTrue(JahresvergleichSeite.render(vergleich(false), null, false, false).contains("Prognose bis Jahresende"));
+    }
+
+    @Test
     public void testHaushalt() {
         YearMonth mai = YearMonth.of(2026, 5);
         YearMonth juni = YearMonth.of(2026, 6);

@@ -67,7 +67,8 @@ public final class JahresvergleichSeite {
                     .append(kpi("Gesamt " + (jahr - 1) + " gleiche Tage", zahl(vergleich.gesamtVorjahrGleich(), 0),
                             "kWh"))
                     .append(kpi("Gesamt Veränderung", prozent(vergleich.gesamtAenderung()), ""))
-                    .append("</section>").append(ursachen(vergleich)).append("<section class=\"kpis\">");
+                    .append("</section>").append(ursachen(vergleich)).append(prognose(vergleich))
+                    .append("<section class=\"kpis\">");
         }
         html.append(kpi("Heizung " + jahr + " bis " + DATUM.format(vergleich.bis()),
                         zahl(vergleich.heizung(J - 1), 0), "kWh"))
@@ -90,7 +91,9 @@ public final class JahresvergleichSeite {
                 html.append(kpi("Wallbox " + jahre.get(i) + " ganzes Jahr", zahl(vergleich.wallbox(i), 0), "kWh"));
             }
         }
-        html.append("</section><section class=\"cards\"><article class=\"card breit\"><h2>Strom je Monat</h2>")
+        // Without the house meter the forecast of the heating follows its tiles
+        html.append("</section>").append(vergleich.gesamt() == null ? prognose(vergleich) : "")
+                .append("<section class=\"cards\"><article class=\"card breit\"><h2>Strom je Monat</h2>")
                 .append("<p class=\"legende\">");
         for (int i = 0; i < J; i++) {
             html.append("<span><i class=\"sw j").append(i).append("\"></i>").append(jahre.get(i)).append("</span>");
@@ -160,6 +163,39 @@ public final class JahresvergleichSeite {
                 "Anteil an der Änderung"), zeilen)
                 + "<p class=\"note\">Rest ist Netzbezug minus Heizung" + (v.mitWallbox() ? " und Wallbox" : "")
                 + ", also der übrige Haushalt mit Warmwasser, Lüftung und Geräten.</p></article></section>";
+    }
+
+    /**
+     * Card with the forecast up to the end of the year: what is used so far, what is still expected and the whole
+     * year against the year before
+     */
+    static String prognose(Jahresvergleich.Vergleich v) {
+        List<Jahresvergleich.Prognose> teile = v.prognose();
+        if (teile.isEmpty()) {
+            return "";
+        }
+        int jahr = v.jahr();
+        Jahresvergleich.Prognose erste = teile.get(0);
+        String was = erste.name().equals("Gesamt") ? "Das Haus wird " + jahr + " voraussichtlich "
+                + zahl(erste.jahr(), 0) + " kWh aus dem Netz beziehen"
+                : "Die Heizung wird " + jahr + " voraussichtlich " + zahl(erste.jahr(), 0) + " kWh brauchen";
+        Double aenderung = erste.aenderung();
+        String satz = was + (aenderung == null ? "." : ", " + (Math.abs(aenderung) < 1 ? "etwa so viel wie"
+                : zahl(Math.abs(aenderung), 1) + " % " + (aenderung > 0 ? "mehr" : "weniger") + " als") + " "
+                + (jahr - 1) + " (" + zahl(erste.vorjahr(), 0) + " kWh).");
+        List<List<String>> zeilen = new ArrayList<>();
+        for (Jahresvergleich.Prognose p : teile) {
+            zeilen.add(List.of(p.name(), zahl(p.bisher(), 0), zahl(p.erwartet(), 0), zahl(p.jahr(), 0),
+                    zahl(p.vorjahr(), 0), prozent(p.aenderung())));
+        }
+        return "<section class=\"cards\"><article class=\"card breit\"><h2>Prognose bis Jahresende</h2>"
+                + "<p class=\"ursache\">" + text(satz) + "</p>"
+                + tabelle(List.of(String.valueOf(jahr), "bisher kWh", "bis 31.12. erwartet kWh", "Prognose kWh",
+                (jahr - 1) + " kWh", "Änderung"), zeilen)
+                + "<p class=\"note\">Erwartet bis 31.12.: Heizung wie im Rest der Vorjahre (Mittel aus "
+                + (jahr - 1) + " und " + (jahr - 2) + "), der übrige Haushalt wie im Rest von " + (jahr - 1)
+                + ", die Wallbox mit dem Verbrauch je Tag der letzten drei vollen Monate. Ein kalter oder milder "
+                + "Winter verschiebt die Heizung um einige hundert kWh.</p></article></section>";
     }
 
     /**
@@ -449,7 +485,7 @@ public final class JahresvergleichSeite {
             .legende span { display: inline-flex; align-items: center; gap: 6px; }
             .umschalten { margin: 0 0 8px; font-size: 14px; }
             .ursache { margin: 4px 0 8px; font-weight: 600; }
-            .cards + .kpis { margin-top: 16px; }
+            .cards + .kpis, .cards + .cards { margin-top: 16px; }
             .ursache.steigt { color: var(--warn); }
             .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
             .sw.j0 { background: var(--muted); opacity: 0.3; }
