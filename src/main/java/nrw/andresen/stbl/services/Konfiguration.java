@@ -108,6 +108,14 @@ public class Konfiguration {
             new Feld("auswertung.aussentemp.entity", AUSWERTUNG, "Entity der Außentemperatur", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, der erst "
                     + "seit 09/2026 gespeichert wird."),
+            new Feld("auswertung.haushalt.bucket", AUSWERTUNG, "Bucket des Hauszählers", "", Typ.NAME, "", 0, 0,
+                    "InfluxDB-Bucket mit Hauszähler und Wallbox aus Home Assistant. Leer: Bucket des Dienstes."),
+            new Feld("auswertung.haushalt.zaehler", AUSWERTUNG, "Entity des Hauszählers", "", Typ.NAME, "", 0, 0,
+                    "Home-Assistant-Entity mit dem Zählerstand des Netzbezugs in kWh. Damit zeigt der Jahresvergleich "
+                    + "den Haushaltsstrom (Netzbezug minus Heizung und Wallbox). Leer: kein Haushaltsstrom."),
+            new Feld("auswertung.haushalt.wallbox", AUSWERTUNG, "Entity der Wallbox", "", Typ.NAME, "", 0, 0,
+                    "Home-Assistant-Entity mit dem Zählerstand der Wallbox in kWh, wird vom Haushaltsstrom abgezogen. "
+                    + "Leer: keine Wallbox."),
             new Feld("influx.enabled", INFLUX, "InfluxDB verwenden", "", Typ.SCHALTER, "true", 0, 0,
                     "Aus: Es wird nichts gespeichert, Verläufe und Auswertungen fehlen auf der Statusseite."),
             new Feld("influx.url", INFLUX, "Adresse", "", Typ.URL, "", 0, 0,

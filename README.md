@@ -61,6 +61,14 @@ before you rely on it.
   outdoor temperature (for each day the mean of the earlier days within ±1.5 K, added up): heat, estimated power,
   efficiency, run time, starts, hours per start, defrosts, highest flow temperature and heating pressure, the single
   days, and one sentence that sums it up. Sent by mail on Sunday at 20:00 unless `bericht.woche.mail=false`.
+- **Year comparison** on the page `/jahresvergleich` and as JSON from `/jahresvergleich/daten`: estimated electric
+  energy of the heating per month in the current year and the two years before, as bars and as a table with the
+  change and the mean outdoor temperature. The current month is compared with the same days of the year before.
+  With `/jahresvergleich?haushalt=ja` the household electricity is stacked on top: grid import of the house meter
+  minus heating and wallbox, from the Home Assistant counters `auswertung.haushalt.zaehler` and
+  `auswertung.haushalt.wallbox` (kWh) in `auswertung.haushalt.bucket`, e.g.
+  `auswertung.haushalt.zaehler=electricity_..._gesamtverbrauch`. Months that are over are read once, the current
+  month every hour.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
   warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above
   `warnung.heizungsdruck.max` (default 2.5 bar), heating element on,

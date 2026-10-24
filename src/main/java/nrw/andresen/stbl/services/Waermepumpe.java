@@ -35,11 +35,11 @@ public class Waermepumpe {
     private static final double WAERMEKAPAZITAET_WASSER = 4.19;
     // Real power = WIRKLEISTUNG_STEIGUNG * apparent power - WIRKLEISTUNG_OFFSET_W, fitted from about 2300
     // compressor starts and stops in the house meter 2024 and 2025. The share rises with the load.
-    private static final double WIRKLEISTUNG_STEIGUNG = 1.24;
-    private static final double WIRKLEISTUNG_OFFSET_W = 270;
+    static final double WIRKLEISTUNG_STEIGUNG = 1.24;
+    static final double WIRKLEISTUNG_OFFSET_W = 270;
     // Limits of the share, below 500 VA there is no data, above 1000 VA the real power reaches the apparent power
-    private static final double WIRKLEISTUNGSANTEIL_MIN = 0.7;
-    private static final double WIRKLEISTUNGSANTEIL_MAX = 1.0;
+    static final double WIRKLEISTUNGSANTEIL_MIN = 0.7;
+    static final double WIRKLEISTUNGSANTEIL_MAX = 1.0;
     // The electric counter of the heat pump counts 0.83 (2024) and 0.85 (2025) of the real energy
     static final double STROMZAEHLER_KORREKTUR = 1.2;
     // Values older than two request cycles are not stored

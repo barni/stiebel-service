@@ -27,7 +27,8 @@ public final class KonfigurationSeite {
                 .append("</style></head><body><main>")
                 .append("<header><div><h1>Konfiguration</h1><p class=\"sub\">Einstellungen dieses Dienstes, nicht ")
                 .append("der Wärmepumpe</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
-                .append("<a class=\"nav\" href=\"wochenbericht\">Wochenbericht</a></nav></header>");
+                .append("<a class=\"nav\" href=\"wochenbericht\">Wochenbericht</a> · ")
+                .append("<a class=\"nav\" href=\"jahresvergleich\">Jahresvergleich</a></nav></header>");
         // The empty name carries a message that belongs to no setting, e.g. the file could not be written
         long ungueltig = fehler.keySet().stream().filter(name -> !name.isEmpty()).count();
         if (fehler.containsKey("")) {

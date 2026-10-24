@@ -69,6 +69,7 @@ public class StatusService {
         StatusPage page = new StatusPage();
         if (influx.isAktiv()) {
             page.navigation("Wochenbericht", "wochenbericht");
+            page.navigation("Jahresvergleich", "jahresvergleich");
         }
         page.navigation("Konfiguration", "konfiguration");
         if (!influx.isAktiv()) {
