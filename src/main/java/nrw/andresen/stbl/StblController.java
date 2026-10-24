@@ -9,6 +9,8 @@ import nrw.andresen.stbl.services.Tagesuebersicht;
 import nrw.andresen.stbl.services.Ueberwachung;
 import nrw.andresen.stbl.services.Version;
 import nrw.andresen.stbl.services.WaermebedarfVergleich;
+import nrw.andresen.stbl.services.Jahresvergleich;
+import nrw.andresen.stbl.services.JahresvergleichSeite;
 import nrw.andresen.stbl.services.Wochenbericht;
 import nrw.andresen.stbl.services.WochenberichtSeite;
 import nrw.andresen.stbl.services.Waermepumpe;
@@ -90,6 +92,8 @@ public class StblController {
     @Autowired
     private Wochenbericht wochenbericht;
     @Autowired
+    private Jahresvergleich jahresvergleich;
+    @Autowired
     private Version version;
     // The answer with the waiting page has to reach the browser before the service closes
     private static final Duration NEUSTART_VERZOEGERUNG = Duration.ofSeconds(2);
@@ -131,6 +135,25 @@ public class StblController {
     @GetMapping("/wochenbericht/daten")
     public Wochenbericht.Bericht wochenberichtDaten() {
         return wochenbericht.getBericht();
+    }
+
+    /**
+     * Electricity of the heating per month in the last three years as a page, with ?haushalt=ja also the
+     * household electricity
+     */
+    @GetMapping(value = "/jahresvergleich", produces = "text/html;charset=UTF-8")
+    public String jahresvergleich(@RequestParam(required = false) String haushalt) {
+        return JahresvergleichSeite.render(jahresvergleich.getVergleich(), influxController.isAktiv() ? null
+                : "Für den Jahresvergleich braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false).",
+                "ja".equals(haushalt));
+    }
+
+    /**
+     * Year comparison as JSON, null until it is calculated
+     */
+    @GetMapping("/jahresvergleich/daten")
+    public Jahresvergleich.Vergleich jahresvergleichDaten() {
+        return jahresvergleich.getVergleich();
     }
 
     /**
