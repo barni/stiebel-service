@@ -68,7 +68,10 @@ before you rely on it.
   `auswertung.haushalt.wallbox` (kWh) in `auswertung.haushalt.bucket` the page also shows the total grid import from
   the 1st of January against the same days of the year before, and `haushalt=ja` / `wallbox=ja` stack the household
   electricity (grid import minus heating and wallbox) and the wallbox on top of the heating, e.g.
-  `/jahresvergleich?haushalt=ja&wallbox=ja`. Months that are over are read once, the current
+  `/jahresvergleich?haushalt=ja&wallbox=ja`. A card splits the change of the grid import into wallbox, heating and
+  the rest, and a forecast up to the end of the year adds to each part what is still expected: heating as in the
+  rest of the two years before, the household as in the rest of the year before, the wallbox at the rate of the last
+  three full months. Months that are over are read once, the current
   month every hour.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
   warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above

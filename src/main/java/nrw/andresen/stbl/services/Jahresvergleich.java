@@ -100,6 +100,68 @@ public class Jahresvergleich {
          * before: total, wallbox (if its counter is set), heating and the rest. Empty without the house meter.
          */
         public List<Anteil> aufteilung() {
+            return aufteilungBisJetzt();
+        }
+
+        /**
+         * Forecast up to the end of the year per part: heating as in the rest of the years before (mean of the two),
+         * the household as in the rest of the year before, the wallbox at the rate of the last three months that are
+         * over. The total is the sum of the parts. Without the house meter only the heating.
+         */
+        public List<Prognose> prognose() {
+            List<Prognose> teile = new ArrayList<>();
+            double summe = 0;
+            int n = 0;
+            for (int i = 0; i < JAHRE - 1; i++) {
+                if (heizung(i) > 0) {
+                    summe += heizung(i) - heizungGleich(i);
+                    n++;
+                }
+            }
+            if (n == 0) {
+                return teile;
+            }
+            teile.add(new Prognose("Heizung", heizung(JAHRE - 1), summe / n, heizung(JAHRE - 2)));
+            List<Anteil> anteile = aufteilungBisJetzt();
+            if (!anteile.isEmpty() && haushalt(JAHRE - 2) != null) {
+                Anteil rest = anteile.get(anteile.size() - 1);
+                teile.add(new Prognose(rest.name(), rest.jetzt(), Math.max(0, haushalt(JAHRE - 2) - rest.vorher()),
+                        haushalt(JAHRE - 2)));
+            }
+            if (!anteile.isEmpty() && mitWallbox) {
+                Double vorjahr = wallbox(JAHRE - 2);
+                // Days up to the end of the year, today included
+                long restTage = LocalDate.of(jahr() + 1, 1, 1).toEpochDay() - bis.toEpochDay();
+                teile.add(new Prognose("Wallbox", wallboxBisJetzt == null ? 0 : wallboxBisJetzt,
+                        wallboxJeTag() * restTage, vorjahr == null ? 0 : vorjahr));
+            }
+            if (teile.size() > 1) {
+                teile.addFirst(new Prognose("Gesamt", teile.stream().mapToDouble(Prognose::bisher).sum(),
+                        teile.stream().mapToDouble(Prognose::erwartet).sum(),
+                        teile.stream().mapToDouble(p -> p.vorjahr() == null ? 0 : p.vorjahr()).sum()));
+            }
+            return teile;
+        }
+
+        /**
+         * Mean electricity of the wallbox per day in the last three months that are over
+         */
+        double wallboxJeTag() {
+            double kwh = 0;
+            int tage = 0;
+            for (int k = 1; k <= 3; k++) {
+                YearMonth monat = YearMonth.from(bis).minusMonths(k);
+                int i = jahre.indexOf(monat.getYear());
+                Double wert = i < 0 ? null : monate.get(monat.getMonthValue() - 1).wallbox().get(i);
+                if (wert != null) {
+                    kwh += wert;
+                    tage += monat.lengthOfMonth();
+                }
+            }
+            return tage == 0 ? 0 : kwh / tage;
+        }
+
+        private List<Anteil> aufteilungBisJetzt() {
             if (gesamt == null || gesamtVorjahrGleich == null) {
                 return List.of();
             }
@@ -170,6 +232,27 @@ public class Jahresvergleich {
 
         private static double summe(List<Double> werte) {
             return werte.stream().filter(w -> w != null).mapToDouble(Double::doubleValue).sum();
+        }
+    }
+
+    /**
+     * Forecast of one part for the whole current year
+     *
+     * @param bisher   from the 1st of January up to now
+     * @param erwartet expected from now up to the end of the year
+     * @param vorjahr  the whole year before
+     */
+    public record Prognose(String name, double bisher, double erwartet, Double vorjahr) {
+
+        public double jahr() {
+            return bisher + erwartet;
+        }
+
+        /**
+         * Change against the whole year before in percent
+         */
+        public Double aenderung() {
+            return vorjahr == null || vorjahr <= 0 ? null : (jahr() / vorjahr - 1) * 100;
         }
     }
 
