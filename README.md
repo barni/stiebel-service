@@ -64,10 +64,11 @@ before you rely on it.
 - **Year comparison** on the page `/jahresvergleich` and as JSON from `/jahresvergleich/daten`: estimated electric
   energy of the heating per month in the current year and the two years before, as bars and as a table with the
   change and the mean outdoor temperature. The current month is compared with the same days of the year before.
-  With `/jahresvergleich?haushalt=ja` the household electricity is stacked on top: grid import of the house meter
-  minus heating and wallbox, from the Home Assistant counters `auswertung.haushalt.zaehler` and
-  `auswertung.haushalt.wallbox` (kWh) in `auswertung.haushalt.bucket`, e.g.
-  `auswertung.haushalt.zaehler=electricity_..._gesamtverbrauch`. Months that are over are read once, the current
+  With the Home Assistant counters `auswertung.haushalt.zaehler` (grid import of the house meter) and
+  `auswertung.haushalt.wallbox` (kWh) in `auswertung.haushalt.bucket` the page also shows the total grid import from
+  the 1st of January against the same days of the year before, and `haushalt=ja` / `wallbox=ja` stack the household
+  electricity (grid import minus heating and wallbox) and the wallbox on top of the heating, e.g.
+  `/jahresvergleich?haushalt=ja&wallbox=ja`. Months that are over are read once, the current
   month every hour.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
   warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above
