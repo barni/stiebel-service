@@ -46,7 +46,8 @@ public class JahresvergleichTest {
                 YearMonth.of(2026, 1), 2.8);
         return Jahresvergleich.vergleich(2026, HEUTE, heizung, Map.of(2024, 40.0, 2025, 50.0),
                 mitHaushalt ? haushalt : Map.of(), mitHaushalt, mitHaushalt ? wallbox : Map.of(), mitHaushalt, aussen,
-                mitHaushalt ? 7800.0 : null, mitHaushalt ? 8000.0 : null, Instant.parse("2026-10-24T09:00:00Z"));
+                mitHaushalt ? 7800.0 : null, mitHaushalt ? 8000.0 : null, mitHaushalt ? 830.0 : null,
+                mitHaushalt ? 0.0 : null, Instant.parse("2026-10-24T09:00:00Z"));
     }
 
     @Test
@@ -91,6 +92,40 @@ public class JahresvergleichTest {
         assertNull(v.wallbox(1));
         assertNull(vergleich(false).wallbox(2));
         assertEquals(80.0, okt.wallbox().get(2));
+    }
+
+    @Test
+    public void testAufteilung() {
+        java.util.List<Jahresvergleich.Anteil> anteile = vergleich(true).aufteilung();
+        assertEquals(java.util.List.of("Gesamt", "Wallbox", "Heizung", "Rest (Haushalt)"),
+                anteile.stream().map(Jahresvergleich.Anteil::name).toList());
+        assertEquals(-200, anteile.get(0).differenz(), 1e-9);
+        assertEquals(830, anteile.get(1).differenz(), 1e-9);
+        assertNull(anteile.get(1).prozent());
+        assertEquals(100, anteile.get(2).differenz(), 1e-9);
+        // Rest = grid import minus heating minus wallbox
+        assertEquals(8000 - 950, anteile.get(3).vorher(), 1e-9);
+        assertEquals(7800 - 1050 - 830, anteile.get(3).jetzt(), 1e-9);
+        assertTrue(vergleich(false).aufteilung().isEmpty());
+
+        assertEquals("Der Stromverbrauch ist gegenüber denselben Tagen 2025 um 200 kWh (2,5 %) gesunken, vor allem "
+                + "beim übrigen Haushalt (−1.130 kWh).", JahresvergleichSeite.ursache(anteile, 2026));
+        java.util.List<Jahresvergleich.Anteil> mehr = java.util.List.of(new Jahresvergleich.Anteil("Gesamt", 7135, 7814),
+                new Jahresvergleich.Anteil("Wallbox", 0, 651), new Jahresvergleich.Anteil("Heizung", 1982, 2014),
+                new Jahresvergleich.Anteil("Rest (Haushalt)", 5153, 5149));
+        assertEquals("Der Stromverbrauch ist gegenüber denselben Tagen 2025 um 679 kWh (9,5 %) gestiegen, vor allem "
+                + "durch die Wallbox (+651 kWh).", JahresvergleichSeite.ursache(mehr, 2026));
+        assertEquals("Der Stromverbrauch ist etwa gleich geblieben wie in denselben Tagen 2025.",
+                JahresvergleichSeite.ursache(java.util.List.of(new Jahresvergleich.Anteil("Gesamt", 7135, 7160)), 2026));
+
+        String karte = JahresvergleichSeite.ursachen(new Jahresvergleich.Vergleich(java.util.List.of(2024, 2025, 2026),
+                HEUTE, java.util.List.of(), true, true, 7814.0, 7135.0, 651.0, 0.0, Instant.EPOCH));
+        assertTrue(karte.contains("<h2>Woran liegt es?</h2>"));
+        // A rise above 5 % is marked
+        assertTrue(karte.contains("<p class=\"ursache steigt\">"));
+        assertTrue(karte.contains("<td>Gesamt</td><td>7.135</td><td>7.814</td><td>+679 kWh (+9,5 %)</td><td>–</td>"));
+        assertTrue(karte.contains("<td>Wallbox</td><td>0</td><td>651</td><td>+651 kWh</td><td>96 %</td>"));
+        assertFalse(karte.contains("-0 %"));
     }
 
     @Test
@@ -169,6 +204,7 @@ public class JahresvergleichTest {
                 + "als in denselben Tagen 2025 (950 kWh). Im ganzen Jahr waren es 1.200 kWh (2025) und 1.080 kWh "
                 + "(2024)."));
         assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung</div><div class=\"value\">−2,5 %</div>"));
+        assertTrue(html.contains("<h2>Woran liegt es?</h2><p class=\"ursache\">"));
         assertTrue(html.contains("<td>Okt</td><td>90</td><td>100</td><td>60 (bis 24.)</td><td>+20,0 %</td>"));
         assertTrue(html.contains("<td>Nov</td><td>90</td><td>100</td><td>–</td><td>–</td>"));
         // 12 bars each for 2024 and 2025, 10 for 2026 with the current month lighter, no household
@@ -213,6 +249,7 @@ public class JahresvergleichTest {
         assertFalse(ohne.contains("<rect class=\"haushalt"));
         assertTrue(ohne.contains("wenn in der Konfiguration der Hauszähler eingetragen ist"));
         assertFalse(ohne.contains("Gesamt Veränderung"));
+        assertFalse(ohne.contains("Woran liegt es?"));
         assertTrue(ohne.contains("Vom 1. Januar bis 24. Oktober 2026 hat die Heizung 1.050 kWh Strom gebraucht, "
                 + "10,5 % mehr als in denselben Tagen 2025 (950 kWh)."));
         // Not calculated yet, or InfluxDB switched off

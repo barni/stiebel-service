@@ -88,9 +88,35 @@ public class Jahresvergleich {
      * @param mitWallbox  the counter of the wallbox is configured
      * @param gesamt      grid import of the house meter in the current year up to now, null without the meter
      * @param gesamtVorjahrGleich grid import in the year before up to the same day and hour
+     * @param wallboxBisJetzt     wallbox in the current year up to now, null without its counter
+     * @param wallboxVorjahrGleich wallbox in the year before up to the same day and hour
      */
     public record Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
-                            boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Instant berechnet) {
+                            boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
+                            Double wallboxVorjahrGleich, Instant berechnet) {
+
+        /**
+         * What the grid import from the 1st of January up to now consists of, against the same days of the year
+         * before: total, wallbox (if its counter is set), heating and the rest. Empty without the house meter.
+         */
+        public List<Anteil> aufteilung() {
+            if (gesamt == null || gesamtVorjahrGleich == null) {
+                return List.of();
+            }
+            double heizungJetzt = heizungGleich(JAHRE - 1);
+            double heizungVorher = heizungGleich(JAHRE - 2);
+            double wallboxJetzt = wallboxBisJetzt == null ? 0 : wallboxBisJetzt;
+            double wallboxVorher = wallboxVorjahrGleich == null ? 0 : wallboxVorjahrGleich;
+            List<Anteil> anteile = new ArrayList<>();
+            anteile.add(new Anteil("Gesamt", gesamtVorjahrGleich, gesamt));
+            if (mitWallbox) {
+                anteile.add(new Anteil("Wallbox", wallboxVorher, wallboxJetzt));
+            }
+            anteile.add(new Anteil("Heizung", heizungVorher, heizungJetzt));
+            anteile.add(new Anteil(mitWallbox ? "Rest (Haushalt)" : "Rest (Haushalt und Wallbox)",
+                    gesamtVorjahrGleich - heizungVorher - wallboxVorher, gesamt - heizungJetzt - wallboxJetzt));
+            return anteile;
+        }
 
         /**
          * Change of the grid import against the same days of the year before in percent
@@ -144,6 +170,20 @@ public class Jahresvergleich {
 
         private static double summe(List<Double> werte) {
             return werte.stream().filter(w -> w != null).mapToDouble(Double::doubleValue).sum();
+        }
+    }
+
+    /**
+     * One part of the grid import, the same days in the year before and in the current year
+     */
+    public record Anteil(String name, double vorher, double jetzt) {
+
+        public double differenz() {
+            return jetzt - vorher;
+        }
+
+        public Double prozent() {
+            return vorher > 0 ? (jetzt / vorher - 1) * 100 : null;
         }
     }
 
@@ -203,17 +243,26 @@ public class Jahresvergleich {
             }
         });
         // Grid import from the 1st of January up to now and up to the same hour a year ago
-        Double gesamt = null;
-        Double gesamtVorjahr = null;
-        if (!hauszaehler.isEmpty()) {
-            gesamt = differenz(stand(hauszaehler, start(YearMonth.of(jahr, 1))), letzter(hauszaehler, jetzt.toInstant()));
-            Instant vorJahr = jetzt.minusYears(1).toInstant();
-            gesamtVorjahr = differenz(stand(hauszaehler, start(YearMonth.of(jahr - 1, 1))),
-                    stand(zaehler(hauszaehler, vorJahr, false), zaehler(hauszaehler, vorJahr, true), vorJahr));
-        }
+        Double[] gesamt = bisJetzt(hauszaehler, jetzt);
+        Double[] wallboxBisJetzt = bisJetzt(wallboxZaehler, jetzt);
         return vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, wallbox),
-                !hauszaehler.isEmpty(), wallbox, !wallboxZaehler.isEmpty(), aussen, gesamt, gesamtVorjahr,
-                Instant.now());
+                !hauszaehler.isEmpty(), wallbox, !wallboxZaehler.isEmpty(), aussen, gesamt[0], gesamt[1],
+                wallboxBisJetzt[0], wallboxBisJetzt[1], Instant.now());
+    }
+
+    /**
+     * Consumption of a counter from the 1st of January up to now, and in the year before up to the same hour; both
+     * null without the counter
+     */
+    private Double[] bisJetzt(String entity, ZonedDateTime jetzt) {
+        if (entity.isEmpty()) {
+            return new Double[2];
+        }
+        int jahr = jetzt.getYear();
+        Instant vorJahr = jetzt.minusYears(1).toInstant();
+        return new Double[]{differenz(stand(entity, start(YearMonth.of(jahr, 1))), letzter(entity, jetzt.toInstant())),
+                differenz(stand(entity, start(YearMonth.of(jahr - 1, 1))),
+                        stand(zaehler(entity, vorJahr, false), zaehler(entity, vorJahr, true), vorJahr))};
     }
 
     /**
@@ -224,7 +273,8 @@ public class Jahresvergleich {
     static Vergleich vergleich(int jahr, LocalDate heute, Map<YearMonth, Double> heizung, Map<Integer, Double> gleich,
                                Map<YearMonth, Double> haushalt, boolean mitHaushalt, Map<YearMonth, Double> wallbox,
                                boolean mitWallbox, Map<YearMonth, Double> aussen, Double gesamt,
-                               Double gesamtVorjahrGleich, Instant berechnet) {
+                               Double gesamtVorjahrGleich, Double wallboxBisJetzt, Double wallboxVorjahrGleich,
+                               Instant berechnet) {
         YearMonth laufend = YearMonth.from(heute);
         List<Integer> jahre = jahre(jahr);
         List<Monat> monate = new ArrayList<>();
@@ -250,7 +300,7 @@ public class Jahresvergleich {
                     istLaufend));
         }
         return new Vergleich(List.copyOf(jahre), heute, monate, mitHaushalt, mitWallbox, gesamt, gesamtVorjahrGleich,
-                berechnet);
+                wallboxBisJetzt, wallboxVorjahrGleich, berechnet);
     }
 
     private static List<Integer> jahre(int jahr) {

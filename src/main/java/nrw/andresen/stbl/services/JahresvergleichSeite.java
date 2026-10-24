@@ -23,6 +23,10 @@ public final class JahresvergleichSeite {
     private static final int RECHTS = 8;
     private static final int OBEN = 16;
     private static final int UNTEN = 28;
+    // Below this change of the grid import the shares of the change say nothing
+    private static final double MIN_AENDERUNG_KWH = 50;
+    // A rise of the grid import above this is marked
+    private static final double STEIGT_AB_PROZENT = 5;
 
     private JahresvergleichSeite() {
     }
@@ -63,7 +67,7 @@ public final class JahresvergleichSeite {
                     .append(kpi("Gesamt " + (jahr - 1) + " gleiche Tage", zahl(vergleich.gesamtVorjahrGleich(), 0),
                             "kWh"))
                     .append(kpi("Gesamt Veränderung", prozent(vergleich.gesamtAenderung()), ""))
-                    .append("</section><section class=\"kpis\">");
+                    .append("</section>").append(ursachen(vergleich)).append("<section class=\"kpis\">");
         }
         html.append(kpi("Heizung " + jahr + " bis " + DATUM.format(vergleich.bis()),
                         zahl(vergleich.heizung(J - 1), 0), "kWh"))
@@ -129,6 +133,78 @@ public final class JahresvergleichSeite {
                 .append("</article></section><p class=\"note\">Stand ").append(ZEIT.format(vergleich.berechnet()))
                 .append(", stündlich neu berechnet.</p></main></body></html>");
         return html.toString();
+    }
+
+    /**
+     * Card "Woran liegt es?": the parts of the grid import from the 1st of January against the same days of the year
+     * before, with a sentence that names the biggest change
+     */
+    static String ursachen(Jahresvergleich.Vergleich v) {
+        List<Jahresvergleich.Anteil> anteile = v.aufteilung();
+        if (anteile.isEmpty()) {
+            return "";
+        }
+        Jahresvergleich.Anteil gesamt = anteile.get(0);
+        String zeitraum = "1. Januar bis " + DATUM.format(v.bis());
+        List<List<String>> zeilen = new ArrayList<>();
+        for (Jahresvergleich.Anteil a : anteile) {
+            boolean mitAnteil = a != gesamt && Math.abs(gesamt.differenz()) >= MIN_AENDERUNG_KWH;
+            zeilen.add(List.of(a.name(), zahl(a.vorher(), 0), zahl(a.jetzt(), 0), differenz(a),
+                    mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–"));
+        }
+        Double prozent = gesamt.prozent();
+        boolean steigt = prozent != null && prozent > STEIGT_AB_PROZENT;
+        return "<section class=\"cards\"><article class=\"card breit\"><h2>Woran liegt es?</h2>"
+                + "<p class=\"ursache" + (steigt ? " steigt" : "") + "\">" + text(ursache(anteile, v.jahr())) + "</p>"
+                + tabelle(List.of(zeitraum, (v.jahr() - 1) + " kWh", v.jahr() + " kWh", "Änderung",
+                "Anteil an der Änderung"), zeilen)
+                + "<p class=\"note\">Rest ist Netzbezug minus Heizung" + (v.mitWallbox() ? " und Wallbox" : "")
+                + ", also der übrige Haushalt mit Warmwasser, Lüftung und Geräten.</p></article></section>";
+    }
+
+    /**
+     * Sentence on the change of the grid import and its biggest part
+     */
+    static String ursache(List<Jahresvergleich.Anteil> anteile, int jahr) {
+        Jahresvergleich.Anteil gesamt = anteile.get(0);
+        Double prozent = gesamt.prozent();
+        if (prozent == null) {
+            return "Für " + (jahr - 1) + " fehlt der Netzbezug, ein Vergleich ist nicht möglich.";
+        }
+        if (Math.abs(gesamt.differenz()) < MIN_AENDERUNG_KWH || Math.abs(prozent) < 1) {
+            return "Der Stromverbrauch ist etwa gleich geblieben wie in denselben Tagen " + (jahr - 1) + ".";
+        }
+        boolean mehr = gesamt.differenz() > 0;
+        Jahresvergleich.Anteil treiber = null;
+        for (Jahresvergleich.Anteil a : anteile.subList(1, anteile.size())) {
+            if (treiber == null || (mehr ? a.differenz() > treiber.differenz() : a.differenz() < treiber.differenz())) {
+                treiber = a;
+            }
+        }
+        return "Der Stromverbrauch ist gegenüber denselben Tagen " + (jahr - 1) + " um "
+                + zahl(Math.abs(gesamt.differenz()), 0) + " kWh (" + zahl(Math.abs(prozent), 1) + " %) "
+                + (mehr ? "gestiegen, vor allem durch " : "gesunken, vor allem ") + teil(treiber.name(), mehr) + " ("
+                + vorzeichen(treiber.differenz()) + zahl(Math.abs(treiber.differenz()), 0) + " kWh).";
+    }
+
+    private static String teil(String name, boolean mehr) {
+        if (name.startsWith("Rest")) {
+            return mehr ? "den übrigen Haushalt" : "beim übrigen Haushalt";
+        }
+        return (mehr ? "die " : "bei der ") + name;
+    }
+
+    private static String differenz(Jahresvergleich.Anteil a) {
+        return vorzeichen(a.differenz()) + zahl(Math.abs(a.differenz()), 0) + " kWh"
+                + (a.prozent() == null ? "" : " (" + prozent(a.prozent()) + ")");
+    }
+
+    private static String anteil(double prozent) {
+        return Math.abs(prozent) < 0.5 ? "0 %" : (prozent < 0 ? "−" : "") + zahl(Math.abs(prozent), 0) + " %";
+    }
+
+    private static String vorzeichen(double wert) {
+        return wert >= 0.5 ? "+" : wert <= -0.5 ? "−" : "±";
     }
 
     /**
@@ -372,6 +448,9 @@ public final class JahresvergleichSeite {
               font-size: 13px; }
             .legende span { display: inline-flex; align-items: center; gap: 6px; }
             .umschalten { margin: 0 0 8px; font-size: 14px; }
+            .ursache { margin: 4px 0 8px; font-weight: 600; }
+            .cards + .kpis { margin-top: 16px; }
+            .ursache.steigt { color: var(--warn); }
             .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
             .sw.j0 { background: var(--muted); opacity: 0.3; }
             .sw.j1 { background: var(--muted); opacity: 0.65; }
