@@ -35,8 +35,9 @@ public class WaermebedarfVergleich {
     // Bands of the daily mean outdoor temperature, above the last one the house hardly needs heat
     static final double[] BAENDER = {-5, 0, 5, 10, 15};
     private static final int TAGE_JE_ABFRAGE = 90;
-    // Rating of a setting: enough days on both sides, run time near a full day means the power is too low, the heat
-    // per day should stay the same because the house needs the same heat at the same outdoor temperature
+    // Rating of a setting: enough days on both sides, run time near a full day means the power is too low. A change of
+    // the heat per day is only shown: in autumn the sun heats with, so October days need less heat than winter days
+    // with the same daily mean, and that is no sign of a setting that is too low.
     static final int MIN_TAGE = 5;
     static final double MAX_LAUFZEIT_H = 22;
     static final double WAERME_TOLERANZ = 0.10;
@@ -248,7 +249,8 @@ public class WaermebedarfVergleich {
     }
 
     /**
-     * Rating of the current setting against the one before in one temperature band
+     * Rating of the current setting against the one before in one temperature band: by the starts, "zu knapp?" only
+     * when the compressor runs nearly all day, a change of the heat per day of more than 10 % is added
      */
     static String bewertung(Gruppe vorher, Gruppe nachher) {
         if (nachher.tage() >= MIN_TAGE && nachher.laufzeitProTag() > MAX_LAUFZEIT_H) {
@@ -260,16 +262,15 @@ public class WaermebedarfVergleich {
         if (vorher.tage() < MIN_TAGE || nachher.tage() < MIN_TAGE) {
             return "zu wenige Tage";
         }
+        String starts = nachher.startsProTag() <= vorher.startsProTag() * STARTS_BESSER ? "besser"
+                : nachher.startsProTag() >= vorher.startsProTag() / STARTS_BESSER ? "schlechter" : "kaum Unterschied";
         if (nachher.waermeProTag() < vorher.waermeProTag() * (1 - WAERME_TOLERANZ)) {
-            return "zu knapp?";
+            return starts + ", weniger Wärme";
         }
-        if (nachher.startsProTag() <= vorher.startsProTag() * STARTS_BESSER) {
-            return "besser";
+        if (nachher.waermeProTag() > vorher.waermeProTag() * (1 + WAERME_TOLERANZ)) {
+            return starts + ", mehr Wärme";
         }
-        if (nachher.startsProTag() >= vorher.startsProTag() / STARTS_BESSER) {
-            return "schlechter";
-        }
-        return "kaum Unterschied";
+        return starts;
     }
 
     public List<Vergleich> getVergleich() {

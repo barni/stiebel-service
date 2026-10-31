@@ -41,6 +41,9 @@ before you rely on it.
   compressor starts, run time and heat per day from InfluxDB (since `auswertung.start`, default 2023-07-01) and groups
   the days by daily mean outdoor temperature (below −5, −5 to 0, … 10 to 15 °C) and by the setting of that day. Shown
   on the status page and as JSON from `/waermebedarf`. Fewer starts at the same heat mean longer, more efficient runs.
+  The rating compares the starts (better, worse, hardly any difference) and says "zu knapp?" only when the compressor
+  runs more than 22 hours a day; a change of the heat per day of more than 10 % is only added as a note, because
+  sunny autumn days need less heat than winter days with the same daily mean.
   A start counts after a standstill of at least 3 minutes: the restart after a defrost (about 2 minutes break, around
   20 a day near 0 °C) depends on the weather and not on the setting. The daily overview counts the same way.
   These restarts are shown as defrosts per day, also for the days before the service detected defrosts itself.

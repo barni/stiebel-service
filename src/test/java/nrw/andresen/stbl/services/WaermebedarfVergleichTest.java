@@ -128,8 +128,11 @@ public class WaermebedarfVergleichTest {
         WaermebedarfVergleich.Gruppe alt = gruppe(8.5, 124, 23.5, 17.5, 95);
         // Fewer starts, same heat
         assertEquals("besser", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 15, 19.5, 93)));
-        // Heat per day more than 10 % lower
-        assertEquals("zu knapp?", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 15, 19.5, 80)));
+        // Heat per day more than 10 % lower or higher is only added, e.g. sunny October days need less heat
+        assertEquals("besser, weniger Wärme", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 15, 19.5, 80)));
+        assertEquals("schlechter, mehr Wärme", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 27, 17.5, 110)));
+        assertEquals("kaum Unterschied, weniger Wärme",
+                WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 23, 12.8, 48)));
         // Nearly a full day of run time, also without days of another setting
         assertEquals("zu knapp?", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 10, 23, 96)));
         assertEquals("zu knapp?", WaermebedarfVergleich.bewertung(null, gruppe(7.5, 9, 10, 23, 96)));
