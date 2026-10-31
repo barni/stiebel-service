@@ -449,9 +449,10 @@ public class StatusService {
                             + "heißt gemächlicher und effizienter.",
                     "Bewertung", "Ab " + WaermebedarfVergleich.MIN_TAGE + " Tagen je Einstellung: besser (≥ "
                             + Math.round((1 - WaermebedarfVergleich.STARTS_BESSER) * 100) + " % weniger Starts), "
-                            + "schlechter (≥ 10 % mehr), zu knapp? (Wärme > "
-                            + Math.round(WaermebedarfVergleich.WAERME_TOLERANZ * 100) + " % niedriger oder > "
-                            + (int) WaermebedarfVergleich.MAX_LAUFZEIT_H + " h/Tag), sonst kaum Unterschied."));
+                            + "schlechter (≥ 10 % mehr), sonst kaum Unterschied; zu knapp?, wenn der Verdichter > "
+                            + (int) WaermebedarfVergleich.MAX_LAUFZEIT_H + " h/Tag läuft. Dazu „weniger Wärme“ "
+                            + "oder „mehr Wärme“ bei mehr als " + Math.round(WaermebedarfVergleich.WAERME_TOLERANZ
+                            * 100) + " % Unterschied, im Herbst heizt die Sonne mit."));
         }
         page.note("Tage seit " + vergleich.getStart().format(DATUM) + " nach Tagesmittel der Außentemperatur und "
                         + "der Einstellung Wärmebedarf im Wärmepumpenmanager (eingestellter Wert, kein Messwert). "
@@ -459,9 +460,11 @@ public class StatusService {
                         + "„kW im Lauf“ = Wärme ÷ Laufzeit. Bewertung ab " + WaermebedarfVergleich.MIN_TAGE
                         + " Tagen je Einstellung: „besser“ bei mindestens "
                         + Math.round((1 - WaermebedarfVergleich.STARTS_BESSER) * 100)
-                        + " % weniger Starts, „zu knapp?“ wenn die Wärme pro Tag um mehr als "
-                        + Math.round(WaermebedarfVergleich.WAERME_TOLERANZ * 100) + " % sinkt oder der Verdichter "
-                        + "mehr als " + (int) WaermebedarfVergleich.MAX_LAUFZEIT_H + " h am Tag läuft. Passt die "
+                        + " % weniger Starts, „zu knapp?“ wenn der Verdichter mehr als "
+                        + (int) WaermebedarfVergleich.MAX_LAUFZEIT_H + " h am Tag läuft. Ändert sich die Wärme pro "
+                        + "Tag um mehr als " + Math.round(WaermebedarfVergleich.WAERME_TOLERANZ * 100) + " %, steht "
+                        + "„weniger Wärme“ oder „mehr Wärme“ dabei: Das ist ein Hinweis, keine Warnung, denn im Herbst "
+                        + "heizt die Sonne mit und die alten Tage stammen meist aus dem Winter. Passt die "
                         + "Einstellung, bleibt die Wärme gleich, die Starts sinken und die Läufe werden länger; dazu "
                         + "bleiben die Räume warm und der Heizstab aus. Stand " + (vergleich.getBerechnet() == null ? "–"
                         : zeitpunkt(vergleich.getBerechnet())) + ".");
