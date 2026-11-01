@@ -114,6 +114,17 @@ public class WochenberichtTest {
         assertTrue(text.contains("- Heizungsdruck bar: 1,54 → 1,56 (1,54 → 1,47 / –)\n"));
         assertTrue(text.contains("- So. 04.10. | 15,0 | 20 | 4,0 | 4 | 1,5 | 1\n"));
 
+        String mail = Wochenbericht.html(bericht);
+        assertTrue(mail.contains("Letzte 7 Tage: 04.10.–10.10.2026"));
+        // Tables with the heads in two lines and the numbers right
+        assertTrue(mail.contains("Letzte 7 Tage<br>04.10.–10.10.</th>"));
+        assertTrue(mail.contains(">Wärme kWh</td><td style=\"padding:6px 8px;border-bottom:1px solid #e4e7e2;"
+                + "white-space:nowrap;text-align:right\">140</td>"));
+        assertTrue(mail.contains(">So. 04.10.</td>"));
+        assertTrue(mail.contains("Heizungsdruck bar</td>"));
+        assertTrue(mail.contains("1,54 → 1,56"));
+        assertFalse(mail.contains("<style"));
+
         String html = WochenberichtSeite.render(bericht, null);
         assertTrue(html.contains("<a class=\"nav\" href=\"status\">← Status</a>"));
         assertTrue(html.contains("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a>"));
