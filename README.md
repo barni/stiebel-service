@@ -63,7 +63,8 @@ before you rely on it.
   from `/wochenbericht/daten`: the last 7 complete days next to the 7 days before and to what is usual at the same
   outdoor temperature (for each day the mean of the earlier days within ±1.5 K, added up): heat, estimated power,
   efficiency, run time, starts, hours per start, defrosts, highest flow temperature and heating pressure, the single
-  days, and one sentence that sums it up. Sent by mail on Sunday at 20:00 unless `bericht.woche.mail=false`.
+  days, and one sentence that sums it up. Sent by mail on Sunday at 20:00 unless `bericht.woche.mail=false`, as
+  HTML with tables and the same content as plain text.
 - **Year comparison** on the page `/jahresvergleich` and as JSON from `/jahresvergleich/daten`: estimated electric
   energy of the heating per month in the current year and the two years before, as bars and as a table with the
   change and the mean outdoor temperature. The current month is compared with the same days of the year before.

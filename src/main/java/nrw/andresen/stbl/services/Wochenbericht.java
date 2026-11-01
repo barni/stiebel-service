@@ -135,7 +135,7 @@ public class Wochenbericht {
             logger.warn("Weekly report not sent, it could not be calculated");
             return;
         }
-        mail.sendAlert("Wärmepumpe: Wochenbericht " + zeitraum(b.woche()), text(b));
+        mail.sendHtml("Wärmepumpe: Wochenbericht " + zeitraum(b.woche()), text(b), html(b));
     }
 
     /**
@@ -312,6 +312,67 @@ public class Wochenbericht {
         return text.append("\nStrom ist die geschätzte Wirkleistung des Verdichters ohne Pumpe und Regelung, die "
                 + "Arbeitszahl daraus liegt deshalb etwas zu hoch. Ein Start zählt nach mindestens 3 Minuten "
                 + "Stillstand, also ohne die Wiederanläufe nach einer Abtauung.\n").toString();
+    }
+
+    /**
+     * Report as HTML for the mail: the sentence, the comparison and the days as tables. Mail programs ignore style
+     * sheets, so every element carries its style itself.
+     */
+    public static String html(Bericht b) {
+        StringBuilder html = new StringBuilder("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">"
+                + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"></head>"
+                + "<body style=\"margin:0;padding:16px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,"
+                + "sans-serif;font-size:14px;line-height:1.45;color:#1d2321\"><div style=\"max-width:640px\">")
+                .append("<h1 style=\"margin:0;font-size:22px\">Wochenbericht Wärmepumpe</h1>")
+                .append("<p style=\"margin:2px 0 16px;color:#69726e\">Letzte 7 Tage: ").append(mailText(zeitraum(b.woche())))
+                .append("</p><p style=\"margin:0 0 20px;padding:10px 14px;border:1px solid #e4e7e2;border-radius:10px;"
+                        + "font-weight:600\">").append(mailText(satz(b))).append("</p>")
+                .append(ueberschrift("Vergleich"))
+                .append(mailTabelle(List.of("", "Letzte 7 Tage\n" + zeitraumKurz(b.woche()),
+                        "7 Tage davor\n" + zeitraumKurz(b.vorwoche()), "Üblich"), zeilen(b)))
+                .append("<p style=\"margin:6px 0 20px;font-size:12px;color:#69726e\">Üblich: für jeden der 7 Tage das "
+                        + "Mittel der früheren Tage mit ähnlicher Außentemperatur, aufsummiert.</p>")
+                .append(ueberschrift("Die Tage"))
+                .append(mailTabelle(List.of("Tag", "Außen °C", "Wärme kWh", "Strom kWh", "Starts", "h je Start",
+                        "Abtauungen"), tageszeilen(b.woche())))
+                .append("<p style=\"margin:16px 0 0;font-size:12px;color:#69726e\">Strom ist die geschätzte "
+                        + "Wirkleistung des Verdichters ohne Pumpe und Regelung, die Arbeitszahl daraus liegt deshalb "
+                        + "etwas zu hoch. Ein Start zählt nach mindestens 3 Minuten Stillstand, also ohne die "
+                        + "Wiederanläufe nach einer Abtauung.</p></div></body></html>");
+        return html.toString();
+    }
+
+    private static String ueberschrift(String text) {
+        return "<h2 style=\"margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;"
+                + "color:#0f766e\">" + mailText(text) + "</h2>";
+    }
+
+    /**
+     * Table with the first column left and the numbers right; a line break in a head starts a second line
+     */
+    static String mailTabelle(List<String> kopf, List<List<String>> zeilen) {
+        String zelle = "padding:6px 8px;border-bottom:1px solid #e4e7e2;white-space:nowrap;";
+        StringBuilder html = new StringBuilder("<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums\"><tr>");
+        for (int i = 0; i < kopf.size(); i++) {
+            html.append("<th style=\"").append(zelle).append("text-align:").append(i == 0 ? "left" : "right")
+                    .append(";font-weight:600;font-size:12px;color:#69726e;vertical-align:bottom\">")
+                    .append(mailText(kopf.get(i)).replace("\n", "<br>")).append("</th>");
+        }
+        html.append("</tr>");
+        for (List<String> zeile : zeilen) {
+            html.append("<tr>");
+            for (int i = 0; i < zeile.size(); i++) {
+                html.append("<td style=\"").append(zelle).append("text-align:").append(i == 0 ? "left" : "right")
+                        .append("\">").append(mailText(zeile.get(i))).append("</td>");
+            }
+            html.append("</tr>");
+        }
+        return html.append("</table>").toString();
+    }
+
+    private static String mailText(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     public static String zeitraum(Woche woche) {
