@@ -581,9 +581,10 @@ public class Waermepumpe {
             throw new KeinMesswert("ABTAUUNG");
         }
         ValueContainer<Double> volumenstrom = getVolumenstrom();
-        // The flow rate is requested only every 60 s and can still be 0 from before the start
+        // The flow rate is requested only every 60 s and can still be 0 from before the start; right after a defrost
+        // the pump stands still for about a minute while the compressor runs. Both are expected, no warning.
         if (volumenstrom.getValue() <= 0) {
-            throw new Exception("KEIN_VOLUMENSTROM");
+            throw new KeinMesswert("KEIN_VOLUMENSTROM");
         }
         ValueContainer<Double> spreizung = getSpreizung();
         return new ValueContainer<>(waermeleistung(volumenstrom.getValue(), spreizung.getValue()),
