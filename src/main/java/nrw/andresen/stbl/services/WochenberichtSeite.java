@@ -29,6 +29,7 @@ public final class WochenberichtSeite {
                 .append(bericht == null ? "Die letzten 7 vollen Tage" : "Letzte 7 Tage: " + Wochenbericht.zeitraum(bericht.woche()))
                 .append("</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"jahresvergleich\">Jahresvergleich</a> · ")
+                .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
                 .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a></nav></header>");
         if (hinweis != null || bericht == null) {
             html.append("<p class=\"meldung\">").append(text(hinweis != null ? hinweis

@@ -70,6 +70,7 @@ public class StatusService {
         if (influx.isAktiv()) {
             page.navigation("Wochenbericht", "wochenbericht");
             page.navigation("Jahresvergleich", "jahresvergleich");
+            page.navigation("Zustand", "zustand");
         }
         page.navigation("Konfiguration", "konfiguration");
         if (!influx.isAktiv()) {

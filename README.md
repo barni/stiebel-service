@@ -77,6 +77,11 @@ before you rely on it.
   rest of the two years before, the household as in the rest of the year before, the wallbox at the rate of the last
   three full months. Months that are over are read once, the current
   month every hour.
+- **Condition and ageing** on the page `/zustand` and as JSON from `/zustand/daten`: per heating season (July to June,
+  since `auswertung.zustand.start`, default 2022-07-01) the efficiency, starts, hours per start and defrosts at the
+  same outdoor temperature (0 to 5 °C and 5 to 10 °C), failed starts per 1000 starts and the heating pressure in
+  winter. The newest season with enough days is compared with the seasons before and each value rated as
+  unauffällig, beobachten or auffällig. Seasons that are over are read once, the current one every 6 hours.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
   warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above
   `warnung.heizungsdruck.max` (default 2.5 bar), heating element on,

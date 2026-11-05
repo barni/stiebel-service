@@ -514,18 +514,11 @@ public class Jahresvergleich {
                         from(bucket: "%s")
                           |> range(start: %s, stop: %s)
                           |> filter(fn: (r) => r._measurement == "WP_LeistungInverter" and r._field == "value")
-                          |> map(fn: (r) => {
-                              anteil = if r._value <= %.1f then 0.0 else %.4f - %.1f / r._value
-                              begrenzt = if r._value <= %.1f then 0.0 else if anteil < %.4f then %.4f else if anteil > %.4f then %.4f else anteil
-                              return {r with _value: r._value * begrenzt}
-                            })
+                          |> %s
                           |> aggregateWindow(every: 1m, fn: mean, createEmpty: false)
                           |> sum()
                           |> map(fn: (r) => ({r with _value: r._value / 60000.0, _time: r._start}))
-                        """, bucket, von, bis, LAEUFT_AB_W, Waermepumpe.WIRKLEISTUNG_STEIGUNG,
-                Waermepumpe.WIRKLEISTUNG_OFFSET_W, LAEUFT_AB_W, Waermepumpe.WIRKLEISTUNGSANTEIL_MIN,
-                Waermepumpe.WIRKLEISTUNGSANTEIL_MIN, Waermepumpe.WIRKLEISTUNGSANTEIL_MAX,
-                Waermepumpe.WIRKLEISTUNGSANTEIL_MAX);
+                        """, bucket, von, bis, Waermepumpe.wirkleistungFlux(LAEUFT_AB_W));
     }
 
     /**
