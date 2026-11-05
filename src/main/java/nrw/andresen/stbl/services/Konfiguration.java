@@ -103,6 +103,8 @@ public class Konfiguration {
                     "Erster Tag für den Vergleich der Einstellung Wärmebedarf und die Tagesübersicht."),
             new Feld("auswertung.fehlstarts.start", AUSWERTUNG, "Fehlstarts ab", "", Typ.DATUM, "2019-01-01", 0, 0,
                     "Erster Tag für die Fehlstarts je Heizsaison."),
+            new Feld("auswertung.zustand.start", AUSWERTUNG, "Zustand ab", "", Typ.DATUM, "2022-07-01", 0, 0,
+                    "Erste Heizsaison für den Zustand und die Alterung. Vorher fehlt meist die Außentemperatur."),
             new Feld("auswertung.aussentemp.bucket", AUSWERTUNG, "Bucket der Außentemperatur", "", Typ.NAME, "", 0,
                     0, "InfluxDB-Bucket mit der Außentemperatur aus Home Assistant. Leer: Bucket des Dienstes."),
             new Feld("auswertung.aussentemp.entity", AUSWERTUNG, "Entity der Außentemperatur", "", Typ.NAME, "", 0,

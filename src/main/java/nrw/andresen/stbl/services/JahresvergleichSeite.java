@@ -48,6 +48,7 @@ public final class JahresvergleichSeite {
                         : "Strom der Heizung je Monat, " + vergleich.jahre().get(0) + " bis " + vergleich.jahr())
                 .append("</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"wochenbericht\">Wochenbericht</a> · ")
+                .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
                 .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a></nav></header>");
         if (hinweis != null || vergleich == null) {
             html.append("<p class=\"meldung\">").append(text(hinweis != null ? hinweis

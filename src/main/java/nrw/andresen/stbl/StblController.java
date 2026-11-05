@@ -12,6 +12,8 @@ import nrw.andresen.stbl.services.WaermebedarfVergleich;
 import nrw.andresen.stbl.services.Jahresvergleich;
 import nrw.andresen.stbl.services.JahresvergleichSeite;
 import nrw.andresen.stbl.services.Wochenbericht;
+import nrw.andresen.stbl.services.Zustand;
+import nrw.andresen.stbl.services.ZustandSeite;
 import nrw.andresen.stbl.services.WochenberichtSeite;
 import nrw.andresen.stbl.services.Waermepumpe;
 import nrw.andresen.stbl.services.can.Fehlerliste;
@@ -94,6 +96,8 @@ public class StblController {
     @Autowired
     private Jahresvergleich jahresvergleich;
     @Autowired
+    private Zustand zustand;
+    @Autowired
     private Version version;
     // The answer with the waiting page has to reach the browser before the service closes
     private static final Duration NEUSTART_VERZOEGERUNG = Duration.ofSeconds(2);
@@ -155,6 +159,23 @@ public class StblController {
     @GetMapping("/jahresvergleich/daten")
     public Jahresvergleich.Vergleich jahresvergleichDaten() {
         return jahresvergleich.getVergleich();
+    }
+
+    /**
+     * Condition of the heat pump over the heating seasons: values that show ageing or a problem
+     */
+    @GetMapping(value = "/zustand", produces = "text/html;charset=UTF-8")
+    public String zustand() {
+        return ZustandSeite.render(zustand.getErgebnis(), influxController.isAktiv() ? null
+                : "Für den Zustand braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false).");
+    }
+
+    /**
+     * Condition over the heating seasons as JSON, null until it is calculated
+     */
+    @GetMapping("/zustand/daten")
+    public Zustand.Ergebnis zustandDaten() {
+        return zustand.getErgebnis();
     }
 
     /**

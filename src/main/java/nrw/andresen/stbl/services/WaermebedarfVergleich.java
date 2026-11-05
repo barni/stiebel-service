@@ -35,6 +35,7 @@ public class WaermebedarfVergleich {
     // Bands of the daily mean outdoor temperature, above the last one the house hardly needs heat
     static final double[] BAENDER = {-5, 0, 5, 10, 15};
     private static final int TAGE_JE_ABFRAGE = 90;
+    private static final int TAGE_JE_ABFRAGE_STROM = 20;
     // Rating of a setting: enough days on both sides, run time near a full day means the power is too low. A change of
     // the heat per day is only shown: in autumn the sun heats with, so October days need less heat than winter days
     // with the same daily mean, and that is no sign of a setting that is too low.
@@ -58,7 +59,12 @@ public class WaermebedarfVergleich {
      * Values of one complete day
      */
     public record Tag(LocalDate datum, double aussentemp, int starts, double laufzeitH, double waermeKWh,
-                      double waermebedarf, int abtauungen) {
+                      double waermebedarf, int abtauungen, double stromKWh) {
+
+        public Tag(LocalDate datum, double aussentemp, int starts, double laufzeitH, double waermeKWh,
+                   double waermebedarf, int abtauungen) {
+            this(datum, aussentemp, starts, laufzeitH, waermeKWh, waermebedarf, abtauungen, 0);
+        }
     }
 
     /**
@@ -92,7 +98,7 @@ public class WaermebedarfVergleich {
             return;
         }
         try {
-            tage = tage();
+            tage = tage(start.atStartOfDay(ZONE).toInstant(), LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant());
             gruppen = vergleich(tage);
             berechnet = Instant.now();
         } catch (Exception e) {
@@ -129,6 +135,13 @@ public class WaermebedarfVergleich {
                 temperaturEntity, "mean()", "");
     }
 
+    /**
+     * Daily mean of a value of the heat pump, e.g. WP_Heizungsdruck
+     */
+    Map<LocalDate, Double> tagesmittel(String measurement, Instant von, Instant bis) {
+        return tageswerte(von, bis, influx.getBucket(), measurement, null, "mean()", "");
+    }
+
     public LocalDate getStart() {
         return start;
     }
@@ -137,10 +150,12 @@ public class WaermebedarfVergleich {
         return berechnet;
     }
 
-    private List<Tag> tage() {
+    /**
+     * Complete days from von to bis (excluded) with starts, run time, heat, estimated electricity, outdoor
+     * temperature and setting; also used by the comparison of the heating seasons
+     */
+    List<Tag> tage(Instant von, Instant bis) {
         String bucket = influx.getBucket();
-        Instant von = start.atStartOfDay(ZONE).toInstant();
-        Instant bis = LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant();
         Map<LocalDate, Double> werte = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "count()", "");
         // A start is counted when a standstill gets longer than the break of a defrost. Counting every change from
         // standstill to running gave 23 to 30 "starts" on cold days, two thirds of them restarts after a defrost
@@ -161,9 +176,15 @@ public class WaermebedarfVergleich {
                 " |> map(fn: (r) => ({r with _value: if r._value > " + LAEUFT_AB_W + " then 1.0 else 0.0}))");
         Map<LocalDate, Double> waerme = tageswerte(von, bis, bucket, "WP_AbgabeWaerme", null, "spread()", "");
         Map<LocalDate, Double> temperatur = aussentemperatur(von, bis);
-        Map<LocalDate, Double> einstellung = tageswerte(von, bis, bucket, "WP_Einstellung_Waermebedarf", null,
-                "last()", "");
-        return tage(werte, starts, anlaeufe, laufzeit, waerme, temperatur, einstellung);
+        // Up to today: the setting is stored only since 2026-09-22, for days before the first stored value applies
+        Instant heute = LocalDate.now(ZONE).plusDays(1).atStartOfDay(ZONE).toInstant();
+        Map<LocalDate, Double> einstellung = tageswerte(von, bis.isAfter(heute) ? bis : heute, bucket,
+                "WP_Einstellung_Waermebedarf", null, "last()", "");
+        // Estimated real power integrated over the day, in Wh
+        // Computed for every stored value, so in smaller parts than the other values
+        Map<LocalDate, Double> strom = tageswerte(von, bis, bucket, "WP_LeistungInverter", null, "integral(unit: 1h)",
+                " |> " + Waermepumpe.wirkleistungFlux(LAEUFT_AB_W), TAGE_JE_ABFRAGE_STROM);
+        return tage(werte, starts, anlaeufe, laufzeit, waerme, temperatur, einstellung, strom);
     }
 
     /**
@@ -175,6 +196,16 @@ public class WaermebedarfVergleich {
                           Map<LocalDate, Double> anlaeufe, Map<LocalDate, Double> laufzeit,
                           Map<LocalDate, Double> waerme,
                           Map<LocalDate, Double> temperatur, Map<LocalDate, Double> einstellung) {
+        return tage(werte, starts, anlaeufe, laufzeit, waerme, temperatur, einstellung, Map.of());
+    }
+
+    /**
+     * @param strom estimated real energy of the inverter per day in Wh
+     */
+    static List<Tag> tage(Map<LocalDate, Double> werte, Map<LocalDate, Double> starts,
+                          Map<LocalDate, Double> anlaeufe, Map<LocalDate, Double> laufzeit,
+                          Map<LocalDate, Double> waerme, Map<LocalDate, Double> temperatur,
+                          Map<LocalDate, Double> einstellung, Map<LocalDate, Double> strom) {
         TreeMap<LocalDate, Double> einstellungen = new TreeMap<>(einstellung);
         List<Tag> tage = new ArrayList<>();
         if (einstellungen.isEmpty()) {
@@ -193,7 +224,7 @@ public class WaermebedarfVergleich {
             // again: around midnight the two can fall on different days, so the difference is not below 0
             int abtauungen = Math.max(0, anlaeufe.getOrDefault(datum, 0d).intValue() - startsTag);
             tage.add(new Tag(datum, aussentemp, startsTag, laufzeit.getOrDefault(datum, 0d),
-                    waerme.get(datum) * 1000, waermebedarf, abtauungen));
+                    waerme.get(datum) * 1000, waermebedarf, abtauungen, strom.getOrDefault(datum, 0d) / 1000));
         }
         return tage;
     }
@@ -302,11 +333,16 @@ public class WaermebedarfVergleich {
      */
     private Map<LocalDate, Double> tageswerte(Instant von, Instant bis, String bucket, String measurement,
                                               String entity, String funktion, String filter) {
+        return tageswerte(von, bis, bucket, measurement, entity, funktion, filter, TAGE_JE_ABFRAGE);
+    }
+
+    private Map<LocalDate, Double> tageswerte(Instant von, Instant bis, String bucket, String measurement,
+                                              String entity, String funktion, String filter, int tageJeAbfrage) {
         Map<LocalDate, Double> tage = new TreeMap<>();
         // In parts, a query over years takes longer than the InfluxDB client waits
         for (LocalDate tag = von.atZone(ZONE).toLocalDate(); tag.atStartOfDay(ZONE).toInstant().isBefore(bis);
-             tag = tag.plusDays(TAGE_JE_ABFRAGE)) {
-            Instant teilBis = tag.plusDays(TAGE_JE_ABFRAGE).atStartOfDay(ZONE).toInstant();
+             tag = tag.plusDays(tageJeAbfrage)) {
+            Instant teilBis = tag.plusDays(tageJeAbfrage).atStartOfDay(ZONE).toInstant();
             influx.werte(flux(tag.atStartOfDay(ZONE).toInstant(), teilBis.isAfter(bis) ? bis : teilBis, bucket,
                             measurement, entity, funktion, filter))
                     .forEach((zeit, wert) -> tage.put(zeit.atZone(ZONE).toLocalDate(), wert));
