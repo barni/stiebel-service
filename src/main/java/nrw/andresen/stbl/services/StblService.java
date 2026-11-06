@@ -115,11 +115,18 @@ public class StblService {
 
     /**
      * Reads the fault list every 10 minutes. The answers of the previous request are checked first: a new entry is
-     * logged and sent by mail. The first complete read only remembers the list.
+     * logged and sent by mail. The first complete read only remembers the list. Each complete list is stored in
+     * InfluxDB, an entry already stored only replaces its point.
      */
     @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 600000)
     public synchronized void checkFehlerliste() {
         if (can.fehlerlisteVollstaendig()) {
+            try {
+                influxController.storePoints(can.getFehlerliste().eintraege().stream()
+                        .map(InfluxController::createFehlerPoint).toList());
+            } catch (Exception e) {
+                logger.error("Storing the fault list failed: ", e);
+            }
             for (Fehlerliste.Eintrag eintrag : can.getFehlerliste().neueEintraege()) {
                 String text = Fehlerliste.ZEITFORMAT.format(eintrag.zeit()) + " " + eintrag.text()
                         + " (Code " + eintrag.code() + ")";

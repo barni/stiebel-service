@@ -13,6 +13,7 @@ import com.influxdb.client.write.Point;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 import jakarta.annotation.PreDestroy;
+import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -29,6 +31,9 @@ import java.util.regex.Pattern;
 
 @Component
 public class InfluxController {
+
+    // The clock of the WPM runs in local time
+    private static final ZoneId WPM_ZONE = ZoneId.of("Europe/Berlin");
 
     // Only plain names are put into the Flux query, everything else is rejected
     private static final Pattern SERIES_NAME = Pattern.compile("[A-Za-z0-9_]{1,64}");
@@ -118,6 +123,18 @@ public class InfluxController {
                 .time(value.getTimestamp(), WritePrecision.NS)
                 .addField("value", value.getValue());
 
+    }
+
+    /**
+     * Point of an entry of the fault list at the time of the entry. The WPM keeps only the last 20 entries, stored
+     * they stay available. The same entry stored again replaces the point, so the whole list can be stored each time.
+     */
+    public static Point createFehlerPoint(Fehlerliste.Eintrag eintrag) {
+        return Point.measurement("WP_Fehler")
+                .time(eintrag.zeit().atZone(WPM_ZONE).toInstant(), WritePrecision.S)
+                .addTag("code", String.valueOf(eintrag.code()))
+                .addField("code", eintrag.code())
+                .addField("text", eintrag.text());
     }
 
     /**
