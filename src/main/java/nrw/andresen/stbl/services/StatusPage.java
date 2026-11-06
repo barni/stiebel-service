@@ -575,16 +575,21 @@ public class StatusPage {
               d.addEventListener('toggle', () => { try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) { } });
             });""";
 
-    // Reloads the page after 20 s, but not in a hidden tab or while the course dialog is open; then right when the
-    // tab is visible again or the dialog is closed
+    // Reloads the page after 20 s, but not in a hidden tab, while the course dialog is open or while a tooltip is
+    // shown (hovered or tapped); then as soon as none of that applies any more. The dialog is looked up on each check,
+    // because it is added to the page after this script.
     private static final String RELOAD_SCRIPT = """
             (() => {
-              const dlg = document.getElementById('verlauf');
-              let due = false;
-              const reload = () => { if (due && !document.hidden && !(dlg && dlg.open)) location.reload(); };
-              setTimeout(() => { due = true; reload(); }, 20000);
-              document.addEventListener('visibilitychange', reload);
-              if (dlg) dlg.addEventListener('close', reload);
+              const offen = () => {
+                const dlg = document.getElementById('verlauf');
+                return (dlg && dlg.open) || document.querySelector('.calc:hover, .calc:focus') !== null;
+              };
+              const reload = () => { if (!document.hidden && !offen()) location.reload(); };
+              setTimeout(() => {
+                reload();
+                setInterval(reload, 1000);
+                document.addEventListener('visibilitychange', reload);
+              }, 20000);
             })();""";
 
     private static final String TOOLTIP_CSS = """
