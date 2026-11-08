@@ -152,7 +152,9 @@ public class StatusPage {
      * Starts a folded list within the card, e.g. all entries of the fault list, ended by detailsEnde()
      */
     public StatusPage details(String titel) {
-        current().content.add("<details class=\"mehr\"><summary>" + attr(titel) + "</summary>");
+        Card card = current();
+        card.content.add("<details class=\"mehr\" data-id=\"" + attr(card.title + "/" + titel) + "\"><summary>"
+                + attr(titel) + "</summary>");
         return this;
     }
 
@@ -564,10 +566,10 @@ public class StatusPage {
         return html.toString();
     }
 
-    // Restores the folded areas after the reload every 20 s, an area opened because of a problem stays open
+    // Restores the folded areas and lists after the reload every 20 s, an area opened because of a problem stays open
     private static final String BEREICH_SCRIPT = """
-            document.querySelectorAll('details.bereich').forEach(d => {
-              const key = 'bereich:' + d.dataset.id;
+            document.querySelectorAll('details[data-id]').forEach(d => {
+              const key = d.className + ':' + d.dataset.id;
               try {
                 const offen = localStorage.getItem(key);
                 if (offen !== null && !d.hasAttribute('data-erzwingen')) d.open = offen === '1';

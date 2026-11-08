@@ -263,7 +263,10 @@ public class StatusPageTest {
                 .card("Dienst")
                 .render();
         assertTrue(html.contains("<h2 class=\"bereich-titel\">Übersicht</h2>"));
-        assertTrue(html.contains("<details class=\"mehr\"><summary>Alle 20 Einträge</summary>"));
+        // A folded list keeps its state over the reload, its key is the card and list title
+        assertTrue(html.contains("<details class=\"mehr\" data-id=\"Fehlerliste/Alle 20 Einträge\">"
+                + "<summary>Alle 20 Einträge</summary>"));
+        assertTrue(html.contains("querySelectorAll('details[data-id]')"));
         assertTrue(html.contains("<details class=\"bereich\" data-id=\"Anlage\"><summary><span>Anlage</span>"
                 + "<span class=\"zusammenfassung\">Betrieb · Kältekreis</span></summary>"));
         // An area with a problem is opened and stays open
