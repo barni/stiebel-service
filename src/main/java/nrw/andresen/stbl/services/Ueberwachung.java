@@ -33,6 +33,12 @@ public class Ueberwachung {
     private static final double DRUCK_HYSTERESE_BAR = 0.1;
     // A USBtin without answer for this time counts as failed
     private static final Duration MAX_OHNE_ANTWORT = Duration.ofSeconds(60);
+    // The mean pressure of the last 24 hours is compared with the 24 hours before
+    private static final Duration DRUCK_FENSTER = Duration.ofHours(24);
+    // The warning for a falling pressure ends when the drop is this much smaller
+    private static final double ABFALL_HYSTERESE_BAR = 0.05;
+    // A mean needs values for this share of its time span, e.g. not right after a start of the service
+    private static final double MIN_ABDECKUNG = 0.8;
 
     private final Logger logger = LoggerFactory.getLogger(Ueberwachung.class);
     @Autowired
@@ -52,16 +58,34 @@ public class Ueberwachung {
     private final int startsProStundeMax;
     private final double hochdruckMax;
     private final double spreizungMax;
+    private final double frostAussentemp;
+    private final Duration frostOhneLauf;
+    private final double druckAbfallMax;
+    private final double niederdruckMin;
+    private final double heissgasMax;
+    private final double spannungMin;
+    private final double spannungMax;
     private final Warnung druck;
     private final Warnung druckHoch;
     private final Warnung hochdruck;
     private final Warnung spreizung;
+    private final Warnung keinHeizbetrieb;
+    private final Warnung druckAbfall;
+    private final Warnung niederdruck;
+    private final Warnung heissgas;
+    private final Warnung abtauung;
+    private final Warnung spannung;
     private final Warnung heizstab;
     private final Warnung antwortquote;
     private final Warnung starts;
     private final Warnung dienst;
     // Compressor starts counter of the last hour
     private final Deque<ValueContainer<Double>> startsVerlauf = new ArrayDeque<>();
+    // Outdoor temperature and heating pressure once a minute, for the means over hours
+    private final Deque<Messung> aussentempVerlauf = new ArrayDeque<>();
+    private final Deque<Messung> druckVerlauf = new ArrayDeque<>();
+    // Last minute with the compressor running, at first the first check after the start of the service
+    private Instant letzterLauf;
     private volatile List<Pruefung> pruefungen = List.of();
     // Last known value of each setting and the last changes as text, the newest first
     private final Map<String, Double> einstellungen = new HashMap<>();
@@ -74,18 +98,39 @@ public class Ueberwachung {
     public record Pruefung(String name, boolean ok, String text, String erklaerung) {
     }
 
+    /**
+     * A value at a time, for the means over the last hours
+     */
+    record Messung(Instant zeit, double wert) {
+    }
+
     public Ueberwachung(@Value("${warnung.heizungsdruck.min:1.3}") double druckMin,
                         @Value("${warnung.heizungsdruck.max:2.5}") double druckMax,
                         @Value("${warnung.antwortquote.min:90}") double antwortquoteMin,
                         @Value("${warnung.starts.proStunde:3}") int startsProStundeMax,
                         @Value("${warnung.hochdruck.max:38}") double hochdruckMax,
-                        @Value("${warnung.spreizung.max:10}") double spreizungMax) {
+                        @Value("${warnung.spreizung.max:10}") double spreizungMax,
+                        @Value("${warnung.frost.aussentemp:2}") double frostAussentemp,
+                        @Value("${warnung.frost.stunden:4}") double frostStunden,
+                        @Value("${warnung.heizungsdruck.abfall:0.15}") double druckAbfallMax,
+                        @Value("${warnung.niederdruck.min:2.5}") double niederdruckMin,
+                        @Value("${warnung.heissgas.max:110}") double heissgasMax,
+                        @Value("${warnung.abtauung.minuten:15}") int abtauungMinuten,
+                        @Value("${warnung.spannung.min:195}") double spannungMin,
+                        @Value("${warnung.spannung.max:255}") double spannungMax) {
         this.druckMin = druckMin;
         this.druckMax = druckMax;
         this.antwortquoteMin = antwortquoteMin;
         this.startsProStundeMax = startsProStundeMax;
         this.hochdruckMax = hochdruckMax;
         this.spreizungMax = spreizungMax;
+        this.frostAussentemp = frostAussentemp;
+        this.frostOhneLauf = Duration.ofMinutes(Math.round(frostStunden * 60));
+        this.druckAbfallMax = druckAbfallMax;
+        this.niederdruckMin = niederdruckMin;
+        this.heissgasMax = heissgasMax;
+        this.spannungMin = spannungMin;
+        this.spannungMax = spannungMax;
         hochdruck = new Warnung("Hochdruck hoch", "Hochdruck im Kältekreis über " + (int) hochdruckMax
                 + " bar; im Betrieb sind es sonst höchstens etwa 30 bar, der Hochdruckwächter schaltet bei 45 bar ab. "
                 + "Meist fließt zu wenig Heizwasser durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe).",
@@ -101,6 +146,26 @@ public class Ueberwachung {
                 + " bar, z. B. zu viel nachgefüllt oder Ausdehnungsgefäß ohne Vordruck. Das Sicherheitsventil öffnet "
                 + "meist bei 3 bar; die Warnung endet ab " + zahl(druckMax - DRUCK_HYSTERESE_BAR) + " bar.",
                 Duration.ofMinutes(5));
+        keinHeizbetrieb = new Warnung("Keine Wärme bei Frost", "Der Verdichter lief " + kurz(frostStunden)
+                + " Stunden nicht, bei im Mittel unter " + kurz(frostAussentemp) + " °C außen. Bei Frost lief er "
+                + "2024 bis 2026 nie länger als 2 Stunden nicht. Störung im Display des WPM, EVU-Sperre und "
+                + "Sicherungen prüfen.", Duration.ZERO);
+        druckAbfall = new Warnung("Heizungsdruck fällt", "Der Heizungsdruck lag im Mittel der letzten 24 Stunden "
+                + "mehr als " + zahl(druckAbfallMax) + " bar unter dem Mittel der 24 Stunden davor (2024 bis 2026 "
+                + "höchstens 0,08 bar, sonst etwa 0,2 bar im Jahr). Hinweis auf ein Leck: Heizkreisverteiler, "
+                + "Sicherheitsventil und Wärmepumpe auf Wasser prüfen.", Duration.ZERO);
+        niederdruck = new Warnung("Niederdruck niedrig", "Niederdruck im Kältekreis unter " + kurz(niederdruckMin)
+                + " bar, 10 Minuten lang bei laufendem Verdichter (2024 bis 2026 bei Frost mindestens 3,2 bar). "
+                + "Hinweis auf zu wenig Kältemittel oder einen vereisten Verdampfer.", Duration.ofMinutes(10));
+        heissgas = new Warnung("Heißgas heiß", "Heißgastemperatur über " + (int) heissgasMax
+                + " °C, 5 Minuten lang (seit 10/2026 höchstens 88 °C). Hinweis auf zu wenig Kältemittel; der "
+                + "Verdichter wird zu heiß.", Duration.ofMinutes(5));
+        abtauung = new Warnung("Abtauung dauert lange", "Eine Abtauung läuft länger als " + abtauungMinuten
+                + " Minuten (sonst 2 bis 6 Minuten). Verdampfer auf Eis und den Ablauf des Tauwassers prüfen.",
+                Duration.ofMinutes(abtauungMinuten));
+        spannung = new Warnung("Netzspannung", "Spannung am Inverter unter " + (int) spannungMin + " oder über "
+                + (int) spannungMax + " V, 5 Minuten lang (2024 bis 2026 203 bis 245 V; der Inverter zeigt etwa "
+                + "11 V zu wenig an).", Duration.ofMinutes(5));
         heizstab = new Warnung("Heizstab läuft", "Stufe 1 oder 2 des Heizstabs (DHC) ist an. Das kam bisher "
                 + "praktisch nie vor, der Heizstab braucht für dieselbe Wärme ein Vielfaches an Strom.",
                 Duration.ZERO);
@@ -115,7 +180,8 @@ public class Ueberwachung {
     }
 
     public List<Warnung> getWarnungen() {
-        return List.of(druck, druckHoch, hochdruck, spreizung, heizstab, antwortquote, starts, dienst);
+        return List.of(druck, druckHoch, druckAbfall, keinHeizbetrieb, hochdruck, niederdruck, heissgas, spreizung,
+                abtauung, spannung, heizstab, antwortquote, starts, dienst);
     }
 
     /**
@@ -210,6 +276,58 @@ public class Ueberwachung {
                     "Heizungsdruck " + zahl(bar) + " bar", jetzt);
             melden(druckHoch, bar > druckMax - (druckHoch.isAktiv() ? DRUCK_HYSTERESE_BAR : 0),
                     "Heizungsdruck " + zahl(bar) + " bar", jetzt);
+            merken(druckVerlauf, new Messung(jetzt, bar), DRUCK_FENSTER.multipliedBy(2));
+            Double letzte = mittel(druckVerlauf, jetzt.minus(DRUCK_FENSTER), jetzt);
+            Double davor = mittel(druckVerlauf, jetzt.minus(DRUCK_FENSTER.multipliedBy(2)), jetzt.minus(DRUCK_FENSTER));
+            if (letzte != null && davor != null) {
+                double grenze = druckAbfallMax - (druckAbfall.isAktiv() ? ABFALL_HYSTERESE_BAR : 0);
+                melden(druckAbfall, davor - letzte > grenze,
+                        "Heizungsdruck im Mittel " + zahl(letzte) + " bar, 24 Stunden davor " + zahl(davor) + " bar",
+                        jetzt);
+            }
+        } catch (Exception e) {
+            // no current value, keep the state
+        }
+        boolean laeuft = false;
+        try {
+            laeuft = wp.getVerdichterDrehzahl().getValue() > 0;
+        } catch (Exception e) {
+            // unknown, counts as not running
+        }
+        if (laeuft || letzterLauf == null) {
+            letzterLauf = jetzt;
+        }
+        try {
+            merken(aussentempVerlauf, new Messung(jetzt, wp.getAussentemp().getValue()), frostOhneLauf);
+            Double aussen = mittel(aussentempVerlauf, jetzt.minus(frostOhneLauf), jetzt);
+            if (aussen != null) {
+                melden(keinHeizbetrieb, keinHeizbetrieb(letzterLauf, aussen, jetzt, frostOhneLauf, frostAussentemp),
+                        "Kein Verdichterlauf seit " + Fehlerliste.ZEITFORMAT.format(letzterLauf.atZone(
+                                ZoneId.systemDefault())) + ", außen im Mittel " + kurz(aussen) + " °C", jetzt);
+            }
+        } catch (Exception e) {
+            // no current value, keep the state
+        }
+        try {
+            double bar = wp.getNiederdruck().getValue();
+            melden(niederdruck, laeuft && bar < niederdruckMin, "Niederdruck " + kurz(bar) + " bar", jetzt);
+        } catch (Exception e) {
+            // no current value, keep the state
+        }
+        try {
+            double grad = wp.getHeissgasTemp().getValue();
+            melden(heissgas, grad > heissgasMax, "Heißgas " + kurz(grad) + " °C", jetzt);
+        } catch (Exception e) {
+            // no current value, keep the state
+        }
+        try {
+            melden(abtauung, wp.isAbtauung().getValue(), "Abtauung läuft", jetzt);
+        } catch (Exception e) {
+            // no current value, keep the state
+        }
+        try {
+            double volt = wp.getSpannungInverter().getValue();
+            melden(spannung, volt < spannungMin || volt > spannungMax, "Spannung " + kurz(volt) + " V", jetzt);
         } catch (Exception e) {
             // no current value, keep the state
         }
@@ -222,7 +340,6 @@ public class Ueberwachung {
         try {
             // Only while the compressor heats: during the defrost the flow is colder than the return
             double kelvin = wp.getSpreizung().getValue();
-            boolean laeuft = wp.getVerdichterDrehzahl().getValue() > 0;
             melden(spreizung, laeuft && kelvin > spreizungMax, "Spreizung " + zahl(kelvin) + " K", jetzt);
         } catch (Exception e) {
             // no current value, keep the state
@@ -257,6 +374,41 @@ public class Ueberwachung {
             logger.warn("Warning " + warnung.getName() + ": " + text);
             mail.sendAlert("Wärmepumpe: " + warnung.getName(), text + "\n\n" + warnung.getRegel());
         }
+    }
+
+    /**
+     * True if the compressor did not run for the given time while the mean outdoor temperature was below the limit
+     */
+    static boolean keinHeizbetrieb(Instant letzterLauf, double aussenMittel, Instant jetzt, Duration ohneLauf,
+                                   double grenze) {
+        return !letzterLauf.isAfter(jetzt.minus(ohneLauf)) && aussenMittel < grenze;
+    }
+
+    /**
+     * Adds the value and removes the values older than the given time span
+     */
+    static void merken(Deque<Messung> verlauf, Messung messung, Duration spanne) {
+        verlauf.addLast(messung);
+        while (verlauf.peekFirst().zeit().isBefore(messung.zeit().minus(spanne))) {
+            verlauf.removeFirst();
+        }
+    }
+
+    /**
+     * Mean of the values from (exclusive) to (inclusive), null if there are values for less than 80 % of the
+     * minutes, e.g. right after the start of the service
+     */
+    static Double mittel(Deque<Messung> verlauf, Instant von, Instant bis) {
+        double summe = 0;
+        int anzahl = 0;
+        for (Messung messung : verlauf) {
+            if (messung.zeit().isAfter(von) && !messung.zeit().isAfter(bis)) {
+                summe += messung.wert();
+                anzahl++;
+            }
+        }
+        long minuten = Duration.between(von, bis).toMinutes();
+        return anzahl == 0 || anzahl < MIN_ABDECKUNG * minuten ? null : summe / anzahl;
     }
 
     /**
@@ -359,5 +511,12 @@ public class Ueberwachung {
 
     private static String zahl(double wert) {
         return String.format(Locale.GERMANY, "%.2f", wert);
+    }
+
+    /**
+     * Number with at most one decimal, without ",0", e.g. "4" or "2,5"
+     */
+    static String kurz(double wert) {
+        return String.format(Locale.GERMANY, "%.1f", wert).replace(",0", "");
     }
 }
