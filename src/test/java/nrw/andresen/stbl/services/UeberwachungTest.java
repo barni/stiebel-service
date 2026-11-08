@@ -44,6 +44,51 @@ public class UeberwachungTest {
     }
 
     @Test
+    public void testMittelBrauchtGenugWerte() {
+        Deque<Ueberwachung.Messung> verlauf = new ArrayDeque<>();
+        Duration fenster = Duration.ofHours(24);
+        // One value a minute for 30 hours: 1,8 bar, then 1,6 bar in the last 24 hours
+        for (int minute = 0; minute <= 30 * 60; minute++) {
+            Instant zeit = START.plusSeconds(60L * minute);
+            Ueberwachung.merken(verlauf, new Ueberwachung.Messung(zeit, minute <= 6 * 60 ? 1.8 : 1.6),
+                    fenster.multipliedBy(2));
+        }
+        Instant jetzt = START.plus(Duration.ofHours(30));
+        assertEquals(1.6, Ueberwachung.mittel(verlauf, jetzt.minus(fenster), jetzt), 1e-9);
+        // The 24 hours before are covered only for 6 hours, too little for a mean
+        assertNull(Ueberwachung.mittel(verlauf, jetzt.minus(fenster.multipliedBy(2)), jetzt.minus(fenster)));
+        assertNull(Ueberwachung.mittel(new ArrayDeque<>(), jetzt.minus(fenster), jetzt));
+    }
+
+    @Test
+    public void testMerkenEntferntAlteWerte() {
+        Deque<Ueberwachung.Messung> verlauf = new ArrayDeque<>();
+        for (int minute = 0; minute <= 300; minute++) {
+            Ueberwachung.merken(verlauf, new Ueberwachung.Messung(START.plusSeconds(60L * minute), 1),
+                    Duration.ofHours(4));
+        }
+        assertEquals(241, verlauf.size());
+        assertEquals(START.plusSeconds(60L * 60), verlauf.peekFirst().zeit());
+    }
+
+    @Test
+    public void testKeinHeizbetrieb() {
+        Duration vierStunden = Duration.ofHours(4);
+        Instant jetzt = START.plus(vierStunden);
+        // 4 hours without a run at 1 °C: warning; at 3 °C or after a run 3 hours ago: none
+        assertTrue(Ueberwachung.keinHeizbetrieb(START, 1.0, jetzt, vierStunden, 2));
+        assertFalse(Ueberwachung.keinHeizbetrieb(START, 3.0, jetzt, vierStunden, 2));
+        assertFalse(Ueberwachung.keinHeizbetrieb(START.plus(Duration.ofHours(1)), -5.0, jetzt, vierStunden, 2));
+    }
+
+    @Test
+    public void testKurz() {
+        assertEquals("4", Ueberwachung.kurz(4));
+        assertEquals("2,5", Ueberwachung.kurz(2.5));
+        assertEquals("-1,8", Ueberwachung.kurz(-1.83));
+    }
+
+    @Test
     public void testStartsInDerLetztenStunde() {
         Deque<ValueContainer<Double>> verlauf = new ArrayDeque<>();
         // Counter every minute, one start every 10 minutes
