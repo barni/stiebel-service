@@ -151,7 +151,8 @@ public class StatusService {
         }
         if (keine) {
             page.text("Aktive Warnungen", "keine")
-                    .info("Jede Minute geprüft. Wird eine Warnung aktiv, kommt eine Mail an stbl.mail.to.");
+                    .info("Jede Minute geprüft. Wird eine Warnung aktiv, kommt eine Mail an stbl.mail.to und, falls "
+                            + "eingerichtet, eine Push-Nachricht über Pushover.");
         }
         page.details("Alle " + warnungen.size() + " Prüfungen");
         for (Warnung warnung : warnungen) {

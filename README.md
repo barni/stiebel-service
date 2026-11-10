@@ -100,9 +100,13 @@ before you rely on it.
 - **Version**, git commit and build time are written to the log at the start and shown on the status page together
   with the start time of the service.
 - **Check of the service** 30 s after the start and every 15 minutes: InfluxDB reachable, reading the bucket (and the
-  bucket of the outdoor temperature), writing, USBtin connected and answering, mail configured.
+  bucket of the outdoor temperature), writing, USBtin connected and answering, mail configured, Pushover (once set up)
+  delivering.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, when a
   new entry appears in the fault list and when a warning becomes active.
+- **Pushover**: the same alerts also as push message over [pushover.net](https://pushover.net) when
+  `pushover.user` and `pushover.token` are set (priority with `pushover.prioritaet`, -2 to 1). The weekly report goes
+  only by mail. The button "Testnachricht senden" on the configuration page sends a test alert over both ways.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the
 real power estimated from the inverter's apparent power; both are skipped during the start phase and the defrost. The
@@ -115,8 +119,9 @@ The InfluxDB token is read from the environment variable `INFLUX_TOKEN`.
 
 The page `/konfiguration`, linked with the status page in both directions, shows the settings of the service: the
 limits of the warnings, the start dates and the outdoor temperature of the evaluations, InfluxDB (on or off, address,
-organisation, bucket), mail (recipient, server, port, user, password, authentication, STARTTLS) and the CAN adapter
-(port, speed, receive all messages). The mail password can be set but is never shown. Saving checks every value and
+organisation, bucket), mail (recipient, server, port, user, password, authentication, STARTTLS), Pushover (user key,
+API token, priority) and the CAN adapter (port, speed, receive all messages). The mail password and the Pushover token
+can be set but are never shown. Saving checks every value and
 writes it into
 `application.properties` in the working directory (another file with `stbl.config.datei`); comments and order stay, a
 copy of the file before is kept as `.bak`. The service reads its settings only at the start: "Speichern und neu starten"

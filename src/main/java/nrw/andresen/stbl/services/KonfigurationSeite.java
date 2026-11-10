@@ -20,6 +20,14 @@ public final class KonfigurationSeite {
      */
     public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
                                 String meldung, String csrfName, String csrfToken) {
+        return render(stand, eingabe, fehler, meldung, csrfName, csrfToken, null);
+    }
+
+    /**
+     * @param testErgebnis result of the last test message, shown with the message TEST
+     */
+    public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
+                                String meldung, String csrfName, String csrfToken, String testErgebnis) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -42,6 +50,9 @@ public final class KonfigurationSeite {
             html.append("<p class=\"meldung ok\">In die Datei geschrieben.</p>");
         } else if (NEUGESTARTET.equals(meldung)) {
             html.append("<p class=\"meldung ok\">Gespeichert, der Dienst läuft mit den neuen Werten.</p>");
+        } else if (TEST.equals(meldung) && testErgebnis != null) {
+            html.append("<p class=\"meldung ").append(testErgebnis.contains("fehlgeschlagen") ? "fehler" : "ok")
+                    .append("\">").append(text(testErgebnis)).append("</p>");
         } else if (UNVERAENDERT.equals(meldung)) {
             html.append("<p class=\"meldung ok\">Gespeichert. Kein Neustart nötig, der Dienst läuft schon mit ")
                     .append("diesen Werten.</p>");
@@ -77,6 +88,13 @@ public final class KonfigurationSeite {
                 .append(">Nur speichern</button><a class=\"nav\" href=\"status\">Zurück zum Status</a></p>")
                 .append("<p class=\"note\">Der Neustart dauert etwa eine Minute, in dieser Zeit werden keine Werte ")
                 .append("der Wärmepumpe gelesen und gespeichert.</p></form>")
+                .append("<form method=\"post\" action=\"konfiguration/test\">")
+                .append(csrfName == null ? "" : "<input type=\"hidden\" name=\"" + text(csrfName) + "\" value=\""
+                        + text(csrfToken) + "\">")
+                .append("<p class=\"aktionen\"><button type=\"submit\" class=\"zweit\">Testnachricht senden")
+                .append("</button></p><p class=\"note\">Schickt eine Warnung zur Probe per Mail und, falls ")
+                .append("eingerichtet, per Pushover. Es gelten die Werte des laufenden Dienstes, geänderte Werte ")
+                .append("also erst nach dem Neustart.</p></form>")
                 .append("<p class=\"note\">Datei: ").append(text(stand.datei().toString()))
                 .append(". Vor jedem Speichern legt der Dienst daneben eine Kopie mit der Endung .bak an, Kommentare ")
                 .append("und Reihenfolge der Datei bleiben erhalten. Der Dienst liest seine Einstellungen nur beim ")
@@ -161,6 +179,7 @@ public final class KonfigurationSeite {
     public static final String GESPEICHERT = "gespeichert";
     public static final String NEUGESTARTET = "neugestartet";
     public static final String UNVERAENDERT = "unveraendert";
+    public static final String TEST = "test";
     // Value of the button that saves and restarts
     public static final String NEUSTART = "neustart";
 

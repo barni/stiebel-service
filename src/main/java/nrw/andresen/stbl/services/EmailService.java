@@ -11,7 +11,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
 
 /**
- * Sends alert mails and the weekly report to stbl.mail.to, nothing if it or spring.mail.host is not configured
+ * Sends alert mails and the weekly report to stbl.mail.to, nothing if it or spring.mail.host is not configured.
+ * Alerts also go to Pushover if it is configured, the weekly report only by mail.
  */
 @Component
 public class EmailService {
@@ -19,11 +20,14 @@ public class EmailService {
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
     private final ObjectProvider<JavaMailSender> emailSender;
+    private final PushoverService pushover;
     private final String to;
     private volatile String letzterFehler;
 
-    public EmailService(ObjectProvider<JavaMailSender> emailSender, @Value("${stbl.mail.to:}") String to) {
+    public EmailService(ObjectProvider<JavaMailSender> emailSender, PushoverService pushover,
+                        @Value("${stbl.mail.to:}") String to) {
         this.emailSender = emailSender;
+        this.pushover = pushover;
         this.to = to;
     }
 
@@ -31,6 +35,7 @@ public class EmailService {
      * Never throws, a failing mail must not stop the caller (e.g. the USB restart)
      */
     public void sendAlert(String subject, String text) {
+        pushover.senden(subject, text);
         JavaMailSender sender = emailSender.getIfAvailable();
         if (to.isBlank() || sender == null) {
             logger.info("No mail configured, not sending: " + subject);

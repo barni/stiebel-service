@@ -48,6 +48,8 @@ public class Ueberwachung {
     @Autowired
     private EmailService mail;
     @Autowired
+    private PushoverService pushover;
+    @Autowired
     private InfluxController influx;
     @Autowired
     private WaermebedarfVergleich vergleich;
@@ -437,7 +439,7 @@ public class Ueberwachung {
     }
 
     /**
-     * Checks InfluxDB (if it is used), the USBtin and the mail 30 s after the start and then every 15 minutes
+     * Checks InfluxDB (if it is used), the USBtin, the mail and Pushover (if it is set up) 30 s after the start and then every 15 minutes
      */
     @Scheduled(initialDelay = 30000, fixedRate = 900000)
     public void dienstPruefen() {
@@ -450,6 +452,13 @@ public class Ueberwachung {
         liste.add(new Pruefung("Mail", mailOk, !mail.isKonfiguriert() ? "nicht eingerichtet"
                 : mail.getLetzterFehler() == null ? "OK" : "letzte Mail fehlgeschlagen: " + mail.getLetzterFehler(),
                 "Warnmails an stbl.mail.to über spring.mail.host. Ohne Mail stehen die Warnungen nur hier."));
+        // Pushover is optional, it is only listed once it is set up
+        if (pushover.isKonfiguriert()) {
+            liste.add(new Pruefung("Pushover", pushover.getLetzterFehler() == null,
+                    pushover.getLetzterFehler() == null ? "OK"
+                            : "letzte Nachricht fehlgeschlagen: " + pushover.getLetzterFehler(),
+                    "Warnungen zusätzlich als Push-Nachricht über pushover.net."));
+        }
         pruefungen = liste;
         geprueft = Instant.now();
     }

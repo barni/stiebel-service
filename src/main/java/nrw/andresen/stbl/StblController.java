@@ -1,9 +1,11 @@
 package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.CanBus;
+import nrw.andresen.stbl.services.EmailService;
 import nrw.andresen.stbl.services.Fehlstarts;
 import nrw.andresen.stbl.services.Konfiguration;
 import nrw.andresen.stbl.services.KonfigurationSeite;
+import nrw.andresen.stbl.services.PushoverService;
 import nrw.andresen.stbl.services.StatusService;
 import nrw.andresen.stbl.services.Tagesuebersicht;
 import nrw.andresen.stbl.services.Ueberwachung;
@@ -37,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +94,12 @@ public class StblController {
     private InfluxController influxController;
     @Autowired
     private Konfiguration konfiguration;
+    @Autowired
+    private EmailService emailService;
+    @Autowired
+    private PushoverService pushover;
+    // Result of the last test message for the configuration page
+    private volatile String testErgebnis;
     @Autowired
     private Wochenbericht wochenbericht;
     @Autowired
@@ -227,13 +236,32 @@ public class StblController {
                 .body(konfigurationSeite(eingabe, fehler, null, request));
     }
 
+    /**
+     * Sends a test alert by mail and Pushover with the settings of the running service and shows the result
+     */
+    @PostMapping(value = "/konfiguration/test")
+    public ResponseEntity<Void> konfigurationTest() {
+        emailService.sendAlert("Wärmepumpe: Testnachricht", "Testnachricht von der Konfigurationsseite. Kommt sie "
+                + "an, kommen auch die Warnungen an.");
+        List<String> teile = new ArrayList<>();
+        teile.add(!emailService.isKonfiguriert() ? "Mail nicht eingerichtet"
+                : emailService.getLetzterFehler() == null ? "Mail gesendet"
+                : "Mail fehlgeschlagen: " + emailService.getLetzterFehler());
+        teile.add(!pushover.isKonfiguriert() ? "Pushover nicht eingerichtet"
+                : pushover.getLetzterFehler() == null ? "Pushover gesendet"
+                : "Pushover fehlgeschlagen: " + pushover.getLetzterFehler());
+        testErgebnis = "Testnachricht: " + String.join(", ", teile) + ".";
+        return ResponseEntity.status(HttpStatus.SEE_OTHER)
+                .header(HttpHeaders.LOCATION, "../konfiguration?meldung=" + KonfigurationSeite.TEST).build();
+    }
+
     private String konfigurationSeite(Map<String, String> eingabe, Map<String, String> fehler, String meldung,
                                       HttpServletRequest request) {
         // Token against forms sent from other sites, checked by Spring Security for every POST
         Object csrf = request.getAttribute(CsrfToken.class.getName());
         return KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, meldung,
                 csrf instanceof CsrfToken token ? token.getParameterName() : null,
-                csrf instanceof CsrfToken token ? token.getToken() : null);
+                csrf instanceof CsrfToken token ? token.getToken() : null, testErgebnis);
     }
 
     /**
