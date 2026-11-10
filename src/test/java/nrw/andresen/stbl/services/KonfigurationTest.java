@@ -238,4 +238,24 @@ public class KonfigurationTest {
         assertTrue(warten.contains("fetch('konfiguration/gestartet'"));
         assertTrue(warten.contains("location.replace('konfiguration?meldung=neugestartet')"));
     }
+
+    @Test
+    public void testSeitePushover(@TempDir Path ordner) throws Exception {
+        Path datei = ordner.resolve("application.properties");
+        Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
+        Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
+        String html = KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(), KonfigurationSeite.TEST,
+                "_csrf", "abc", "Testnachricht: Mail gesendet, Pushover fehlgeschlagen: HTTP 400.");
+        assertTrue(html.contains("<h2>Pushover</h2>"));
+        assertTrue(html.contains("name=\"pushover.token\" value=\"\""));
+        // The test button sends its own form with the token against other sites
+        assertTrue(html.contains("<form method=\"post\" action=\"konfiguration/test\"><input type=\"hidden\" "
+                + "name=\"_csrf\" value=\"abc\">"));
+        assertTrue(html.contains("<p class=\"meldung fehler\">Testnachricht: Mail gesendet, Pushover "
+                + "fehlgeschlagen: HTTP 400.</p>"));
+        Map<String, String> werte = new LinkedHashMap<>();
+        assertEquals(Map.of("pushover.prioritaet", "muss zwischen -2 und 1 liegen"), Konfiguration.pruefen(
+                Map.of("pushover.prioritaet", "2", "pushover.user", "uQiRzpo4DXghDmr9QzzfQu27cmVRsG"), werte));
+        assertEquals("uQiRzpo4DXghDmr9QzzfQu27cmVRsG", werte.get("pushover.user"));
+    }
 }
