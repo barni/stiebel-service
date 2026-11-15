@@ -54,6 +54,8 @@ public final class KonfigurationSeite {
         } else if (TEST.equals(meldung) && testErgebnis != null) {
             html.append("<p class=\"meldung ").append(testErgebnis.contains("fehlgeschlagen") ? "fehler" : "ok")
                     .append("\">").append(text(testErgebnis)).append("</p>");
+        } else if (SOFORT.equals(meldung)) {
+            html.append("<p class=\"meldung ok\">Gespeichert und sofort übernommen, ohne Neustart.</p>");
         } else if (UNVERAENDERT.equals(meldung)) {
             html.append("<p class=\"meldung ok\">Gespeichert. Kein Neustart nötig, der Dienst läuft schon mit ")
                     .append("diesen Werten.</p>");
@@ -88,7 +90,8 @@ public final class KonfigurationSeite {
                 .append("<button type=\"submit\" class=\"zweit\" name=\"aktion\" value=\"speichern\"").append(gesperrt)
                 .append(">Nur speichern</button><a class=\"nav\" href=\"status\">Zurück zum Status</a></p>")
                 .append("<p class=\"note\">Der Neustart dauert etwa eine Minute, in dieser Zeit werden keine Werte ")
-                .append("der Wärmepumpe gelesen und gespeichert.</p></form>")
+                .append("der Wärmepumpe gelesen und gespeichert. „Alle Nachrichten empfangen“ wirkt schon beim ")
+                .append("Speichern, ohne Neustart.</p></form>")
                 .append("<form method=\"post\" action=\"konfiguration/test\">")
                 .append(csrfName == null ? "" : "<input type=\"hidden\" name=\"" + text(csrfName) + "\" value=\""
                         + text(csrfToken) + "\">")
@@ -181,6 +184,7 @@ public final class KonfigurationSeite {
     public static final String NEUGESTARTET = "neugestartet";
     public static final String UNVERAENDERT = "unveraendert";
     public static final String TEST = "test";
+    public static final String SOFORT = "sofort";
     // Value of the button that saves and restarts
     public static final String NEUSTART = "neustart";
 

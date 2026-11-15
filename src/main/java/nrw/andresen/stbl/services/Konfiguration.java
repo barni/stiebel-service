@@ -181,7 +181,10 @@ public class Konfiguration {
                     "Geschwindigkeit des CAN-Busses. Die Wärmepumpe arbeitet mit 20000."),
             new Feld("can.logall", CAN, "Alle Nachrichten empfangen", "", Typ.SCHALTER, null, 0, 0,
                     "An: Der Dienst empfängt alle CAN-Nachrichten und zeigt sie in der Statistik je Knoten. Aus: nur "
-                            + "die Antworten auf eigene Anfragen."));
+                            + "die Antworten auf eigene Anfragen. Wirkt sofort beim Speichern, ohne Neustart."));
+
+    // Settings the running service takes over when they are saved, without a restart
+    public static final Set<String> SOFORT = Set.of("can.logall");
 
     // Without these the service does not start, they cannot be left empty
     private static final Set<String> PFLICHT = Set.of("USBtin.port", "USBtin.speed", "can.logall");
@@ -208,10 +211,23 @@ public class Konfiguration {
      * @param datei configuration file, by default application.properties in the working directory, where Spring
      *              Boot reads it
      */
+    // Values of SOFORT taken over by the running service since its start
+    private final Map<String, String> uebernommen = new java.util.concurrent.ConcurrentHashMap<>();
+
     public Konfiguration(Environment environment,
                          @Value("${stbl.config.datei:application.properties}") String datei) {
         this.environment = environment;
         this.datei = Path.of(datei).toAbsolutePath().normalize();
+    }
+
+    /**
+     * The running service took over the value of a setting in SOFORT, it counts as running value from now on
+     */
+    public void uebernommen(String name, String wert) {
+        if (!SOFORT.contains(name)) {
+            throw new IllegalArgumentException("Wird nicht ohne Neustart übernommen: " + name);
+        }
+        uebernommen.put(name, wert);
     }
 
     /**
@@ -237,7 +253,7 @@ public class Konfiguration {
         List<Wert> werte = new ArrayList<>();
         for (Feld feld : FELDER) {
             String standard = feld.standard() == null ? "" : feld.standard();
-            String laufend = environment.getProperty(feld.name(), standard);
+            String laufend = uebernommen.getOrDefault(feld.name(), environment.getProperty(feld.name(), standard));
             // Without a readable file the running value is the only one known
             String inDatei = hinweis != null && eintraege.isEmpty() ? laufend
                     : eintraege.getProperty(feld.name(), standard);

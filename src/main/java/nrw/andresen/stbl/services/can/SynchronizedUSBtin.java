@@ -1,6 +1,7 @@
 package nrw.andresen.stbl.services.can;
 
 import de.fischl.usbtin.CANMessage;
+import de.fischl.usbtin.FilterChain;
 import de.fischl.usbtin.USBtin;
 import de.fischl.usbtin.USBtinException;
 import jssc.SerialPortEvent;
@@ -55,6 +56,18 @@ public class SynchronizedUSBtin extends USBtin {
                 statistik.fehler("Fehler im Empfangs-Thread: " + e, Instant.now());
             }
         }
+    }
+
+    /**
+     * Changes the filter of the open adapter: the filter registers can be written only with the CAN channel closed.
+     * Closing removes the event listener, opening adds it again. Takes milliseconds, a message on the bus in this
+     * time is lost. Requests not yet acknowledged are dropped, their acknowledge would never come.
+     */
+    public synchronized void filterSetzen(FilterChain[] filter, int bitrate) throws USBtinException {
+        closeCANChannel();
+        fifoTX.clear();
+        setFilter(filter);
+        openCANChannel(bitrate, OpenMode.ACTIVE);
     }
 
     int getTransmitFifoSize() {

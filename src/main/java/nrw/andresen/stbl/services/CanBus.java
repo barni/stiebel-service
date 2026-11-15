@@ -54,7 +54,7 @@ public class CanBus {
     private final Logger logger = LoggerFactory.getLogger(CanBus.class);
     @Autowired
     private EmailService emailService;
-    private USBtin usbtin;
+    private SynchronizedUSBtin usbtin;
     // Latest answer per index; the answers carry only the index, so an index is requested from one node only
     private final Map<Short, ElsterMessage> msgs = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<ElsterMessage> queue = new ConcurrentLinkedQueue<>();
@@ -75,7 +75,8 @@ public class CanBus {
     private volatile Instant fehlerlisteAngefragt;
     private final String usbPort;
     private final int usbSpeed;
-    private final boolean logall;
+    // Changed at runtime by setLogall, the next USB restart uses the new value too
+    private volatile boolean logall;
 
     public CanBus(@Value("${USBtin.port}") String usbPort, @Value("${USBtin.speed}") int usbSpeed,
                   @Value("${can.logall}") boolean logall) {
@@ -94,18 +95,7 @@ public class CanBus {
 
             usbtin = new SynchronizedUSBtin(canStatistik);
             usbtin.connect(usbPort);
-            if (!logall) {
-                usbtin.setFilter(new FilterChain[]{
-                        new FilterChain(
-                                new FilterMask(0x000, (byte) 0xf0, (byte) 0xff),
-                                new FilterValue[]{
-                                        new FilterValue(0x000, CAN_SENDER_ID_BYTE_CODED[0], CAN_SENDER_ID_BYTE_CODED[1])
-                                }
-                        )
-                });
-            } else {
-                usbtin.setFilter(null);
-            }
+            usbtin.setFilter(filter(logall));
 
             usbtin.addMessageListener(canmsg -> {
                 try {
@@ -129,6 +119,42 @@ public class CanBus {
             canStatistik.fehler("Verbinden fehlgeschlagen: " + e.getMessage(), Instant.now());
             logger.error("ERROR During initialization: ", e);
         }
+    }
+
+    /**
+     * Filter of the adapter: null lets every message through, otherwise only messages to this service
+     */
+    static FilterChain[] filter(boolean logall) {
+        return logall ? null : new FilterChain[]{
+                new FilterChain(
+                        new FilterMask(0x000, (byte) 0xf0, (byte) 0xff),
+                        new FilterValue[]{
+                                new FilterValue(0x000, CAN_SENDER_ID_BYTE_CODED[0], CAN_SENDER_ID_BYTE_CODED[1])
+                        }
+                )
+        };
+    }
+
+    /**
+     * Receives all messages or only the answers to this service, without a restart of the service. If the adapter
+     * cannot be changed, the watchdog restarts the USB connection and that uses the new value.
+     */
+    public synchronized void setLogall(boolean an) {
+        if (an == logall) {
+            return;
+        }
+        logall = an;
+        try {
+            usbtin.filterSetzen(filter(an), usbSpeed);
+            logger.info("Receiving " + (an ? "all CAN messages" : "only the answers to this service"));
+        } catch (Exception e) {
+            canStatistik.fehler("Filter ändern fehlgeschlagen: " + e.getMessage(), Instant.now());
+            logger.error("Changing the CAN filter failed, the watchdog restarts the USB connection: ", e);
+        }
+    }
+
+    public boolean isLogall() {
+        return logall;
     }
 
     private void empfangen(ElsterMessage elsterMessage, Instant jetzt) {

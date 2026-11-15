@@ -15,6 +15,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class KonfigurationTest {
@@ -186,6 +187,26 @@ public class KonfigurationTest {
                 .filter(w -> w.feld().name().equals("warnung.antwortquote.min")).findFirst().orElseThrow();
         assertEquals("85", quote.datei());
         assertEquals("90", quote.laufend());
+    }
+
+    @Test
+    public void testUebernommen(@TempDir Path ordner) throws Exception {
+        Path datei = ordner.resolve("application.properties");
+        Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
+        Konfiguration konfiguration = new Konfiguration(new MockEnvironment().withProperty("can.logall", "false"),
+                datei.toString());
+        java.util.function.Supplier<Konfiguration.Wert> logall = () -> konfiguration.stand().werte().stream()
+                .filter(w -> w.feld().name().equals("can.logall")).findFirst().orElseThrow();
+        konfiguration.speichern(Map.of("can.logall", "true"));
+        assertTrue(logall.get().neustartNoetig());
+        // Taken over by the running service: no restart needed any more
+        konfiguration.uebernommen("can.logall", "true");
+        assertFalse(logall.get().neustartNoetig());
+        assertEquals("true", logall.get().laufend());
+        // Other settings still need the restart
+        assertThrows(IllegalArgumentException.class, () -> konfiguration.uebernommen("USBtin.speed", "50000"));
+        assertTrue(KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(), KonfigurationSeite.SOFORT,
+                null, null).contains("sofort übernommen, ohne Neustart"));
     }
 
     @Test
