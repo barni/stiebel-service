@@ -95,6 +95,16 @@ public class TagesuebersichtTest {
         assertEquals(17.5, aehnlich.laufzeitH(), 1e-9);
         assertEquals(120, aehnlich.waermeKWh(), 1e-9);
         assertEquals(-2.2, aehnlich.aussentemp(), 1e-9);
+        // No day with electricity
+        assertNull(aehnlich.arbeitszahl());
+        assertNull(aehnlich.stromKWh());
+        // Efficiency only from the day with a plausible electricity value: 110 ÷ 27.5 = 4, not from 130 ÷ 2 = 65
+        List<WaermebedarfVergleich.Tag> mitStrom = List.of(
+                new WaermebedarfVergleich.Tag(DATUM.minusDays(1), -1.0, 30, 17, 110, 8.5, 22, 27.5),
+                new WaermebedarfVergleich.Tag(DATUM.minusDays(2), -3.4, 20, 18, 130, 8.5, 18, 2));
+        aehnlich = Tagesuebersicht.aehnlicheTage(mitStrom, DATUM, -2.0);
+        assertEquals(4, aehnlich.arbeitszahl(), 1e-9);
+        assertEquals(30, aehnlich.stromKWh(), 1e-9);
         assertNull(Tagesuebersicht.aehnlicheTage(tage, DATUM, 20));
     }
 

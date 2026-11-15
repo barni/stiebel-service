@@ -44,7 +44,7 @@ public final class WochenberichtSeite {
                         Wochenbericht.zeilen(bericht)))
                 .append("<p class=\"note\">Üblich: für jeden der 7 Tage das Mittel der früheren Tage, deren Tagesmittel der ")
                 .append("Außentemperatur höchstens ").append(Wochenbericht.zahl(Tagesuebersicht.AEHNLICH_K, 1))
-                .append(" K abweicht, aufsummiert. Strom ist die geschätzte Wirkleistung des Verdichters ohne ")
+                .append(" K abweicht, aufsummiert. Die übliche Arbeitszahl stammt nur aus den Tagen mit Stromwert. Strom ist die geschätzte Wirkleistung des Verdichters ohne ")
                 .append("Pumpe und Regelung, die Arbeitszahl daraus liegt deshalb etwas zu hoch. Ein Start zählt ")
                 .append("nach mindestens ").append(Fehlstarts.MIN_STILLSTAND_START.toMinutes())
                 .append(" Minuten Stillstand, also ohne die Wiederanläufe nach einer Abtauung. Heizungsdruck: ")

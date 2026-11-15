@@ -64,9 +64,19 @@ public class Tagesuebersicht {
 
     /**
      * Mean values of the days with similar outdoor temperature
+     *
+     * @param arbeitszahl heat ÷ electricity of those days that have a plausible electricity value, null if there
+     *                    is none: old days have no electricity
      */
     public record Vergleichstage(int tage, double aussentemp, double starts, double laufzeitH, double waermeKWh,
-                                 double abtauungen) {
+                                 double abtauungen, Double arbeitszahl) {
+
+        /**
+         * Electricity for the mean heat at the usual efficiency, so that the three values fit together
+         */
+        public Double stromKWh() {
+            return arbeitszahl == null ? null : waermeKWh / arbeitszahl;
+        }
 
         public Double laufzeitProStart() {
             return starts > 0 ? laufzeitH / starts : null;
@@ -138,7 +148,14 @@ public class Tagesuebersicht {
                 aehnlich.stream().mapToInt(WaermebedarfVergleich.Tag::starts).sum() / (double) n,
                 aehnlich.stream().mapToDouble(WaermebedarfVergleich.Tag::laufzeitH).sum() / n,
                 aehnlich.stream().mapToDouble(WaermebedarfVergleich.Tag::waermeKWh).sum() / n,
-                aehnlich.stream().mapToInt(WaermebedarfVergleich.Tag::abtauungen).sum() / (double) n);
+                aehnlich.stream().mapToInt(WaermebedarfVergleich.Tag::abtauungen).sum() / (double) n,
+                arbeitszahl(aehnlich));
+    }
+
+    static Double arbeitszahl(List<WaermebedarfVergleich.Tag> tage) {
+        List<WaermebedarfVergleich.Tag> mitStrom = tage.stream().filter(Zustand::plausibel).toList();
+        double strom = mitStrom.stream().mapToDouble(WaermebedarfVergleich.Tag::stromKWh).sum();
+        return strom <= 0 ? null : mitStrom.stream().mapToDouble(WaermebedarfVergleich.Tag::waermeKWh).sum() / strom;
     }
 
     /**

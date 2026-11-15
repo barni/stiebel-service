@@ -181,8 +181,10 @@ public class StatusService {
                 gleich == null ? "–" : zahl(gleich.laufzeitProStart(), 2)));
         zeilen.add(List.of("Wärme kWh", zahl(heute.waermeKWh(), 1), zahl(gestern.waermeKWh(), 1),
                 gleich == null ? "–" : zahl(gleich.waermeKWh(), 1)));
-        zeilen.add(List.of("Strom kWh", zahl(heute.stromKWh(), 1), zahl(gestern.stromKWh(), 1), "–"));
-        zeilen.add(List.of("Arbeitszahl", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1), "–"));
+        zeilen.add(List.of("Strom kWh", zahl(heute.stromKWh(), 1), zahl(gestern.stromKWh(), 1),
+                gleich == null ? "–" : zahl(gleich.stromKWh(), 1)));
+        zeilen.add(List.of("Arbeitszahl", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1),
+                gleich == null ? "–" : zahl(gleich.arbeitszahl(), 1)));
         zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
                 gleich == null ? "–" : zahl(gleich.abtauungen(), 1)));
         zeilen.add(List.of("Druckhub", "–", zahl(tagesuebersicht.getDruckhubGestern(), 2), "–"));
@@ -191,7 +193,8 @@ public class StatusService {
                         Map.entry("Ø gleiche Temp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                                 + ", deren Tagesmittel der Außentemperatur höchstens "
                                 + zahl(Tagesuebersicht.AEHNLICH_K, 1) + " K von gestern abweicht. Zeigt, ob gestern "
-                                + "normal war. Strom und Arbeitszahl liegen für alte Tage nicht vor."),
+                                + "normal war. Die Arbeitszahl stammt nur aus den Tagen mit Stromwert, der Strom ist "
+                                + "die mittlere Wärme geteilt durch diese Arbeitszahl."),
                         Map.entry("Außen °C", "Tagesmittel der Außentemperatur."),
                         Map.entry("Starts", "Verdichterstarts nach einem Stillstand von mindestens "
                                 + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, gezählt aus der "
