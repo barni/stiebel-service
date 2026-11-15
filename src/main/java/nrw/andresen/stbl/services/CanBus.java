@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.ToDoubleFunction;
 
 import static nrw.andresen.stbl.services.can.ElsterTable.BETRIEBS_STATUS;
+import static nrw.andresen.stbl.services.can.ElsterTable.SPEICHERBEDARF;
 
 /**
  * Access to the heat pump over the USBtin: sends read requests, keeps the latest answer per index, counts the
@@ -60,8 +61,20 @@ public class CanBus {
     private final ConcurrentLinkedQueue<ElsterMessage> queue = new ConcurrentLinkedQueue<>();
     // Indices requested by this service, answers to other indices are ignored
     private final Set<Short> angefragt = ConcurrentHashMap.newKeySet();
-    // Time of the last request per index, for the CAN bus page
+    // Time of the last and of the request before per index, for the CAN bus page
     private final Map<Short, Instant> angefragtUm = new ConcurrentHashMap<>();
+    private final Map<Short, Instant> vorherAngefragt = new ConcurrentHashMap<>();
+
+    /**
+     * A value another device writes on the bus, taken over like an answer. Only seen with can.logall, the adapter
+     * filters it otherwise.
+     */
+    record Mitlesen(int von, int an, short index) {
+    }
+
+    // The heat pump answers a request for SPEICHERBEDARF with 0x8000 (tested 2026-11-15), the manager writes it
+    // every 10 s
+    static final List<Mitlesen> MITLESEN = List.of(new Mitlesen(0x480, 0x500, SPEICHERBEDARF));
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Instant letzteAntwort;
     // Time of the last alert about a USB restart and the restarts since then, see checkUSBisAlive
@@ -176,6 +189,9 @@ public class CanBus {
                 }
             }
         }
+        if (mitlesen(elsterMessage)) {
+            queue.add(elsterMessage);
+        }
         if (logger.isDebugEnabled()) {
             logger.debug(elsterMessage + " INDEX: " + elsterMessage.getElsterIndex().getName() +
                     " Payload: " + elsterMessage.getValue());
@@ -226,7 +242,10 @@ public class CanBus {
     public synchronized void anfragen(int knoten, short... indices) throws USBtinException {
         for (short index : indices) {
             angefragt.add(index);
-            angefragtUm.put(index, Instant.now());
+            Instant vorher = angefragtUm.put(index, Instant.now());
+            if (vorher != null) {
+                vorherAngefragt.put(index, vorher);
+            }
             usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, knoten, index).getMessage());
         }
     }
@@ -378,28 +397,64 @@ public class CanBus {
      * @param angefragt time of the last request
      * @param zeit      time of the latest valid answer, null if none arrived yet
      */
-    public record Abfrage(short index, String name, String wert, Instant angefragt, Instant zeit) {
+    public record Abfrage(short index, String name, String wert, Instant angefragt, Instant zeit, Instant vorher,
+                          boolean mitgelesen) {
+
+        public Abfrage(short index, String name, String wert, Instant angefragt, Instant zeit) {
+            this(index, name, wert, angefragt, zeit, null, false);
+        }
 
         /**
-         * True if the last request is older than the answer time and was not answered. Works for every request
-         * interval, the settings are requested only once an hour.
+         * True if the last request got no valid answer within the answer time, or the request before got none until
+         * the last one. The one before counts too: a value requested every 20 s has a last request younger than
+         * 30 s all the time. Works for every request interval, the settings are requested only once an hour. Values
+         * read along are never open.
          */
         public boolean offen(Instant jetzt) {
-            return angefragt != null && angefragt.isBefore(jetzt.minus(ANTWORTZEIT))
-                    && (zeit == null || zeit.isBefore(angefragt));
+            if (mitgelesen) {
+                return false;
+            }
+            boolean letzteOffen = angefragt != null && angefragt.isBefore(jetzt.minus(ANTWORTZEIT))
+                    && unbeantwortet(angefragt);
+            return letzteOffen || (vorher != null && unbeantwortet(vorher));
+        }
+
+        private boolean unbeantwortet(Instant anfrage) {
+            return zeit == null || zeit.isBefore(anfrage);
         }
     }
 
     /**
-     * All requested values, the unanswered first, then by name
+     * True if the message is a write this service reads along, with a valid value
+     */
+    static boolean mitlesen(ElsterMessage m) {
+        if (!m.isWrite() || m.getRawValue() == null || m.getRawValue() == VALUE_NOT_AVAILABLE) {
+            return false;
+        }
+        short index = m.getElsterIndex().getIndex();
+        return MITLESEN.stream().anyMatch(l -> l.von() == m.getId() && l.an() == m.getReceiverId()
+                && l.index() == index);
+    }
+
+    /**
+     * All requested values and the values read along, the unanswered first, then by name
      */
     public List<Abfrage> getAbfragen() {
         Instant jetzt = Instant.now();
-        return angefragt.stream().map(index -> {
+        List<Abfrage> abfragen = new java.util.ArrayList<>(angefragt.stream().map(index -> {
             ElsterMessage m = msgs.get(index);
             return new Abfrage(index, TABELLE.findByIndex(index).getName(), m == null ? null : m.getValue(),
-                    angefragtUm.get(index), m == null ? null : m.getTimestamp());
-        }).sorted(Comparator.comparing((Abfrage a) -> !a.offen(jetzt)).thenComparing(Abfrage::name)).toList();
+                    angefragtUm.get(index), m == null ? null : m.getTimestamp(), vorherAngefragt.get(index), false);
+        }).toList());
+        for (Mitlesen l : MITLESEN) {
+            if (!angefragt.contains(l.index())) {
+                ElsterMessage m = msgs.get(l.index());
+                abfragen.add(new Abfrage(l.index(), TABELLE.findByIndex(l.index()).getName(),
+                        m == null ? null : m.getValue(), null, m == null ? null : m.getTimestamp(), null, true));
+            }
+        }
+        abfragen.sort(Comparator.comparing((Abfrage a) -> !a.offen(jetzt)).thenComparing(Abfrage::name));
+        return abfragen;
     }
 
     public Verbindung getVerbindung() {

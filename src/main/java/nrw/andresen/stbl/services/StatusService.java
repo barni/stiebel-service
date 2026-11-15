@@ -275,9 +275,10 @@ public class StatusService {
                         + "nicht von Stiebel bestätigt. Liegt der Vorlauf deutlich darüber, regelt die Wärmepumpe "
                         + "auf Mindestleistung und schaltet bald ab.")
                 .row("Anforderung", "", 0, "Anforderung", wp::getAnforderung)
-                .info("Anforderung, die der Manager alle 10 s an die Wärmepumpe schreibt (SPEICHERBEDARF, 0x005F), "
-                        + "abgefragt bei der Wärmepumpe (0x500). Am 15.11.2026 0 bei Stillstand und 512 beim Heizen, "
-                        + "andere Werte sind noch unbekannt.")
+                .info("Anforderung, die der Manager alle 10 s an die Wärmepumpe schreibt (SPEICHERBEDARF, 0x005F). "
+                        + "Die Wärmepumpe beantwortet keine Abfrage danach, der Wert wird deshalb auf dem Bus "
+                        + "mitgelesen, nur mit „Alle Nachrichten empfangen“. Am 15.11.2026 0 bei Stillstand und 512 "
+                        + "beim Heizen, andere Werte sind noch unbekannt.")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")

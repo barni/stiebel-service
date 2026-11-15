@@ -39,4 +39,17 @@ public class CanBusTest {
         assertNull(CanBus.filter(true));
         assertEquals(1, CanBus.filter(false).length);
     }
+
+    @Test
+    public void testMitlesen() {
+        // The manager writes SPEICHERBEDARF 512 to the heat pump, recorded on 2026-11-15
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A0005F02000000")));
+        // Not from another device, not the request and not the answer 0x8000 of the heat pump
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x180, "A0005F02000000")));
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x681, "A1005F00000000")));
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x500, "D2015F80000000")));
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A0005F80000000")));
+        // Another index
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A0002C00000000")));
+    }
 }

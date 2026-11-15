@@ -21,6 +21,8 @@ public class SynchronizedUSBtin extends USBtin {
     private static final Logger logger = LoggerFactory.getLogger(SynchronizedUSBtin.class);
 
     private final CanStatistik statistik;
+    // Message last kept as sent: after an error (BEL) the library writes the same message again
+    private CANMessage zuletztUebertragen;
 
     public SynchronizedUSBtin() {
         this(null);
@@ -44,14 +46,15 @@ public class SynchronizedUSBtin extends USBtin {
     /**
      * Writes the first message of the FIFO to the adapter: right away if the FIFO was empty, otherwise after the
      * acknowledge of the message before, and again after an error. Only then it is kept for the CAN bus page with
-     * the time it really went out.
+     * the time it first went out, a repeat after an error only once: the adapter rejected the first try, the bus saw
+     * the message once.
      */
     @Override
     protected void sendFirstTXFifoMessage() throws USBtinException {
         super.sendFirstTXFifoMessage();
-        if (statistik != null && !fifoTX.isEmpty()) {
-            CANMessage erste = fifoTX.getFirst();
-            statistik.uebertragen(erste.getId(), erste.getData(), Instant.now());
+        if (statistik != null && !fifoTX.isEmpty() && fifoTX.getFirst() != zuletztUebertragen) {
+            zuletztUebertragen = fifoTX.getFirst();
+            statistik.uebertragen(zuletztUebertragen.getId(), zuletztUebertragen.getData(), Instant.now());
         }
     }
 

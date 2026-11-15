@@ -83,7 +83,7 @@ public class Waermepumpe {
     private static final short[] MONITORING_WAERMEPUMPE = {
             TEST_OBJEKT_113_STROM_INVERTER, TEST_OBJEKT_112_SPANNUNG_INVERTER, ANZEIGE_HOCHDRUCK, ANZEIGE_NIEDERDRUCK,
             AUSSENTEMP, HEISSGAS_TEMP, VERDICHTER_DREHZAHL, VERDICHTER_EINTRITTSTEMP, VERDAMPFERTEMP, OELSUMPFTEMP,
-            HILFSKESSELSOLL, SPEICHERBEDARF
+            HILFSKESSELSOLL
     };
     // The EXV every 20 s, the defrost with the fully open EXV lasts only about 1-2 minutes
     private static final short[] MONITORING_HEIZMODUL = {WPVORLAUFIST, RUECKLAUFISTTEMP, OEFFNUNGSGRAD_EXV};
@@ -345,7 +345,8 @@ public class Waermepumpe {
 
     /**
      * Demand the manager writes to the heat pump every 10 s (SPEICHERBEDARF): 0 at standstill, 512 while heating on
-     * 2026-11-15, the meaning of other values is unknown
+     * 2026-11-15, the meaning of other values is unknown. The heat pump does not answer a request for it, so it is
+     * read along on the bus, only with can.logall.
      */
     public ValueContainer<Double> getAnforderung() throws Exception {
         return getScaledValue(SPEICHERBEDARF, 1);

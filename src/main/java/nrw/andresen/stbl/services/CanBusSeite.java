@@ -109,7 +109,8 @@ public final class CanBusSeite {
         List<List<String>> werte = new ArrayList<>();
         for (CanBus.Abfrage a : abfragen) {
             boolean offen = a.offen(jetzt);
-            werte.add(List.of(hex(a.index()), text(a.name()), text(wert(a.wert())), alter(a.angefragt(), jetzt),
+            werte.add(List.of(hex(a.index()), text(a.name()), text(wert(a.wert())),
+                    a.mitgelesen() ? "mitgelesen" : alter(a.angefragt(), jetzt),
                     (offen ? "<span class=\"alt\">" : "") + alter(a.zeit(), jetzt) + (offen ? "</span>" : "")));
         }
         html.append("<article class=\"card breit\"><h2>Abgefragte Werte (").append(abfragen.size())
@@ -118,7 +119,9 @@ public final class CanBusSeite {
                         : tabelle(List.of("Index", "Name", "Wert", "Angefragt", "Antwort"), werte))
                 .append("<p class=\"note\">Rot und oben: Auf die letzte Anfrage kam nach ")
                 .append(CanBus.ANTWORTZEIT.toSeconds()).append(" s keine gültige Antwort. Antworten mit 0x8000 ")
-                .append("(nicht verfügbar) zählen nicht. Die Einstellungen werden nur stündlich angefragt.</p>")
+                .append("(nicht verfügbar) zählen nicht. Die Einstellungen werden nur stündlich angefragt. ")
+                .append("„mitgelesen“: Wert, den ein anderes Gerät auf den Bus schreibt, nur mit „Alle Nachrichten ")
+                .append("empfangen“.</p>")
                 .append("</article>");
 
         List<CanStatistik.Rahmen> auswahl = auswahl(rahmen, knoten, anzahl);
