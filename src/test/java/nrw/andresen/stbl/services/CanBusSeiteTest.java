@@ -54,7 +54,7 @@ public class CanBusSeiteTest {
         List<String> zeile = CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, false, 0x500, antwort()));
         assertEquals("←", zeile.get(1));
         assertEquals("0x500 Wärmepumpe", zeile.get(2));
-        assertEquals("0x681", zeile.get(3));
+        assertEquals("0x681 stbl-service", zeile.get(3));
         assertEquals("Antwort", zeile.get(4));
         assertTrue(zeile.get(5).startsWith("0x000C "));
         assertTrue(zeile.get(7).contains(ElsterMessage.bytesToHex(antwort())));
@@ -151,9 +151,14 @@ public class CanBusSeiteTest {
 
         String html = CanBusSeite.render(verbindung(true), List.of(), rahmen, 0x700, 100, JETZT);
         assertTrue(html.contains("Letzte Nachrichten von und an 0x700"));
-        assertTrue(html.contains("href=\"canbus?anzahl=100\">Alle Geräte</a>"));
-        assertTrue(html.contains("href=\"canbus?knoten=0x500&amp;anzahl=100\">0x500 Wärmepumpe</a>"));
+        assertTrue(html.contains("href=\"canbus?anzahl=100\">Filter aufheben</a>"));
+        assertTrue(html.contains("Filter: 0x700 · "));
         assertTrue(html.contains("2 von 4 gespeicherten Nachrichten"));
+        assertTrue(html.contains("href=\"canbus?knoten=0x500&amp;anzahl=100\">0x500 Wärmepumpe</a>"));
+        // The chosen node is marked and a second click removes the filter
+        html = CanBusSeite.render(verbindung(true), List.of(), rahmen, 0x500, 100, JETZT);
+        assertTrue(html.contains("<a class=\"nav gewaehlt\" href=\"canbus?anzahl=100\" aria-current=\"true\">"
+                + "0x500 Wärmepumpe ✕</a>"));
     }
 
     @Test

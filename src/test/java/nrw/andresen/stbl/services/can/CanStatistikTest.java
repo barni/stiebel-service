@@ -93,7 +93,9 @@ public class CanStatistikTest {
     @Test
     public void testKnotenName() {
         assertEquals("0x180 Kessel", CanStatistik.knotenName(0x180));
+        assertEquals("0x601 Mischer HK2", CanStatistik.knotenName(0x601));
         assertEquals("0x700", CanStatistik.knotenName(0x700));
+        assertEquals("0x681 stbl-service", CanStatistik.knotenName(nrw.andresen.stbl.services.CanBus.CAN_SENDER_ID));
     }
 
     @Test
@@ -144,7 +146,7 @@ public class CanStatistikTest {
         for (int i = 0; i < CanStatistik.RAHMEN_MAX + 5; i++) {
             statistik.empfangen(0x500, daten, START.plusSeconds(i));
         }
-        statistik.gesendet(0x681, daten, START.plusSeconds(500));
+        statistik.uebertragen(0x681, daten, START.plusSeconds(500));
         daten[0] = 0;
         List<CanStatistik.Rahmen> rahmen = statistik.getRahmen();
         assertEquals(CanStatistik.RAHMEN_MAX, rahmen.size());

@@ -88,13 +88,22 @@ public final class CanBusSeite {
 
         List<List<String>> geraete = new ArrayList<>();
         for (CanStatistik.KnotenStatus k : v.knoten()) {
-            geraete.add(List.of("<a class=\"nav\" href=\"" + link(k.id(), anzahl) + "\">" + text(k.name()) + "</a>",
+            // A click on the chosen node again removes the filter
+            boolean gewaehlt = knoten != null && k.id() == knoten;
+            geraete.add(List.of("<a class=\"nav" + (gewaehlt ? " gewaehlt" : "") + "\" href=\""
+                            + link(gewaehlt ? null : k.id(), anzahl) + "\"" + (gewaehlt ? " aria-current=\"true\"" : "")
+                            + ">" + text(k.name()) + (gewaehlt ? " ✕" : "") + "</a>",
                     zahl(k.proMinute(), 0), alter(k.zuletzt(), jetzt)));
         }
-        html.append("<article class=\"card\"><h2>Knoten</h2>")
-                .append(geraete.isEmpty() ? "<p class=\"note\">Noch keine Nachricht empfangen.</p>"
+        html.append("<article class=\"card\"><h2>Knoten</h2>");
+        if (knoten != null) {
+            html.append("<p class=\"auswahl\">Filter: ").append(text(CanStatistik.knotenName(knoten)))
+                    .append(" · <a class=\"nav\" href=\"").append(link(null, anzahl)).append("\">Filter aufheben</a></p>");
+        }
+        html.append(geraete.isEmpty() ? "<p class=\"note\">Noch keine Nachricht empfangen.</p>"
                         : tabelle(List.of("Gerät", "/min", "Zuletzt"), geraete)
-                        + "<p class=\"note\">Ein Klick auf ein Gerät zeigt nur dessen Nachrichten.</p>")
+                        + "<p class=\"note\">Ein Klick auf ein Gerät zeigt nur dessen Nachrichten, ein zweiter Klick "
+                        + "zeigt wieder alle.</p>")
                 .append("</article>");
 
         List<List<String>> werte = new ArrayList<>();
@@ -121,7 +130,7 @@ public final class CanBusSeite {
                 .append(knoten == null ? "" : " von und an " + text(CanStatistik.knotenName(knoten)))
                 .append("</h2><p class=\"auswahl\">");
         if (knoten != null) {
-            html.append("<a class=\"nav\" href=\"").append(link(null, anzahl)).append("\">Alle Geräte</a> · ");
+            html.append("<a class=\"nav\" href=\"").append(link(null, anzahl)).append("\">Filter aufheben</a> · ");
         }
         for (int n : List.of(ANZAHL_STANDARD, 300, CanStatistik.RAHMEN_MAX)) {
             html.append(n == anzahl ? "<b>" + n + "</b>" : "<a class=\"nav\" href=\"" + link(knoten, n) + "\">" + n + "</a>")
@@ -301,5 +310,6 @@ public final class CanBusSeite {
             .tbl code { font-size: 12px; color: var(--muted); }
             .alt { color: var(--stale); font-weight: 600; }
             .auswahl { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+            .nav.gewaehlt { padding: 1px 6px; border-radius: 6px; background: var(--on-bg); color: var(--text); }
             """;
 }
