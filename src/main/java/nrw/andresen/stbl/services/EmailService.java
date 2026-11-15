@@ -1,5 +1,6 @@
 package nrw.andresen.stbl.services;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,12 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Sends alert mails and the weekly report to stbl.mail.to, nothing if it or spring.mail.host is not configured.
@@ -23,6 +30,15 @@ public class EmailService {
     private final PushoverService pushover;
     private final String to;
     private volatile String letzterFehler;
+    // Alerts are sent by an own thread: the callers hold the locks of the requests to the heat pump and of the USB
+    // watchdog, a slow mail server must not stop them. More waiting alerts than this are dropped.
+    static final int WARTESCHLANGE = 50;
+    private final ExecutorService versand = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(WARTESCHLANGE), r -> {
+        Thread thread = new Thread(r, "meldung");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public EmailService(ObjectProvider<JavaMailSender> emailSender, PushoverService pushover,
                         @Value("${stbl.mail.to:}") String to) {
@@ -32,9 +48,21 @@ public class EmailService {
     }
 
     /**
-     * Never throws, a failing mail must not stop the caller (e.g. the USB restart)
+     * Sends the alert in the background and returns at once. Never throws, a failing or slow mail must not stop the
+     * caller (e.g. the USB restart).
      */
     public void sendAlert(String subject, String text) {
+        try {
+            versand.execute(() -> sendAlertSofort(subject, text));
+        } catch (RejectedExecutionException e) {
+            logger.warn("Too many alerts are waiting or the service ends, not sending: " + subject);
+        }
+    }
+
+    /**
+     * Sends the alert and waits for the result, see getLetzterFehler. Never throws.
+     */
+    public void sendAlertSofort(String subject, String text) {
         pushover.senden(subject, text);
         JavaMailSender sender = emailSender.getIfAvailable();
         if (to.isBlank() || sender == null) {
@@ -74,6 +102,21 @@ public class EmailService {
         } catch (Exception e) {
             letzterFehler = e.getMessage();
             logger.warn("Sending mail failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Gives the waiting alerts a moment to leave before the service ends or restarts
+     */
+    @PreDestroy
+    public void beenden() {
+        versand.shutdown();
+        try {
+            if (!versand.awaitTermination(15, TimeUnit.SECONDS)) {
+                logger.warn("Alerts were still waiting when the service ended");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

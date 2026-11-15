@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.time.Duration;
+import java.util.Map;
 
 /**
  * Spring boot main class
@@ -27,9 +28,22 @@ public class Application {
     private static volatile ConfigurableApplicationContext context;
     private static String[] argumente = new String[0];
 
+    // JavaMail waits without limit by default: a mail server that accepts the connection and then does not answer
+    // would hold the thread sending the alerts forever. application.properties can set other values.
+    static final Map<String, Object> STANDARDWERTE = Map.of(
+            "spring.mail.properties.mail.smtp.connectiontimeout", "10000",
+            "spring.mail.properties.mail.smtp.timeout", "20000",
+            "spring.mail.properties.mail.smtp.writetimeout", "20000");
+
     public static void main(String[] args) {
         argumente = args;
-        context = SpringApplication.run(Application.class, args);
+        context = starten(args);
+    }
+
+    private static ConfigurableApplicationContext starten(String[] args) {
+        SpringApplication anwendung = new SpringApplication(Application.class);
+        anwendung.setDefaultProperties(STANDARDWERTE);
+        return anwendung.run(args);
     }
 
     /**
@@ -51,7 +65,7 @@ public class Application {
                 Thread.sleep(verzoegerung.toMillis());
                 logger.info("Restart requested on the configuration page, closing the service");
                 alt.close();
-                context = SpringApplication.run(Application.class, argumente);
+                context = starten(argumente);
             } catch (Throwable e) {
                 // Without a context nothing answers any more: end the process, systemd or the user starts it again
                 logger.error("Restart failed, the service ends", e);

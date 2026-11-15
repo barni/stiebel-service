@@ -146,14 +146,16 @@ changed while the service was stopped is not noticed, because the last stored va
 
 ## Starting
 
-Start the jar with java from the folder that contains application.properties, e.g. as systemd unit:
+Start the jar with java from the folder that contains application.properties, e.g. with the systemd unit
+[stbl.service](stbl.service): copy it to `/etc/systemd/system/`, then `sudo systemctl daemon-reload` and
+`sudo systemctl enable --now stbl`. `Restart=on-failure` starts the service again after a crash; without it a stopped
+service stays stopped and sends no warnings.
 
-    [Service]
-    User=pi
-    WorkingDirectory=/var/stbl-service
-    Environment=INFLUX_TOKEN=...
-    ExecStart=/usr/bin/java -jar /var/stbl-service/stbl-service-0.2.0-SNAPSHOT.jar
-    SuccessExitStatus=143
+Alerts (mail and Pushover) are sent in the background, a slow mail server does not delay the requests to the heat
+pump. The mail server gets 10 s to accept the connection and 20 s to answer (other values with
+`spring.mail.properties.mail.smtp.connectiontimeout`, `.timeout` and `.writetimeout` in milliseconds). While the CAN
+adapter stays silent it is restarted every 2 minutes, the alert about it comes for the first restart and then once
+an hour.
 
 [deploy.sh](deploy.sh) copies a new build to `/var/stbl-service` and restarts the unit `stbl`.
 
