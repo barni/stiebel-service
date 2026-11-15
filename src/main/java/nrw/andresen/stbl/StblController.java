@@ -200,9 +200,10 @@ public class StblController {
      * CAN bus monitoring page: adapter, rates, nodes, requested values and the last messages
      */
     @GetMapping(value = "/canbus", produces = "text/html;charset=UTF-8")
-    public String canbus() {
+    public String canbus(@RequestParam(required = false) String knoten,
+                         @RequestParam(defaultValue = "" + CanBusSeite.ANZAHL_STANDARD) int anzahl) {
         return CanBusSeite.render(canBus.getVerbindung(), canBus.getAbfragen(), canBus.getStatistik().getRahmen(),
-                Instant.now());
+                CanBusSeite.knoten(knoten), CanBusSeite.anzahl(anzahl), Instant.now());
     }
 
     /**

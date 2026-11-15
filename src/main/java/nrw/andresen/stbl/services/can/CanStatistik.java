@@ -22,8 +22,8 @@ public class CanStatistik {
     private static final int BITS_PRO_RAHMEN = 47;
     // A minute is closed only after at least half a minute
     private static final double MIN_MINUTE = 0.5;
-    // Last messages kept for the CAN bus page
-    public static final int RAHMEN_MAX = 100;
+    // Last messages kept for the CAN bus page: with all messages received about 2 minutes of the bus
+    public static final int RAHMEN_MAX = 1000;
 
     private static final Map<Integer, String> KNOTEN_NAMEN = Map.of(
             0x180, "Kessel",
