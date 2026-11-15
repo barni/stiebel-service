@@ -8,6 +8,7 @@ import de.fischl.usbtin.USBtinException;
 import jakarta.annotation.PreDestroy;
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterMessage;
+import nrw.andresen.stbl.services.can.ElsterTable;
 import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.SynchronizedUSBtin;
 import nrw.andresen.stbl.services.can.ValueContainer;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +48,9 @@ public class CanBus {
     // While the adapter stays silent, alerts about its restarts are at least this far apart
     static final Duration MELDUNG_ABSTAND = Duration.ofHours(1);
 
+    // Names of the indices for the CAN bus page
+    private static final ElsterTable TABELLE = new ElsterTable();
+
     private final Logger logger = LoggerFactory.getLogger(CanBus.class);
     @Autowired
     private EmailService emailService;
@@ -55,6 +60,8 @@ public class CanBus {
     private final ConcurrentLinkedQueue<ElsterMessage> queue = new ConcurrentLinkedQueue<>();
     // Indices requested by this service, answers to other indices are ignored
     private final Set<Short> angefragt = ConcurrentHashMap.newKeySet();
+    // Time of the last request per index, for the CAN bus page
+    private final Map<Short, Instant> angefragtUm = new ConcurrentHashMap<>();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Instant letzteAntwort;
     // Time of the last alert about a USB restart and the restarts since then, see checkUSBisAlive
@@ -103,7 +110,7 @@ public class CanBus {
             usbtin.addMessageListener(canmsg -> {
                 try {
                     Instant jetzt = Instant.now();
-                    canStatistik.empfangen(canmsg.getId(), canmsg.getData().length, jetzt);
+                    canStatistik.empfangen(canmsg.getId(), canmsg.getData(), jetzt);
                     empfangen(new ElsterMessage(canmsg), jetzt);
                 } catch (Exception e) {
                     logger.error("ERROR during receiving: ", e);
@@ -119,6 +126,7 @@ public class CanBus {
                     usbtin.getSerialNumber(), Instant.now());
         } catch (Exception e) {
             canStatistik.getrennt();
+            canStatistik.fehler("Verbinden fehlgeschlagen: " + e.getMessage(), Instant.now());
             logger.error("ERROR During initialization: ", e);
         }
     }
@@ -192,6 +200,7 @@ public class CanBus {
     public synchronized void anfragen(int knoten, short... indices) throws USBtinException {
         for (short index : indices) {
             angefragt.add(index);
+            angefragtUm.put(index, Instant.now());
             usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, knoten, index).getMessage());
         }
     }
@@ -330,13 +339,48 @@ public class CanBus {
     public record Verbindung(boolean verbunden, String port, int bitrate, String firmware, String hardware,
                              String seriennummer, Instant verbundenSeit, long usbNeustarts, Instant letzterNeustart,
                              Instant letzteNachricht, Instant letzteAntwort, CanStatistik.Minute letzteMinute,
-                             List<CanStatistik.KnotenStatus> knoten) {
+                             List<CanStatistik.KnotenStatus> knoten, long adapterFehler, Instant letzterFehler,
+                             String letzterFehlerText) {
+    }
+
+    // Time the device gets for an answer before a request counts as unanswered
+    static final Duration ANTWORTZEIT = Duration.ofSeconds(30);
+
+    /**
+     * A value requested by this service with its latest valid answer
+     *
+     * @param angefragt time of the last request
+     * @param zeit      time of the latest valid answer, null if none arrived yet
+     */
+    public record Abfrage(short index, String name, String wert, Instant angefragt, Instant zeit) {
+
+        /**
+         * True if the last request is older than the answer time and was not answered. Works for every request
+         * interval, the settings are requested only once an hour.
+         */
+        public boolean offen(Instant jetzt) {
+            return angefragt != null && angefragt.isBefore(jetzt.minus(ANTWORTZEIT))
+                    && (zeit == null || zeit.isBefore(angefragt));
+        }
+    }
+
+    /**
+     * All requested values, the unanswered first, then by name
+     */
+    public List<Abfrage> getAbfragen() {
+        Instant jetzt = Instant.now();
+        return angefragt.stream().map(index -> {
+            ElsterMessage m = msgs.get(index);
+            return new Abfrage(index, TABELLE.findByIndex(index).getName(), m == null ? null : m.getValue(),
+                    angefragtUm.get(index), m == null ? null : m.getTimestamp());
+        }).sorted(Comparator.comparing((Abfrage a) -> !a.offen(jetzt)).thenComparing(Abfrage::name)).toList();
     }
 
     public Verbindung getVerbindung() {
         return new Verbindung(canStatistik.isVerbunden(), usbPort, usbSpeed, canStatistik.getFirmware(),
                 canStatistik.getHardware(), canStatistik.getSeriennummer(), canStatistik.getVerbundenSeit(),
                 canStatistik.getNeustarts(), canStatistik.getLetzterNeustart(), canStatistik.getLetzteNachricht(),
-                canStatistik.getLetzteAntwort(), canStatistik.getLetzteMinute(), canStatistik.getKnoten());
+                canStatistik.getLetzteAntwort(), canStatistik.getLetzteMinute(), canStatistik.getKnoten(),
+                canStatistik.getFehler(), canStatistik.getLetzterFehler(), canStatistik.getLetzterFehlerText());
     }
 }

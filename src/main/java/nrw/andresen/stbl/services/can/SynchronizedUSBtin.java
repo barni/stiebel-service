@@ -7,6 +7,8 @@ import jssc.SerialPortEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+
 /**
  * USBtin with a thread safe transmit FIFO. USBtinLib 1.2.0 uses the FIFO (a LinkedList) without synchronization from
  * two threads: send() from the scheduler adds a message, serialEvent() from the jssc event thread removes the
@@ -34,7 +36,7 @@ public class SynchronizedUSBtin extends USBtin {
     public synchronized void send(CANMessage canmsg) throws USBtinException {
         super.send(canmsg);
         if (statistik != null) {
-            statistik.gesendet(canmsg.getData().length);
+            statistik.gesendet(canmsg.getId(), canmsg.getData(), Instant.now());
         }
     }
 
@@ -49,6 +51,9 @@ public class SynchronizedUSBtin extends USBtin {
         } catch (RuntimeException e) {
             logger.error("Error in the USBtin event thread, clearing the transmit FIFO", e);
             fifoTX.clear();
+            if (statistik != null) {
+                statistik.fehler("Fehler im Empfangs-Thread: " + e, Instant.now());
+            }
         }
     }
 

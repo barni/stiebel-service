@@ -1,6 +1,7 @@
 package nrw.andresen.stbl;
 
 import nrw.andresen.stbl.services.CanBus;
+import nrw.andresen.stbl.services.CanBusSeite;
 import nrw.andresen.stbl.services.EmailService;
 import nrw.andresen.stbl.services.Fehlstarts;
 import nrw.andresen.stbl.services.Konfiguration;
@@ -193,6 +194,15 @@ public class StblController {
     @GetMapping(value = "/konfiguration", produces = "text/html;charset=UTF-8")
     public String konfiguration(@RequestParam(required = false) String meldung, HttpServletRequest request) {
         return konfigurationSeite(Map.of(), Map.of(), meldung, request);
+    }
+
+    /**
+     * CAN bus monitoring page: adapter, rates, nodes, requested values and the last messages
+     */
+    @GetMapping(value = "/canbus", produces = "text/html;charset=UTF-8")
+    public String canbus() {
+        return CanBusSeite.render(canBus.getVerbindung(), canBus.getAbfragen(), canBus.getStatistik().getRahmen(),
+                Instant.now());
     }
 
     /**

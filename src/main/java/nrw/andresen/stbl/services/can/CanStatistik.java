@@ -2,8 +2,10 @@ package nrw.andresen.stbl.services.can;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -20,6 +22,8 @@ public class CanStatistik {
     private static final int BITS_PRO_RAHMEN = 47;
     // A minute is closed only after at least half a minute
     private static final double MIN_MINUTE = 0.5;
+    // Last messages kept for the CAN bus page
+    public static final int RAHMEN_MAX = 100;
 
     private static final Map<Integer, String> KNOTEN_NAMEN = Map.of(
             0x180, "Kessel",
@@ -34,6 +38,11 @@ public class CanStatistik {
     private final AtomicLong bits = new AtomicLong();
     private final AtomicLong neustarts = new AtomicLong();
     private final Map<Integer, Knoten> knoten = new ConcurrentHashMap<>();
+    // Newest first, guarded by itself
+    private final Deque<Rahmen> rahmen = new ArrayDeque<>();
+    private final AtomicLong fehler = new AtomicLong();
+    private volatile Instant letzterFehler;
+    private volatile String letzterFehlerText;
 
     private volatile Instant letzteNachricht;
     private volatile Instant letzteAntwort;
@@ -74,6 +83,20 @@ public class CanStatistik {
     }
 
     /**
+     * One message on the bus, received or sent by this service
+     */
+    public record Rahmen(Instant zeit, boolean gesendet, int id, byte[] daten) {
+    }
+
+    /**
+     * Any message received on the bus, kept for the CAN bus page
+     */
+    public void empfangen(int canId, byte[] daten, Instant zeit) {
+        empfangen(canId, daten.length, zeit);
+        merken(new Rahmen(zeit, false, canId, daten.clone()));
+    }
+
+    /**
      * Any message received on the bus
      */
     public void empfangen(int canId, int datenBytes, Instant zeit) {
@@ -97,11 +120,58 @@ public class CanStatistik {
     }
 
     /**
+     * Request sent by this service, kept for the CAN bus page
+     */
+    public void gesendet(int canId, byte[] daten, Instant zeit) {
+        gesendet(daten.length);
+        merken(new Rahmen(zeit, true, canId, daten.clone()));
+    }
+
+    /**
      * Request sent by this service
      */
     public void gesendet(int datenBytes) {
         gesendet.incrementAndGet();
         bits.addAndGet(BITS_PRO_RAHMEN + 8L * datenBytes);
+    }
+
+    private void merken(Rahmen r) {
+        synchronized (rahmen) {
+            if (rahmen.size() >= RAHMEN_MAX) {
+                rahmen.removeLast();
+            }
+            rahmen.addFirst(r);
+        }
+    }
+
+    /**
+     * The last messages, the newest first
+     */
+    public List<Rahmen> getRahmen() {
+        synchronized (rahmen) {
+            return List.copyOf(rahmen);
+        }
+    }
+
+    /**
+     * Error of the adapter, e.g. in its event thread or when connecting
+     */
+    public void fehler(String text, Instant zeit) {
+        fehler.incrementAndGet();
+        letzterFehler = zeit;
+        letzterFehlerText = text;
+    }
+
+    public long getFehler() {
+        return fehler.get();
+    }
+
+    public Instant getLetzterFehler() {
+        return letzterFehler;
+    }
+
+    public String getLetzterFehlerText() {
+        return letzterFehlerText;
     }
 
     public void verbunden(String firmware, String hardware, String seriennummer, Instant zeit) {
