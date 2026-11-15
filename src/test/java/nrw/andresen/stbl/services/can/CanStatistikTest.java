@@ -136,4 +136,27 @@ public class CanStatistikTest {
         assertEquals(40, statistik.getLetzteMinute().gesendet(), 0.001);
         assertEquals(100, statistik.getLetzteMinute().antwortquote(), 0.001);
     }
+
+    @Test
+    public void testRahmenUndFehler() {
+        CanStatistik statistik = new CanStatistik();
+        byte[] daten = {0x31, 0x00, (byte) 0xFA, 0x00, 0x0C, 0x00, 0x00};
+        for (int i = 0; i < CanStatistik.RAHMEN_MAX + 5; i++) {
+            statistik.empfangen(0x500, daten, START.plusSeconds(i));
+        }
+        statistik.gesendet(0x681, daten, START.plusSeconds(500));
+        daten[0] = 0;
+        List<CanStatistik.Rahmen> rahmen = statistik.getRahmen();
+        assertEquals(CanStatistik.RAHMEN_MAX, rahmen.size());
+        // Newest first, the copy is not changed afterwards
+        assertTrue(rahmen.get(0).gesendet());
+        assertEquals(0x31, rahmen.get(0).daten()[0]);
+        assertEquals(START.plusSeconds(CanStatistik.RAHMEN_MAX + 4), rahmen.get(1).zeit());
+
+        assertEquals(0, statistik.getFehler());
+        statistik.fehler("kaputt", START);
+        assertEquals(1, statistik.getFehler());
+        assertEquals("kaputt", statistik.getLetzterFehlerText());
+        assertEquals(START, statistik.getLetzterFehler());
+    }
 }

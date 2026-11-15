@@ -1,0 +1,224 @@
+package nrw.andresen.stbl.services;
+
+import nrw.andresen.stbl.services.can.CanStatistik;
+import nrw.andresen.stbl.services.can.ElsterMessage;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * HTML of the CAN bus monitoring page: adapter, rates of the last minute, nodes, age of each requested value and the
+ * last messages. Linked from the configuration page, reloads itself.
+ */
+public final class CanBusSeite {
+
+    private static final ZoneId ZONE = ZoneId.of("Europe/Berlin");
+    private static final DateTimeFormatter ZEIT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss").withZone(ZONE);
+    private static final DateTimeFormatter UHRZEIT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZONE);
+    static final int NEU_LADEN_S = 10;
+
+    private CanBusSeite() {
+    }
+
+    public static String render(CanBus.Verbindung v, List<CanBus.Abfrage> abfragen, List<CanStatistik.Rahmen> rahmen,
+                                Instant jetzt) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+                .append("<meta http-equiv=\"refresh\" content=\"").append(NEU_LADEN_S).append("\">")
+                .append("<title>Wärmepumpe · CAN-Bus</title><style>").append(StatusPage.CSS).append(CSS)
+                .append("</style></head><body><main><header><div><h1>CAN-Bus</h1><p class=\"sub\">USBtin-Adapter ")
+                .append("und Nachrichten, lädt alle ").append(NEU_LADEN_S).append(" s neu</p></div>")
+                .append("<nav><a class=\"nav\" href=\"status\">← Status</a> · ")
+                .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a></nav></header>");
+        html.append("<p class=\"meldung ").append(v.verbunden() ? "ok" : "fehler").append("\">")
+                .append(text(satz(v, abfragen, jetzt))).append("</p><section class=\"cards\">");
+
+        html.append("<article class=\"card\"><h2>Adapter</h2>").append(tabelle(null, List.of(
+                List.of("Verbunden", v.verbunden() ? "ja" : "nein"),
+                List.of("Port", text(v.port()) + ", " + zahl(v.bitrate() / 1000d, 0) + " kbit/s"),
+                List.of("Firmware / Hardware", text(wert(v.firmware())) + " / " + text(wert(v.hardware()))),
+                List.of("Seriennummer", text(wert(v.seriennummer()))),
+                List.of("Verbunden seit", zeit(v.verbundenSeit())),
+                List.of("USB-Neustarts", v.usbNeustarts() + (v.letzterNeustart() == null ? ""
+                        : ", zuletzt " + zeit(v.letzterNeustart()))),
+                List.of("Adapterfehler", v.adapterFehler() + (v.letzterFehler() == null ? ""
+                        : ", zuletzt " + zeit(v.letzterFehler()))),
+                List.of("Letzte Nachricht", alter(v.letzteNachricht(), jetzt)),
+                List.of("Letzte Antwort", alter(v.letzteAntwort(), jetzt)))));
+        if (v.letzterFehlerText() != null) {
+            html.append("<p class=\"note\">Letzter Fehler: ").append(text(v.letzterFehlerText())).append("</p>");
+        }
+        html.append("</article>");
+
+        CanStatistik.Minute m = v.letzteMinute();
+        html.append("<article class=\"card\"><h2>Letzte Minute</h2>");
+        if (m == null) {
+            html.append("<p class=\"note\">Noch keine volle Minute seit dem Start.</p>");
+        } else {
+            html.append(tabelle(null, List.of(
+                    List.of("Empfangen", zahl(m.empfangen(), 0) + " /min"),
+                    List.of("Gesendet (Anfragen)", zahl(m.gesendet(), 0) + " /min"),
+                    List.of("Antworten", zahl(m.antworten(), 0) + " /min"),
+                    List.of("Nicht verfügbar (0x8000)", zahl(m.nichtVerfuegbar(), 0) + " /min"),
+                    List.of("Antwortquote", zahl(m.antwortquote(), 0) + " %"),
+                    List.of("Buslast", zahl(m.buslast(), 1) + " %"))))
+                    .append("<p class=\"note\">Minute bis ").append(zeit(m.ende()))
+                    .append(". Die Buslast ist eine untere Schätzung ohne Bit-Stuffing.</p>");
+        }
+        html.append("</article>");
+
+        List<List<String>> knoten = new ArrayList<>();
+        for (CanStatistik.KnotenStatus k : v.knoten()) {
+            knoten.add(List.of(text(k.name()), zahl(k.proMinute(), 0), alter(k.zuletzt(), jetzt)));
+        }
+        html.append("<article class=\"card\"><h2>Knoten</h2>")
+                .append(knoten.isEmpty() ? "<p class=\"note\">Noch keine Nachricht empfangen.</p>"
+                        : tabelle(List.of("Gerät", "/min", "Zuletzt"), knoten))
+                .append("</article>");
+
+        List<List<String>> werte = new ArrayList<>();
+        for (CanBus.Abfrage a : abfragen) {
+            boolean offen = a.offen(jetzt);
+            werte.add(List.of(hex(a.index()), text(a.name()), text(wert(a.wert())), alter(a.angefragt(), jetzt),
+                    (offen ? "<span class=\"alt\">" : "") + alter(a.zeit(), jetzt) + (offen ? "</span>" : "")));
+        }
+        html.append("<article class=\"card breit\"><h2>Abgefragte Werte (").append(abfragen.size())
+                .append(")</h2>")
+                .append(werte.isEmpty() ? "<p class=\"note\">Noch nichts angefragt.</p>"
+                        : tabelle(List.of("Index", "Name", "Wert", "Angefragt", "Antwort"), werte))
+                .append("<p class=\"note\">Rot und oben: Auf die letzte Anfrage kam nach ")
+                .append(CanBus.ANTWORTZEIT.toSeconds()).append(" s keine gültige Antwort. Antworten mit 0x8000 ")
+                .append("(nicht verfügbar) zählen nicht. Die Einstellungen werden nur stündlich angefragt.</p>")
+                .append("</article>");
+
+        List<List<String>> zeilen = new ArrayList<>();
+        for (CanStatistik.Rahmen r : rahmen) {
+            zeilen.add(rahmenzeile(r));
+        }
+        html.append("<article class=\"card breit\"><h2>Letzte Nachrichten</h2>")
+                .append(zeilen.isEmpty() ? "<p class=\"note\">Noch keine Nachricht.</p>"
+                        : tabelle(List.of("Zeit", "", "Von", "An", "Art", "Index", "Wert", "Daten"), zeilen))
+                .append("<p class=\"note\">Die letzten ").append(CanStatistik.RAHMEN_MAX)
+                .append(" Nachrichten, neueste oben. → gesendet, ← empfangen. Der Adapter filtert den Bus: ")
+                .append("Empfangen werden nur die Antworten an diesen Dienst, außer can.logall ist an.</p></article>")
+                .append("</section><p class=\"note\">Stand ").append(zeit(jetzt)).append(". Als JSON: ")
+                .append("<a class=\"nav\" href=\"verbindung\">verbindung</a>.</p></main></body></html>");
+        return html.toString();
+    }
+
+    /**
+     * Short summary on top of the page
+     */
+    static String satz(CanBus.Verbindung v, List<CanBus.Abfrage> abfragen, Instant jetzt) {
+        if (!v.verbunden()) {
+            return "Adapter nicht verbunden, die Überwachung startet die USB-Verbindung neu.";
+        }
+        long alt = abfragen.stream().filter(a -> a.offen(jetzt)).count();
+        String antwort = v.letzteAntwort() == null ? "noch keine Antwort"
+                : "letzte Antwort vor " + sekunden(v.letzteAntwort(), jetzt);
+        return "Adapter verbunden, " + antwort + (alt == 0 ? ", alle Anfragen beantwortet."
+                : ", " + alt + (alt == 1 ? " Wert" : " Werte") + " ohne Antwort auf die letzte Anfrage.");
+    }
+
+    static List<String> rahmenzeile(CanStatistik.Rahmen r) {
+        ElsterMessage m = new ElsterMessage(r.id(), r.daten());
+        String art = art(r.daten());
+        boolean mitIndex = r.daten().length >= 3;
+        String index = mitIndex ? hex(m.getElsterIndex().getIndex()) + " " + m.getElsterIndex().getName() : "";
+        String wert = m.isResponse() ? m.getValue() : "";
+        return List.of(UHRZEIT.format(r.zeit()), r.gesendet() ? "→" : "←", text(CanStatistik.knotenName(r.id())),
+                r.daten().length >= 2 ? text(CanStatistik.knotenName(m.getReceiverId())) : "", art, text(index),
+                text(wert), "<code>" + ElsterMessage.bytesToHex(r.daten()) + "</code>");
+    }
+
+    /**
+     * Kind of the Elster message from the low nibble of the first byte
+     */
+    static String art(byte[] daten) {
+        if (daten.length == 0) {
+            return "";
+        }
+        return switch (daten[0] & 0x0F) {
+            case 0 -> "Schreiben";
+            case 1 -> "Anfrage";
+            case 2 -> "Antwort";
+            case 3 -> "Bestätigung";
+            case 4 -> "Schreib-Antwort";
+            case 6 -> "Rundruf";
+            default -> String.format("Art %X", daten[0] & 0x0F);
+        };
+    }
+
+    private static String tabelle(List<String> kopf, List<List<String>> zeilen) {
+        StringBuilder html = new StringBuilder("<div class=\"tbl\"><table>");
+        if (kopf != null) {
+            html.append("<thead><tr>");
+            kopf.forEach(k -> html.append("<th>").append(text(k)).append("</th>"));
+            html.append("</tr></thead>");
+        }
+        html.append("<tbody>");
+        for (List<String> zeile : zeilen) {
+            html.append("<tr>");
+            // The cells are escaped by the callers, some carry markup
+            zeile.forEach(z -> html.append("<td>").append(z).append("</td>"));
+            html.append("</tr>");
+        }
+        return html.append("</tbody></table></div>").toString();
+    }
+
+    static String alter(Instant zeit, Instant jetzt) {
+        return zeit == null ? "–" : "vor " + sekunden(zeit, jetzt) + " (" + UHRZEIT.format(zeit).substring(0, 8) + ")";
+    }
+
+    static String sekunden(Instant zeit, Instant jetzt) {
+        long s = Math.max(0, Duration.between(zeit, jetzt).toSeconds());
+        if (s < 120) {
+            return s + " s";
+        }
+        if (s < 7200) {
+            return s / 60 + " min";
+        }
+        return s / 3600 + " h";
+    }
+
+    private static String hex(short index) {
+        return String.format("0x%04X", index & 0xFFFF);
+    }
+
+    private static String zeit(Instant zeit) {
+        return zeit == null ? "–" : ZEIT.format(zeit);
+    }
+
+    private static String wert(String wert) {
+        return wert == null ? "–" : wert;
+    }
+
+    private static String zahl(double wert, int stellen) {
+        return String.format(Locale.GERMANY, "%." + stellen + "f", wert);
+    }
+
+    static String text(String text) {
+        return text == null ? "" : text.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
+    private static final String CSS = """
+            .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
+            .nav:hover, .nav:focus { text-decoration: underline; }
+            .meldung { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-weight: 600;
+              background: var(--card); border: 1px solid var(--line); }
+            .meldung.ok { border-color: var(--on); }
+            .meldung.fehler { border-color: var(--stale); color: var(--stale); }
+            .tbl { overflow-x: auto; }
+            .tbl table { font-size: 13px; }
+            .tbl td { white-space: nowrap; }
+            .tbl code { font-size: 12px; color: var(--muted); }
+            .alt { color: var(--stale); font-weight: 600; }
+            """;
+}
