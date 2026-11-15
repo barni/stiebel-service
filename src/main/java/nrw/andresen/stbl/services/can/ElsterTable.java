@@ -53,6 +53,8 @@ public class ElsterTable {
 
     public static short AUSSENTEMP = (short)0x000c;
     public static short HEISSGAS_TEMP = (short)0x0265;
+    public static short HILFSKESSELSOLL = (short)0x01d7;
+    public static short SPEICHERBEDARF = (short)0x005f;
     // Meaning and scaling of the following values for WPL taken from https://github.com/kr0ner/OneESP32ToRuleThemAll
     // Same values as ISTDREHZAHL_VERDICHTER (0x06eb), Hz
     public static short VERDICHTER_DREHZAHL = (short)0x063d;

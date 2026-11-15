@@ -189,6 +189,8 @@ public class StblService {
             addPoint(points, "Spreizung", wp::getSpreizung, MAX_AGE_20);
             addPoint(points, "Aussentemp", wp::getAussentemp, MAX_AGE_20);
             addPoint(points, "HeissgasTemp", wp::getHeissgasTemp, MAX_AGE_20);
+            addPoint(points, "VorlaufSoll", wp::getVorlaufSoll, MAX_AGE_20);
+            addPoint(points, "Anforderung", wp::getAnforderung, MAX_AGE_20);
             addPoint(points, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl, MAX_AGE_20);
             addPoint(points, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp, MAX_AGE_20);
             addPoint(points, "VerdampferTemp", wp::getVerdampferTemp, MAX_AGE_20);

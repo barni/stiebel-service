@@ -82,7 +82,8 @@ public class Waermepumpe {
     private static final short[] MONITORING_MANAGER = {BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK};
     private static final short[] MONITORING_WAERMEPUMPE = {
             TEST_OBJEKT_113_STROM_INVERTER, TEST_OBJEKT_112_SPANNUNG_INVERTER, ANZEIGE_HOCHDRUCK, ANZEIGE_NIEDERDRUCK,
-            AUSSENTEMP, HEISSGAS_TEMP, VERDICHTER_DREHZAHL, VERDICHTER_EINTRITTSTEMP, VERDAMPFERTEMP, OELSUMPFTEMP
+            AUSSENTEMP, HEISSGAS_TEMP, VERDICHTER_DREHZAHL, VERDICHTER_EINTRITTSTEMP, VERDAMPFERTEMP, OELSUMPFTEMP,
+            HILFSKESSELSOLL, SPEICHERBEDARF
     };
     // The EXV every 20 s, the defrost with the fully open EXV lasts only about 1-2 minutes
     private static final short[] MONITORING_HEIZMODUL = {WPVORLAUFIST, RUECKLAUFISTTEMP, OEFFNUNGSGRAD_EXV};
@@ -332,6 +333,22 @@ public class Waermepumpe {
 
     public ValueContainer<Double> getHeissgasTemp() throws Exception {
         return getDecimalValue(HEISSGAS_TEMP);
+    }
+
+    /**
+     * Flow setpoint the heating controller 0x180 writes to the heat pump every 10 s (HILFSKESSELSOLL), seen on the
+     * bus on 2026-11-15
+     */
+    public ValueContainer<Double> getVorlaufSoll() throws Exception {
+        return getScaledValue(HILFSKESSELSOLL, 10);
+    }
+
+    /**
+     * Demand the manager writes to the heat pump every 10 s (SPEICHERBEDARF): 0 at standstill, 512 while heating on
+     * 2026-11-15, the meaning of other values is unknown
+     */
+    public ValueContainer<Double> getAnforderung() throws Exception {
+        return getScaledValue(SPEICHERBEDARF, 1);
     }
 
     /**
