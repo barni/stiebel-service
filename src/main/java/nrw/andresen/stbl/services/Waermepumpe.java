@@ -349,7 +349,22 @@ public class Waermepumpe {
      * read along on the bus, only with can.logall.
      */
     public ValueContainer<Double> getAnforderung() throws Exception {
-        return getScaledValue(SPEICHERBEDARF, 1);
+        ElsterMessage msg = can.nachricht(SPEICHERBEDARF);
+        if (!mitgelesen(msg == null ? null : msg.getTimestamp(), Instant.now())) {
+            // Expected without can.logall: no warning every 20 s
+            throw new KeinMesswert("NUR_MIT_ALLEN_NACHRICHTEN");
+        }
+        return new ValueContainer<>((double) msg.getRawValue(), msg.getTimestamp());
+    }
+
+    // The manager writes the demand every 10 s
+    static final Duration MITGELESEN_MAX_ALTER = Duration.ofSeconds(60);
+
+    /**
+     * True if a value read along on the bus is current
+     */
+    static boolean mitgelesen(Instant zeit, Instant jetzt) {
+        return zeit != null && !zeit.isBefore(jetzt.minus(MITGELESEN_MAX_ALTER));
     }
 
     /**
