@@ -46,7 +46,13 @@ public class StatusService {
             0x180, "Wärmepumpenmanager WPM3 im HM Trend, Heizungsregler (Betriebsstatus, Heizungsdruck).",
             0x480, "Wärmepumpenmanager WPM3, Steuerung der Wärmepumpe, fragt die Außeneinheit 0x500 ab.",
             0x500, "Außeneinheit WPL 17 ACS (Verdichter, Kältekreis, Inverter, Lüfter).",
-            0x514, "Außeneinheit, Zugang für externe Abfragen mit Zählern, Laufzeiten und Einstellungen.");
+            0x514, "Außeneinheit, Zugang für externe Abfragen mit Zählern, Laufzeiten und Einstellungen.",
+            0x100, "Vermutlich die Bedieneinheit des WPM3 (Elster-Name FES_COMFORT), fragt den Kessel nach Außen- und "
+                    + "Rücklauftemperatur. Nur mit „Alle Nachrichten empfangen“ zu sehen.",
+            0x601, "Mischermodul für Heizkreis 2 laut Elster-Liste, sendet eine Nachricht alle 7 Minuten. Der zweite "
+                    + "Heizkreis wird nicht genutzt. Nur mit „Alle Nachrichten empfangen“ zu sehen.",
+            0x700, "Gerät der Anlage selbst (kein ISG angeschlossen), der Manager tauscht damit alle 5 s Einstellungen "
+                    + "und Infoblöcke aus. Elster-Name ExternalDevice. Nur mit „Alle Nachrichten empfangen“ zu sehen.");
 
     private static final DateTimeFormatter ZEITPUNKT = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm:ss");
 

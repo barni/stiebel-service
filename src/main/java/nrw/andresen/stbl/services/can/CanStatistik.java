@@ -25,11 +25,14 @@ public class CanStatistik {
     // Last messages kept for the CAN bus page: with all messages received about 2 minutes of the bus
     public static final int RAHMEN_MAX = 1000;
 
+    // 0x100 and 0x601 named after the Elster module list (FES_COMFORT, Mixer), not confirmed on this installation
     private static final Map<Integer, String> KNOTEN_NAMEN = Map.of(
+            0x100, "Bedienteil?",
             0x180, "Kessel",
             0x480, "Manager",
             0x500, "Wärmepumpe",
-            0x514, "Heizmodul");
+            0x514, "Heizmodul",
+            0x601, "Mischer HK2");
 
     private final AtomicLong empfangen = new AtomicLong();
     private final AtomicLong antworten = new AtomicLong();

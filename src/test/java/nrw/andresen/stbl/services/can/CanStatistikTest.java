@@ -93,6 +93,8 @@ public class CanStatistikTest {
     @Test
     public void testKnotenName() {
         assertEquals("0x180 Kessel", CanStatistik.knotenName(0x180));
+        assertEquals("0x601 Mischer HK2", CanStatistik.knotenName(0x601));
+        assertEquals("0x700", CanStatistik.knotenName(0x700));
         assertEquals("0x700", CanStatistik.knotenName(0x700));
     }
 
