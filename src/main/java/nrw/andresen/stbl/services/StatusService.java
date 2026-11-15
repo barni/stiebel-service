@@ -262,6 +262,15 @@ public class StatusService {
                 .row("Vorlauf", "°C", 1, "VorlaufIstTemp", wp::getVorlaufIstTemp)
                 .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
+                .row("Vorlauf-Soll", "°C", 1, "VorlaufSoll", wp::getVorlaufSoll)
+                .info("Soll-Vorlauftemperatur, die der Heizungsregler (0x180) alle 10 s an die Wärmepumpe schreibt "
+                        + "(HILFSKESSELSOLL, 0x01D7), abgefragt bei der Wärmepumpe (0x500). Gedeutet aus dem Busverkehr, "
+                        + "nicht von Stiebel bestätigt. Liegt der Vorlauf deutlich darüber, regelt die Wärmepumpe "
+                        + "auf Mindestleistung und schaltet bald ab.")
+                .row("Anforderung", "", 0, "Anforderung", wp::getAnforderung)
+                .info("Anforderung, die der Manager alle 10 s an die Wärmepumpe schreibt (SPEICHERBEDARF, 0x005F), "
+                        + "abgefragt bei der Wärmepumpe (0x500). Am 15.11.2026 0 bei Stillstand und 512 beim Heizen, "
+                        + "andere Werte sind noch unbekannt.")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
