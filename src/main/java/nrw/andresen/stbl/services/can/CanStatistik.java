@@ -25,9 +25,10 @@ public class CanStatistik {
     // Last messages kept for the CAN bus page: with all messages received about 2 minutes of the bus
     public static final int RAHMEN_MAX = 1000;
 
-    // 0x100 and 0x601 named after the Elster module list (FES_COMFORT, Mixer), not confirmed on this installation
+    // 0x100 gets the time from the manager every minute like a display (Elster: FES_COMFORT); 0x601 named after the
+    // Elster module list (Mixer), not confirmed on this installation
     private static final Map<Integer, String> KNOTEN_NAMEN = Map.of(
-            0x100, "Bedienteil?",
+            0x100, "Bedienteil",
             0x180, "Kessel",
             0x480, "Manager",
             0x500, "Wärmepumpe",
@@ -125,10 +126,10 @@ public class CanStatistik {
     }
 
     /**
-     * Request sent by this service, kept for the CAN bus page
+     * Message of this service handed to the adapter for the bus, kept for the CAN bus page. Not when it is queued:
+     * the adapter sends one message after the other, each after the acknowledge of the one before.
      */
-    public void gesendet(int canId, byte[] daten, Instant zeit) {
-        gesendet(daten.length);
+    public void uebertragen(int canId, byte[] daten, Instant zeit) {
         merken(new Rahmen(zeit, true, canId, daten.clone()));
     }
 

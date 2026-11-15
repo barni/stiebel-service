@@ -146,7 +146,7 @@ public class CanStatistikTest {
         for (int i = 0; i < CanStatistik.RAHMEN_MAX + 5; i++) {
             statistik.empfangen(0x500, daten, START.plusSeconds(i));
         }
-        statistik.gesendet(0x681, daten, START.plusSeconds(500));
+        statistik.uebertragen(0x681, daten, START.plusSeconds(500));
         daten[0] = 0;
         List<CanStatistik.Rahmen> rahmen = statistik.getRahmen();
         assertEquals(CanStatistik.RAHMEN_MAX, rahmen.size());

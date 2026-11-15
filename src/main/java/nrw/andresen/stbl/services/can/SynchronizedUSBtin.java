@@ -37,7 +37,21 @@ public class SynchronizedUSBtin extends USBtin {
     public synchronized void send(CANMessage canmsg) throws USBtinException {
         super.send(canmsg);
         if (statistik != null) {
-            statistik.gesendet(canmsg.getId(), canmsg.getData(), Instant.now());
+            statistik.gesendet(canmsg.getData().length);
+        }
+    }
+
+    /**
+     * Writes the first message of the FIFO to the adapter: right away if the FIFO was empty, otherwise after the
+     * acknowledge of the message before, and again after an error. Only then it is kept for the CAN bus page with
+     * the time it really went out.
+     */
+    @Override
+    protected void sendFirstTXFifoMessage() throws USBtinException {
+        super.sendFirstTXFifoMessage();
+        if (statistik != null && !fifoTX.isEmpty()) {
+            CANMessage erste = fifoTX.getFirst();
+            statistik.uebertragen(erste.getId(), erste.getData(), Instant.now());
         }
     }
 
@@ -68,6 +82,13 @@ public class SynchronizedUSBtin extends USBtin {
         fifoTX.clear();
         setFilter(filter);
         openCANChannel(bitrate, OpenMode.ACTIVE);
+    }
+
+    /**
+     * Serial port without connect, for tests
+     */
+    void setSerialPort(jssc.SerialPort port) {
+        serialPort = port;
     }
 
     int getTransmitFifoSize() {
