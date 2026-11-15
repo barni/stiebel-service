@@ -7,6 +7,7 @@ import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CanBusTest {
@@ -30,5 +31,12 @@ public class CanBusTest {
         assertEquals("Restarting USB, no message received for: 125 s", CanBus.meldungstext(125, 1));
         assertEquals("Restarting USB, no message received for: 125 s (30 restarts since the last message)",
                 CanBus.meldungstext(125, 30));
+    }
+
+    @Test
+    public void testFilter() {
+        // Receiving all: no filter at all
+        assertNull(CanBus.filter(true));
+        assertEquals(1, CanBus.filter(false).length);
     }
 }

@@ -227,10 +227,12 @@ public class StblController {
             try {
                 konfiguration.speichern(werte);
                 logger.info("Configuration file changed on the configuration page: " + werte.keySet());
-                String meldung = KonfigurationSeite.GESPEICHERT;
+                boolean sofort = sofortUebernehmen();
+                String meldung = sofort && !konfiguration.stand().neustartNoetig() ? KonfigurationSeite.SOFORT
+                        : KonfigurationSeite.GESPEICHERT;
                 if (KonfigurationSeite.NEUSTART.equals(eingabe.get("aktion"))) {
                     if (!konfiguration.stand().neustartNoetig()) {
-                        meldung = KonfigurationSeite.UNVERAENDERT;
+                        meldung = sofort ? KonfigurationSeite.SOFORT : KonfigurationSeite.UNVERAENDERT;
                     } else if (Application.neustarten(NEUSTART_VERZOEGERUNG)) {
                         return ResponseEntity.ok(KonfigurationSeite.neustart(gestartet()));
                     }
@@ -244,6 +246,26 @@ public class StblController {
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(konfigurationSeite(eingabe, fehler, null, request));
+    }
+
+    /**
+     * Hands the saved settings that need no restart to the running service
+     *
+     * @return true if one was changed
+     */
+    private boolean sofortUebernehmen() {
+        boolean geaendert = false;
+        for (Konfiguration.Wert wert : konfiguration.stand().werte()) {
+            String name = wert.feld().name();
+            if (Konfiguration.SOFORT.contains(name) && wert.neustartNoetig()) {
+                if (name.equals("can.logall")) {
+                    canBus.setLogall(Boolean.parseBoolean(wert.datei()));
+                }
+                konfiguration.uebernommen(name, wert.datei());
+                geaendert = true;
+            }
+        }
+        return geaendert;
     }
 
     /**
