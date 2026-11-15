@@ -21,12 +21,25 @@ public final class CanBusSeite {
     private static final DateTimeFormatter ZEIT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss").withZone(ZONE);
     private static final DateTimeFormatter UHRZEIT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZONE);
     static final int NEU_LADEN_S = 10;
+    // Messages shown without a choice
+    public static final int ANZAHL_STANDARD = 100;
+    // Receiver of a message to all devices of a group, e.g. 0x579
+    private static final int RUNDRUF = 0x79;
 
     private CanBusSeite() {
     }
 
     public static String render(CanBus.Verbindung v, List<CanBus.Abfrage> abfragen, List<CanStatistik.Rahmen> rahmen,
                                 Instant jetzt) {
+        return render(v, abfragen, rahmen, null, ANZAHL_STANDARD, jetzt);
+    }
+
+    /**
+     * @param knoten only messages from or to this CAN id, null for all
+     * @param anzahl number of messages shown at most
+     */
+    public static String render(CanBus.Verbindung v, List<CanBus.Abfrage> abfragen, List<CanStatistik.Rahmen> rahmen,
+                                Integer knoten, int anzahl, Instant jetzt) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -73,13 +86,15 @@ public final class CanBusSeite {
         }
         html.append("</article>");
 
-        List<List<String>> knoten = new ArrayList<>();
+        List<List<String>> geraete = new ArrayList<>();
         for (CanStatistik.KnotenStatus k : v.knoten()) {
-            knoten.add(List.of(text(k.name()), zahl(k.proMinute(), 0), alter(k.zuletzt(), jetzt)));
+            geraete.add(List.of("<a class=\"nav\" href=\"" + link(k.id(), anzahl) + "\">" + text(k.name()) + "</a>",
+                    zahl(k.proMinute(), 0), alter(k.zuletzt(), jetzt)));
         }
         html.append("<article class=\"card\"><h2>Knoten</h2>")
-                .append(knoten.isEmpty() ? "<p class=\"note\">Noch keine Nachricht empfangen.</p>"
-                        : tabelle(List.of("Gerät", "/min", "Zuletzt"), knoten))
+                .append(geraete.isEmpty() ? "<p class=\"note\">Noch keine Nachricht empfangen.</p>"
+                        : tabelle(List.of("Gerät", "/min", "Zuletzt"), geraete)
+                        + "<p class=\"note\">Ein Klick auf ein Gerät zeigt nur dessen Nachrichten.</p>")
                 .append("</article>");
 
         List<List<String>> werte = new ArrayList<>();
@@ -97,15 +112,30 @@ public final class CanBusSeite {
                 .append("(nicht verfügbar) zählen nicht. Die Einstellungen werden nur stündlich angefragt.</p>")
                 .append("</article>");
 
+        List<CanStatistik.Rahmen> auswahl = auswahl(rahmen, knoten, anzahl);
         List<List<String>> zeilen = new ArrayList<>();
-        for (CanStatistik.Rahmen r : rahmen) {
+        for (CanStatistik.Rahmen r : auswahl) {
             zeilen.add(rahmenzeile(r));
         }
-        html.append("<article class=\"card breit\"><h2>Letzte Nachrichten</h2>")
-                .append(zeilen.isEmpty() ? "<p class=\"note\">Noch keine Nachricht.</p>"
+        html.append("<article class=\"card breit\"><h2>Letzte Nachrichten")
+                .append(knoten == null ? "" : " von und an " + text(CanStatistik.knotenName(knoten)))
+                .append("</h2><p class=\"auswahl\">");
+        if (knoten != null) {
+            html.append("<a class=\"nav\" href=\"").append(link(null, anzahl)).append("\">Alle Geräte</a> · ");
+        }
+        for (int n : List.of(ANZAHL_STANDARD, 300, CanStatistik.RAHMEN_MAX)) {
+            html.append(n == anzahl ? "<b>" + n + "</b>" : "<a class=\"nav\" href=\"" + link(knoten, n) + "\">" + n + "</a>")
+                    .append(n == CanStatistik.RAHMEN_MAX ? "" : " · ");
+        }
+        html.append(" Nachrichten</p>")
+                .append(zeilen.isEmpty() ? "<p class=\"note\">Keine Nachricht.</p>"
                         : tabelle(List.of("Zeit", "", "Von", "An", "Art", "Index", "Wert", "Daten"), zeilen))
-                .append("<p class=\"note\">Die letzten ").append(CanStatistik.RAHMEN_MAX)
-                .append(" Nachrichten, neueste oben. → gesendet, ← empfangen. Der Adapter filtert den Bus: ")
+                .append("<p class=\"note\">").append(zeilen.size()).append(" von ").append(rahmen.size())
+                .append(" gespeicherten Nachrichten")
+                .append(rahmen.size() < 2 ? "" : ", die gespeicherten reichen "
+                        + sekunden(rahmen.get(rahmen.size() - 1).zeit(), rahmen.get(0).zeit()) + " zurück")
+                .append(". Neueste oben, → gesendet, ← empfangen. Der Wert steht bei Antworten und beim Schreiben. ")
+                .append("0x…79 als Empfänger ist ein Rundruf an alle Geräte der Gruppe. Der Adapter filtert den Bus: ")
                 .append("Empfangen werden nur die Antworten an diesen Dienst, außer can.logall ist an.</p></article>")
                 .append("</section><p class=\"note\">Stand ").append(zeit(jetzt)).append(". Als JSON: ")
                 .append("<a class=\"nav\" href=\"verbindung\">verbindung</a>.</p></main></body></html>");
@@ -131,10 +161,60 @@ public final class CanBusSeite {
         String art = art(r.daten());
         boolean mitIndex = r.daten().length >= 3;
         String index = mitIndex ? hex(m.getElsterIndex().getIndex()) + " " + m.getElsterIndex().getName() : "";
-        String wert = m.isResponse() ? m.getValue() : "";
+        int typ = r.daten().length == 0 ? -1 : r.daten()[0] & 0x0F;
+        // Answers and writes carry a value, requests do not
+        String wert = typ == 0 || typ == 2 ? m.getValue() : "";
+        if (wert.equals("PAYLOAD_CORRUPT")) {
+            wert = "";
+        }
+        int an = empfaenger(r.daten());
         return List.of(UHRZEIT.format(r.zeit()), r.gesendet() ? "→" : "←", text(CanStatistik.knotenName(r.id())),
-                r.daten().length >= 2 ? text(CanStatistik.knotenName(m.getReceiverId())) : "", art, text(index),
-                text(wert), "<code>" + ElsterMessage.bytesToHex(r.daten()) + "</code>");
+                an < 0 ? "" : text(empfaengerName(an)), art, text(index), text(wert),
+                "<code>" + ElsterMessage.bytesToHex(r.daten()) + "</code>");
+    }
+
+    /**
+     * CAN id of the receiver from the first two data bytes, -1 if the message is too short
+     */
+    static int empfaenger(byte[] daten) {
+        return daten.length < 2 ? -1 : ElsterMessage.convertReceiverID(daten);
+    }
+
+    static String empfaengerName(int id) {
+        return (id & 0x7F) == RUNDRUF ? String.format("0x%03X Rundruf", id) : CanStatistik.knotenName(id);
+    }
+
+    /**
+     * The newest messages from or to the node, at most anzahl
+     */
+    static List<CanStatistik.Rahmen> auswahl(List<CanStatistik.Rahmen> rahmen, Integer knoten, int anzahl) {
+        return rahmen.stream().filter(r -> knoten == null || r.id() == knoten || empfaenger(r.daten()) == knoten)
+                .limit(anzahl).toList();
+    }
+
+    /**
+     * CAN id from the address line, e.g. 0x700 or 700
+     *
+     * @throws IllegalArgumentException if it is no CAN id
+     */
+    public static Integer knoten(String wert) {
+        if (wert == null || wert.isBlank()) {
+            return null;
+        }
+        String hex = wert.trim().toLowerCase(Locale.ROOT).replaceFirst("^0x", "");
+        if (!hex.matches("[0-9a-f]{1,3}")) {
+            throw new IllegalArgumentException("Keine CAN-ID: " + wert);
+        }
+        return Integer.parseInt(hex, 16);
+    }
+
+    public static int anzahl(int wert) {
+        return Math.max(1, Math.min(CanStatistik.RAHMEN_MAX, wert));
+    }
+
+    private static String link(Integer knoten, int anzahl) {
+        return "canbus?" + (knoten == null ? "" : "knoten=" + String.format("0x%03X", knoten) + "&amp;")
+                + "anzahl=" + anzahl;
     }
 
     /**
@@ -220,5 +300,6 @@ public final class CanBusSeite {
             .tbl td { white-space: nowrap; }
             .tbl code { font-size: 12px; color: var(--muted); }
             .alt { color: var(--stale); font-weight: 600; }
+            .auswahl { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
             """;
 }

@@ -111,4 +111,61 @@ public class CanBusSeiteTest {
         assertTrue(KonfigurationSeite.render(new Konfiguration.Stand(List.of(), java.nio.file.Path.of("application.properties"), null), java.util.Map.of(),
                 java.util.Map.of(), null, null, null).contains("href=\"canbus\">CAN-Bus</a>"));
     }
+
+    private static byte[] hex(String hex) {
+        return ElsterMessage.hexStringToByteArray(hex);
+    }
+
+    /**
+     * Messages from the bus on 2026-11-15
+     */
+    @Test
+    public void testSchreibenUndRundruf() {
+        // The boiler sends the outdoor temperature 10.2 °C to all devices of group 0x500
+        List<String> zeile = CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, false, 0x180,
+                hex("A0790C00660000")));
+        assertEquals("0x579 Rundruf", zeile.get(3));
+        assertEquals("Schreiben", zeile.get(4));
+        assertTrue(zeile.get(5).startsWith("0x000C "));
+        assertTrue(zeile.get(6).matches("10[,.]2"));
+        // Write of the manager to the heat pump with a long index
+        zeile = CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, false, 0x480, hex("A000FA02CA00F8")));
+        assertEquals("0x500 Wärmepumpe", zeile.get(3));
+        assertEquals("248", zeile.get(6));
+        // A request has no value
+        assertEquals("", CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, false, 0x480,
+                hex("A100FA01D60000"))).get(6));
+    }
+
+    @Test
+    public void testAuswahl() {
+        List<CanStatistik.Rahmen> rahmen = List.of(
+                new CanStatistik.Rahmen(JETZT, false, 0x700, hex("9200FAFE1D0002")),
+                new CanStatistik.Rahmen(JETZT, false, 0x480, hex("E000FAFE1D0000")),
+                new CanStatistik.Rahmen(JETZT, false, 0x180, hex("A0790C00660000")),
+                new CanStatistik.Rahmen(JETZT, false, 0x480, hex("A100FA01D60000")));
+        // From 0x700 and to 0x700
+        assertEquals(rahmen.subList(0, 2), CanBusSeite.auswahl(rahmen, 0x700, 10));
+        assertEquals(rahmen.subList(0, 3), CanBusSeite.auswahl(rahmen, null, 3));
+        assertEquals(List.of(rahmen.get(2)), CanBusSeite.auswahl(rahmen, 0x579, 10));
+
+        String html = CanBusSeite.render(verbindung(true), List.of(), rahmen, 0x700, 100, JETZT);
+        assertTrue(html.contains("Letzte Nachrichten von und an 0x700"));
+        assertTrue(html.contains("href=\"canbus?anzahl=100\">Alle Geräte</a>"));
+        assertTrue(html.contains("href=\"canbus?knoten=0x500&amp;anzahl=100\">0x500 Wärmepumpe</a>"));
+        assertTrue(html.contains("2 von 4 gespeicherten Nachrichten"));
+    }
+
+    @Test
+    public void testParameter() {
+        assertEquals(0x700, CanBusSeite.knoten("0x700"));
+        assertEquals(0x700, CanBusSeite.knoten(" 700 "));
+        assertEquals(null, CanBusSeite.knoten(""));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> CanBusSeite.knoten("<script>"));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> CanBusSeite.knoten("0x1000"));
+        assertEquals(1, CanBusSeite.anzahl(-5));
+        assertEquals(CanStatistik.RAHMEN_MAX, CanBusSeite.anzahl(1_000_000));
+    }
 }
