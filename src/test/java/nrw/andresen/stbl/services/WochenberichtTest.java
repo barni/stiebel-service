@@ -77,6 +77,17 @@ public class WochenberichtTest {
         assertEquals(35, ueblich.starts(), 1e-9);
         assertEquals(49, ueblich.laufzeitH(), 1e-9);
         assertEquals(3.5, ueblich.abtauungen(), 1e-9);
+        // Old days have no electricity: no usual electricity and efficiency
+        assertNull(ueblich.stromKWh());
+        assertNull(ueblich.arbeitszahl());
+        // Efficiency 30 ÷ 6 = 5 from the one day with electricity, so 25 kWh heat need 5 kWh on each day
+        List<WaermebedarfVergleich.Tag> mitStrom = List.of(
+                new WaermebedarfVergleich.Tag(LocalDate.of(2025, 10, 1), 14.5, 6, 8, 30, 8.5, 1, 6),
+                frueher.get(1));
+        ueblich = Wochenbericht.ueblich(tage(SONNTAG, 15.0, 4, 6, 20, 4, 1), mitStrom);
+        assertEquals(175, ueblich.waermeKWh(), 1e-9);
+        assertEquals(35, ueblich.stromKWh(), 1e-9);
+        assertEquals(5, ueblich.arbeitszahl(), 1e-9);
         // A day without outdoor temperature or without similar days: no comparison
         assertNull(Wochenbericht.ueblich(tage(SONNTAG, null, 4, 6, 20, 4, 1), frueher));
         assertNull(Wochenbericht.ueblich(tage(SONNTAG, 30.0, 4, 6, 20, 4, 1), frueher));
@@ -96,9 +107,9 @@ public class WochenberichtTest {
     public void testSatz() {
         assertEquals("5,4 K kälter als in den 7 Tagen davor, weniger Starts als bei dieser Temperatur üblich (28 statt 40), "
                         + "Heizungsdruck stabil, keine neuen Einträge in der Fehlerliste.",
-                Wochenbericht.satz(bericht(new Wochenbericht.Ueblich(150, 40, 45, 5), 0)));
+                Wochenbericht.satz(bericht(new Wochenbericht.Ueblich(150, 40, 45, 5, 30.0), 0)));
         // Within 20 % of the usual number of starts; without usual values the part is left out
-        assertTrue(Wochenbericht.satz(bericht(new Wochenbericht.Ueblich(150, 30, 45, 5), 2))
+        assertTrue(Wochenbericht.satz(bericht(new Wochenbericht.Ueblich(150, 30, 45, 5, null), 2))
                 .contains("Starts wie bei dieser Temperatur üblich, Heizungsdruck stabil, 2 neue Einträge"));
         assertFalse(Wochenbericht.satz(bericht(null, 1)).contains("Starts"));
         assertTrue(Wochenbericht.satz(bericht(null, 1)).endsWith("1 neuer Eintrag in der Fehlerliste."));
@@ -106,11 +117,13 @@ public class WochenberichtTest {
 
     @Test
     public void testTextUndSeite() {
-        Wochenbericht.Bericht bericht = bericht(new Wochenbericht.Ueblich(150, 40, 45, 5), 0);
+        Wochenbericht.Bericht bericht = bericht(new Wochenbericht.Ueblich(150, 40, 45, 5, 30.0), 0);
         String text = Wochenbericht.text(bericht);
         assertTrue(text.startsWith("Letzte 7 Tage: 04.10.–10.10.2026\n\n5,4 K kälter"));
         assertTrue(text.contains("- Wärme kWh: 140 (35 / 150)\n"));
         assertTrue(text.contains("- Starts: 28 (7 / 40)\n"));
+        assertTrue(text.contains(" / 30,0)\n"));
+        assertTrue(text.contains(" / 5,0)\n"));
         assertTrue(text.contains("- Heizungsdruck bar: 1,54 → 1,56 (1,54 → 1,47 / –)\n"));
         assertTrue(text.contains("- So. 04.10. | 15,0 | 20 | 4,0 | 4 | 1,5 | 1\n"));
 

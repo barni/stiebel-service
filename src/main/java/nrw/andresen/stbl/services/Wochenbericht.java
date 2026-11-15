@@ -73,8 +73,14 @@ public class Wochenbericht {
     /**
      * What the same 7 days usually need: for each day the mean of the earlier days with a similar outdoor
      * temperature, added up
+     *
+     * @param stromKWh null if one of the days has no similar day with electricity
      */
-    public record Ueblich(double waermeKWh, double starts, double laufzeitH, double abtauungen) {
+    public record Ueblich(double waermeKWh, double starts, double laufzeitH, double abtauungen, Double stromKWh) {
+
+        public Double arbeitszahl() {
+            return stromKWh != null && stromKWh > 0 ? waermeKWh / stromKWh : null;
+        }
 
         public Double laufzeitProStart() {
             return starts > 0 ? laufzeitH / starts : null;
@@ -202,6 +208,7 @@ public class Wochenbericht {
         double starts = 0;
         double laufzeit = 0;
         double abtauungen = 0;
+        Double strom = 0d;
         for (Tagesuebersicht.Tag tag : tage) {
             Tagesuebersicht.Vergleichstage gleich = tag.aussentemp() == null ? null
                     : Tagesuebersicht.aehnlicheTage(frueher, tag.datum(), tag.aussentemp());
@@ -212,8 +219,9 @@ public class Wochenbericht {
             starts += gleich.starts();
             laufzeit += gleich.laufzeitH();
             abtauungen += gleich.abtauungen();
+            strom = strom == null || gleich.stromKWh() == null ? null : Double.valueOf(strom + gleich.stromKWh());
         }
-        return new Ueblich(waerme, starts, laufzeit, abtauungen);
+        return new Ueblich(waerme, starts, laufzeit, abtauungen, strom);
     }
 
     /**
@@ -265,8 +273,10 @@ public class Wochenbericht {
         zeilen.add(List.of("Außentemperatur °C", zahl(w.aussentemp(), 1), zahl(v.aussentemp(), 1), "gleich"));
         zeilen.add(List.of("Wärme kWh", zahl(w.waermeKWh(), 0), zahl(v.waermeKWh(), 0),
                 u == null ? "–" : zahl(u.waermeKWh(), 0)));
-        zeilen.add(List.of("Strom kWh", zahl(w.stromKWh(), 1), zahl(v.stromKWh(), 1), "–"));
-        zeilen.add(List.of("Arbeitszahl", zahl(w.arbeitszahl(), 1), zahl(v.arbeitszahl(), 1), "–"));
+        zeilen.add(List.of("Strom kWh", zahl(w.stromKWh(), 1), zahl(v.stromKWh(), 1),
+                u == null ? "–" : zahl(u.stromKWh(), 1)));
+        zeilen.add(List.of("Arbeitszahl", zahl(w.arbeitszahl(), 1), zahl(v.arbeitszahl(), 1),
+                u == null ? "–" : zahl(u.arbeitszahl(), 1)));
         zeilen.add(List.of("Laufzeit h", zahl(w.laufzeitH(), 1), zahl(v.laufzeitH(), 1),
                 u == null ? "–" : zahl(u.laufzeitH(), 1)));
         zeilen.add(List.of("Starts", String.valueOf(w.starts()), String.valueOf(v.starts()),
@@ -331,7 +341,8 @@ public class Wochenbericht {
                 .append(mailTabelle(List.of("", "Letzte 7 Tage\n" + zeitraumKurz(b.woche()),
                         "7 Tage davor\n" + zeitraumKurz(b.vorwoche()), "Üblich"), zeilen(b)))
                 .append("<p style=\"margin:6px 0 20px;font-size:12px;color:#69726e\">Üblich: für jeden der 7 Tage das "
-                        + "Mittel der früheren Tage mit ähnlicher Außentemperatur, aufsummiert.</p>")
+                        + "Mittel der früheren Tage mit ähnlicher Außentemperatur, aufsummiert. Die übliche Arbeitszahl "
+                        + "stammt nur aus den Tagen mit Stromwert.</p>")
                 .append(ueberschrift("Die Tage"))
                 .append(mailTabelle(List.of("Tag", "Außen °C", "Wärme kWh", "Strom kWh", "Starts", "h je Start",
                         "Abtauungen"), tageszeilen(b.woche())))
