@@ -43,6 +43,8 @@ public class CanBus {
     private static final short VALUE_NOT_AVAILABLE = (short) 0x8000;
     // The USB connection is restarted if no answer arrived for this time
     private static final Duration MAX_STILLE = Duration.ofSeconds(120);
+    // While the adapter stays silent, alerts about its restarts are at least this far apart
+    static final Duration MELDUNG_ABSTAND = Duration.ofHours(1);
 
     private final Logger logger = LoggerFactory.getLogger(CanBus.class);
     @Autowired
@@ -55,6 +57,9 @@ public class CanBus {
     private final Set<Short> angefragt = ConcurrentHashMap.newKeySet();
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Instant letzteAntwort;
+    // Time of the last alert about a USB restart and the restarts since then, see checkUSBisAlive
+    private Instant letzteMeldung;
+    private int neustartsSeitMeldung;
     // Messages on the bus and state of the USBtin adapter, kept over USB restarts
     private final CanStatistik canStatistik = new CanStatistik();
     // Fault list of the WPM, its fields are kept apart from the other values
@@ -241,15 +246,23 @@ public class CanBus {
     }
 
     /**
-     * Restarts the USB connection if no answer was received for 2 minutes, checked every 30 s
+     * Restarts the USB connection if no answer was received for 2 minutes, checked every 30 s. After a restart the
+     * adapter gets the same 2 minutes again. While it stays silent, an alert is sent for the first restart and then
+     * once an hour: an adapter that was pulled off would otherwise send a mail and a push message every 30 s.
      */
     @Scheduled(fixedRate = 30000)
     public synchronized void checkUSBisAlive() {
-        long sekunden = Duration.between(letzteAntwort, Instant.now()).toSeconds();
+        Instant jetzt = Instant.now();
+        long sekunden = Duration.between(letzteAntwort, jetzt).toSeconds();
         if (sekunden > MAX_STILLE.toSeconds()) {
             logger.error("Restarting USB, no message received for: " + sekunden + " s");
-            emailService.sendAlert("Restarting USB", "Restarting USB, no message received for: " + sekunden + " s");
-            canStatistik.neustart(Instant.now());
+            neustartsSeitMeldung++;
+            if (meldungFaellig(letzteMeldung, jetzt)) {
+                emailService.sendAlert("Restarting USB", meldungstext(sekunden, neustartsSeitMeldung));
+                letzteMeldung = jetzt;
+                neustartsSeitMeldung = 0;
+            }
+            canStatistik.neustart(jetzt);
             stopUsbTin();
             try {
                 Thread.sleep(100);
@@ -257,7 +270,20 @@ public class CanBus {
                 Thread.currentThread().interrupt();
             }
             startUsbTin();
+            letzteAntwort = Instant.now();
         }
+    }
+
+    /**
+     * True if no alert about a USB restart was sent within the last hour
+     */
+    static boolean meldungFaellig(Instant letzteMeldung, Instant jetzt) {
+        return letzteMeldung == null || !jetzt.isBefore(letzteMeldung.plus(MELDUNG_ABSTAND));
+    }
+
+    static String meldungstext(long sekunden, int neustarts) {
+        String text = "Restarting USB, no message received for: " + sekunden + " s";
+        return neustarts > 1 ? text + " (" + neustarts + " restarts since the last message)" : text;
     }
 
     /**

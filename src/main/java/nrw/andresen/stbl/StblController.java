@@ -241,7 +241,7 @@ public class StblController {
      */
     @PostMapping(value = "/konfiguration/test")
     public ResponseEntity<Void> konfigurationTest() {
-        emailService.sendAlert("Wärmepumpe: Testnachricht", "Testnachricht von der Konfigurationsseite. Kommt sie "
+        emailService.sendAlertSofort("Wärmepumpe: Testnachricht", "Testnachricht von der Konfigurationsseite. Kommt sie "
                 + "an, kommen auch die Warnungen an.");
         List<String> teile = new ArrayList<>();
         teile.add(!emailService.isKonfiguriert() ? "Mail nicht eingerichtet"
