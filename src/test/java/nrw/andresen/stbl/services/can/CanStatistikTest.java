@@ -95,7 +95,7 @@ public class CanStatistikTest {
         assertEquals("0x180 Kessel", CanStatistik.knotenName(0x180));
         assertEquals("0x601 Mischer HK2", CanStatistik.knotenName(0x601));
         assertEquals("0x700", CanStatistik.knotenName(0x700));
-        assertEquals("0x700", CanStatistik.knotenName(0x700));
+        assertEquals("0x681 stbl-service", CanStatistik.knotenName(nrw.andresen.stbl.services.CanBus.CAN_SENDER_ID));
     }
 
     @Test

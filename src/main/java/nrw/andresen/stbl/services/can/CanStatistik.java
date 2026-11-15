@@ -32,7 +32,9 @@ public class CanStatistik {
             0x480, "Manager",
             0x500, "Wärmepumpe",
             0x514, "Heizmodul",
-            0x601, "Mischer HK2");
+            0x601, "Mischer HK2",
+            // This service, CanBus.CAN_SENDER_ID
+            0x681, "stbl-service");
 
     private final AtomicLong empfangen = new AtomicLong();
     private final AtomicLong antworten = new AtomicLong();

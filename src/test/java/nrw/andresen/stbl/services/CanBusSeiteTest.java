@@ -54,7 +54,7 @@ public class CanBusSeiteTest {
         List<String> zeile = CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, false, 0x500, antwort()));
         assertEquals("←", zeile.get(1));
         assertEquals("0x500 Wärmepumpe", zeile.get(2));
-        assertEquals("0x681", zeile.get(3));
+        assertEquals("0x681 stbl-service", zeile.get(3));
         assertEquals("Antwort", zeile.get(4));
         assertTrue(zeile.get(5).startsWith("0x000C "));
         assertTrue(zeile.get(7).contains(ElsterMessage.bytesToHex(antwort())));
