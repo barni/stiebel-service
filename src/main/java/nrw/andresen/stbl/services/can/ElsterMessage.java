@@ -124,6 +124,13 @@ public class ElsterMessage  {
 
     }
 
+    /**
+     * Write of a value, e.g. the manager to the heat pump
+     */
+    public boolean isWrite() {
+        return internalMessage.getData().length > 0 && (internalMessage.getData()[0] & 0x0F) == 0;
+    }
+
     public Boolean isResponse(){
         //2te Digit 2 heißt Antwort
         return internalMessage.getData().length > 0 && (internalMessage.getData()[0] & 0x0F) == 2;

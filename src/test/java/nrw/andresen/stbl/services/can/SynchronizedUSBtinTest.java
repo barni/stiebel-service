@@ -46,5 +46,8 @@ public class SynchronizedUSBtinTest {
         assertEquals(2, usbtin.getTransmitFifoSize());
         assertEquals(1, statistik.getRahmen().size());
         assertEquals((byte) 0xD6, statistik.getRahmen().get(0).daten()[4]);
+        // After an error the library writes the same message again, it is kept only once
+        usbtin.sendFirstTXFifoMessage();
+        assertEquals(1, statistik.getRahmen().size());
     }
 }

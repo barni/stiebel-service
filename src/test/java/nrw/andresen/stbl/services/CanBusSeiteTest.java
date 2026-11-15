@@ -47,6 +47,18 @@ public class CanBusSeiteTest {
         assertTrue(new CanBus.Abfrage((short) 1, "A", "1", JETZT.minusSeconds(40), JETZT.minusSeconds(60))
                 .offen(JETZT));
         assertTrue(new CanBus.Abfrage((short) 1, "A", null, JETZT.minusSeconds(40), null).offen(JETZT));
+        // Requested every 20 s and only answered with 0x8000: the last request is young, the one before counts
+        assertTrue(new CanBus.Abfrage((short) 1, "A", null, JETZT.minusSeconds(10), null, JETZT.minusSeconds(30),
+                false).offen(JETZT));
+        assertTrue(new CanBus.Abfrage((short) 1, "A", "1", JETZT.minusSeconds(1), JETZT.minusSeconds(60),
+                JETZT.minusSeconds(21), false).offen(JETZT));
+        // The answer to the request before came, the one to the last request is still on its way
+        assertFalse(new CanBus.Abfrage((short) 1, "A", "1", JETZT.minusSeconds(1), JETZT.minusSeconds(20),
+                JETZT.minusSeconds(21), false).offen(JETZT));
+        assertFalse(new CanBus.Abfrage((short) 1, "A", "1", JETZT.minusSeconds(10), JETZT.minusSeconds(29),
+                JETZT.minusSeconds(30), false).offen(JETZT));
+        // A value read along is never open
+        assertFalse(new CanBus.Abfrage((short) 1, "A", null, null, null, null, true).offen(JETZT));
     }
 
     @Test
@@ -91,6 +103,8 @@ public class CanBusSeiteTest {
         assertTrue(html.contains("href=\"konfiguration\""));
         assertTrue(html.contains("http-equiv=\"refresh\""));
         assertTrue(html.contains("<td>0x000C</td><td>AUSSENTEMP</td>"));
+        assertTrue(CanBusSeite.render(verbindung(true), List.of(new CanBus.Abfrage((short) 0x5F, "SPEICHERBEDARF",
+                "512", null, JETZT, null, true)), List.of(), JETZT).contains("<td>512</td><td>mitgelesen</td>"));
         assertTrue(html.contains("class=\"alt\""));
         assertTrue(html.contains("4,2 %"));
         // Error text is escaped
