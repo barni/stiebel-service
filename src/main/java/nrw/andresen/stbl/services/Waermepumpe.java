@@ -336,8 +336,9 @@ public class Waermepumpe {
     }
 
     /**
-     * Flow setpoint the heating controller 0x180 writes to the heat pump every 10 s (HILFSKESSELSOLL), seen on the
-     * bus on 2026-11-15
+     * Auxiliary boiler setpoint the heating controller 0x180 writes to the heat pump every 10 s (HILFSKESSELSOLL).
+     * It follows the heating curve but is not the flow setpoint the heat pump controls to: that was about 33 degC on
+     * 2026-11-16 while this was 26.5 degC. Kept under its first name VorlaufSoll in InfluxDB.
      */
     public ValueContainer<Double> getVorlaufSoll() throws Exception {
         return getScaledValue(HILFSKESSELSOLL, 10);
@@ -415,8 +416,9 @@ public class Waermepumpe {
     }
 
     /**
-     * Controller integral the manager writes to the heat pump every 10 s (0x0917), down to -1000 while the flow
-     * is above its setpoint
+     * Controller integral the manager writes to the heat pump every 10 s (0x0917). It rises while the flow is above
+     * about 33 degC and falls below. Around -1000 the compressor starts at full power, from about 0 it runs at its
+     * lowest speed and around +900 to +1000 it stops (2026-11-16, 8 degC outside).
      */
     public ValueContainer<Double> getRegelIntegral() throws KeinMesswert {
         return mitgelesenerWert(REGEL_INTEGRAL, 1);

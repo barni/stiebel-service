@@ -18,8 +18,9 @@ public final class IndexBeschreibung {
             entry((short) 0x01D6, "Vorlauftemperatur der Wärmepumpe in °C, nur in Schritten von etwa 1,1 K."),
             entry((short) 0x0016, "Rücklauftemperatur in °C, nur in Schritten von etwa 1,1 K. Der Kessel (0x180) misst "
                     + "an einem eigenen Fühler und zeigt oft 1 bis 2 K weniger."),
-            entry((short) 0x01D7, "Soll-Vorlauftemperatur aus der Heizkurve in °C. Der Heizungsregler (0x180) schreibt "
-                    + "sie alle 10 s an die Wärmepumpe (gedeutet, Name: Hilfskessel-Soll)."),
+            entry((short) 0x01D7, "Hilfskessel-Soll in °C. Der Heizungsregler (0x180) schreibt ihn alle 10 s an die "
+                    + "Wärmepumpe, er folgt der Heizkurve. Nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: der "
+                    + "lag am 16.11.2026 bei etwa 33 °C, dieser Wert bei 26,5 °C."),
             entry((short) 0x005F, "Anforderung des Managers an die Wärmepumpe, alle 10 s: 0 im Stillstand, 512 beim "
                     + "Heizen (gedeutet). Die Wärmepumpe beantwortet eine Abfrage nur mit 0x8000, deshalb mitgelesen."),
             entry((short) 0x0674, "Wasserdruck im Heizkreis in bar. Normal etwa 1,4 bis 2,3 bar, zulässig 3 bar."),
@@ -104,7 +105,9 @@ public final class IndexBeschreibung {
                     + "unbekannt): 100 im Stillstand. Beim Heizen 70 bis 72 bei 9,0 l/min, 66 bis 67 bei 11,1 l/min, "
                     + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
-                    + "(gedeutet). Negativ, wenn der Vorlauf über dem Soll liegt, bis -1000."),
+                    + "(gedeutet). Steigt, solange der Vorlauf über etwa 33 °C liegt, fällt darunter. Bei etwa -1000 "
+                    + "Start und volle Leistung, ab etwa 0 kleinste Drehzahl, bei etwa +900 bis +1000 Stopp "
+                    + "(16.11.2026)."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 23, etwa 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
             entry((short) 0x07A8, "Wärmepumpe an Manager: 8 im Stillstand, 24 beim Heizen. Vermutlich Statusbits, noch "

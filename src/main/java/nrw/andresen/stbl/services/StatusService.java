@@ -269,11 +269,11 @@ public class StatusService {
                 .row("Vorlauf", "°C", 1, "VorlaufIstTemp", wp::getVorlaufIstTemp)
                 .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
-                .row("Vorlauf-Soll", "°C", 1, "VorlaufSoll", wp::getVorlaufSoll)
-                .info("Soll-Vorlauftemperatur, die der Heizungsregler (0x180) alle 10 s an die Wärmepumpe schreibt "
-                        + "(HILFSKESSELSOLL, 0x01D7), abgefragt bei der Wärmepumpe (0x500). Gedeutet aus dem Busverkehr, "
-                        + "nicht von Stiebel bestätigt. Liegt der Vorlauf deutlich darüber, regelt die Wärmepumpe "
-                        + "auf Mindestleistung und schaltet bald ab.")
+                .row("Hilfskessel-Soll (0x01D7)", "°C", 1, "VorlaufSoll", wp::getVorlaufSoll)
+                .info("Temperatur, die der Heizungsregler (0x180) alle 10 s an die Wärmepumpe schreibt "
+                        + "(HILFSKESSELSOLL, 0x01D7), abgefragt bei der Wärmepumpe (0x500). Folgt der Heizkurve, ist aber "
+                        + "nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: Am 16.11.2026 lag dieser bei etwa "
+                        + "33 °C, gut 6 K über diesem Wert. Gespeichert als VorlaufSoll.")
                 .row("Anforderung", "", 0, "Anforderung", wp::getAnforderung)
                 .info("Anforderung, die der Manager alle 10 s an die Wärmepumpe schreibt (SPEICHERBEDARF, 0x005F). "
                         + "Die Wärmepumpe beantwortet keine Abfrage danach, der Wert wird deshalb auf dem Bus "
@@ -293,7 +293,9 @@ public class StatusService {
                         + "Umwälzpumpe: 100 im Stillstand, beim Heizen 64 bis 72. Je kleiner, desto mehr Durchfluss.")
                 .row("Regler-Integral (Test)", "", 0, "RegelIntegral", wp::getRegelIntegral)
                 .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
-                        + "Negativ, wenn der Vorlauf über dem Soll liegt, am 15.11.2026 bis -1000.")
+                        + "Steigt, solange der Vorlauf über etwa 33 °C liegt, und fällt darunter. Bei etwa -1000 startet "
+                        + "der Verdichter und läuft mit voller Leistung, ab etwa 0 nur noch mit kleinster Drehzahl, bei "
+                        + "etwa +900 bis +1000 stoppt er (beobachtet am 16.11.2026 bei 8 °C).")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
