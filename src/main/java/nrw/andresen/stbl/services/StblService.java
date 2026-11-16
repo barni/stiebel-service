@@ -205,6 +205,15 @@ public class StblService {
             addPoint(points, "AussentempWPM", wp::getAussentempWpm, MAX_AGE_20);
             addPoint(points, "RuecklaufWPM", wp::getRuecklaufWpm, MAX_AGE_20);
             addPoint(points, "HeizkreisIstWPM", wp::getHeizkreisIstWpm, MAX_AGE_20);
+            addPoint(points, "VorlaufSollWPM", wp::getVorlaufSollWpm, MAX_AGE_20);
+            addPoint(points, "WaermeleistungWPM", wp::getWaermeleistungWpm, MAX_AGE_20);
+            addPoint(points, "WaermeertragTagWWPM", () -> wp.getDecimalValue(ERTRAG_TAG_W), MAX_AGE_60);
+            addPoint(points, "HzkPumpe", () -> wp.getDecimalValue(HZK_PUMPE), MAX_AGE_20);
+            addPoint(points, "Roh_Pumpenstatus", () -> wp.getDecimalValue(PUMPENSTATUS), MAX_AGE_20);
+            addPoint(points, "Roh_HeizkreisStatus", () -> wp.getDecimalValue(HEIZKREIS_STATUS), MAX_AGE_20);
+            addPoint(points, "Roh_WpStatus", () -> wp.getDecimalValue(WP_STATUS), MAX_AGE_60);
+            addPoint(points, "Sommerbetrieb", () -> wp.getDecimalValue(SOMMERBETRIEB), MAX_AGE_60);
+            addPoint(points, "Antilegionellen", () -> wp.getDecimalValue(ANTILEGIONELLEN), MAX_AGE_60);
             addPoint(points, "FrequenzAnforderung", wp::getFrequenzAnforderung, MAX_AGE_20);
             addPoint(points, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl, MAX_AGE_20);
             addPoint(points, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp, MAX_AGE_20);

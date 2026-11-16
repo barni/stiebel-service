@@ -63,6 +63,17 @@ public class ElsterTable {
     public static short FEIN_FDF5 = (short)0xfdf5;
     public static short PUMPE_PWM = (short)0xfe1b;
     public static short REGEL_INTEGRAL = (short)0x0917;
+    // Answered on a WPL17 by the heating controller 0x180 or the manager 0x480 according to ha-stiebel-control (CAN-B),
+    // requested here to test whether they answer on CAN-A too (2026-11-16)
+    public static short VORLAUFSOLLTEMP = (short)0x0004;
+    public static short ERTRAG_AKT = (short)0x01db;
+    public static short ERTRAG_TAG_W = (short)0x01dc;
+    public static short HZK_PUMPE = (short)0x0053;
+    public static short PUMPENSTATUS = (short)0x01d2;
+    public static short HEIZKREIS_STATUS = (short)0x0059;
+    public static short WP_STATUS = (short)0xfdae;
+    public static short SOMMERBETRIEB = (short)0xfdb4;
+    public static short ANTILEGIONELLEN = (short)0x0101;
     // Not decoded yet, stored raw to compare them later
     public static short ROH_FE07 = (short)0xfe07;
     public static short ROH_07A8 = (short)0x07a8;
