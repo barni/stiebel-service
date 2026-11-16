@@ -2,6 +2,7 @@ package nrw.andresen.stbl.services;
 
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterMessage;
+import nrw.andresen.stbl.services.can.IndexBeschreibung;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -121,7 +122,7 @@ public final class CanBusSeite {
             boolean aus = a.mitgelesen() && !v.alleNachrichten();
             String grau = aus ? "<span class=\"aus\">" : "";
             String ende = aus ? "</span>" : "";
-            werte.add(List.of(grau + hex(a.index()) + ende, grau + text(a.name()) + ende,
+            werte.add(List.of(grau + hex(a.index()) + ende, grau + mitBeschreibung(a.index(), a.name()) + ende,
                     grau + text(wert(a.wert())) + ende,
                     !a.mitgelesen() ? alter(a.angefragt(), jetzt) : aus ? grau + "aus" + ende + " " + HINWEIS_KONFIG
                             : "mitgelesen",
@@ -188,7 +189,8 @@ public final class CanBusSeite {
         ElsterMessage m = new ElsterMessage(r.id(), r.daten());
         String art = art(r.daten());
         boolean mitIndex = r.daten().length >= 3;
-        String index = mitIndex ? hex(m.getElsterIndex().getIndex()) + " " + m.getElsterIndex().getName() : "";
+        String index = mitIndex ? hex(m.getElsterIndex().getIndex()) + " "
+                + mitBeschreibung(m.getElsterIndex().getIndex(), m.getElsterIndex().getName()) : "";
         int typ = r.daten().length == 0 ? -1 : r.daten()[0] & 0x0F;
         // Answers and writes carry a value, requests do not
         String wert = typ == 0 || typ == 2 ? m.getValue() : "";
@@ -197,8 +199,21 @@ public final class CanBusSeite {
         }
         int an = empfaenger(r.daten());
         return List.of(UHRZEIT.format(r.zeit()), r.gesendet() ? "→" : "←", text(CanStatistik.knotenName(r.id())),
-                an < 0 ? "" : text(empfaengerName(an)), art, text(index), text(wert),
+                an < 0 ? "" : text(empfaengerName(an)), art, index, text(wert),
                 "<code>" + ElsterMessage.bytesToHex(r.daten()) + "</code>");
+    }
+
+    /**
+     * Escaped name with a small i whose tooltip tells what the index stands for, the name alone if nothing is known
+     */
+    static String mitBeschreibung(short index, String name) {
+        String beschreibung = IndexBeschreibung.beschreibung(index);
+        if (beschreibung == null) {
+            return text(name);
+        }
+        return "<span class=\"calc\" data-tip=\"" + text(beschreibung) + "\" tabindex=\"0\" aria-label=\""
+                + text(name + ": " + beschreibung) + "\">" + text(name) + " <span class=\"info\" aria-hidden=\"true\">i"
+                + "</span></span>";
     }
 
     /**
@@ -334,6 +349,14 @@ public final class CanBusSeite {
               border: 1px solid var(--accent); color: var(--accent); font-size: 10px; font-weight: 700;
               font-style: italic; text-decoration: none; vertical-align: 1px; }
             .info:hover, .info:focus-visible { background: var(--accent); color: var(--card); }
+            .calc { position: relative; cursor: help; outline: none; }
+            .calc:hover::after, .calc:focus::after { content: attr(data-tip); position: absolute; left: 0;
+              top: calc(100% + 4px); z-index: 10; width: max-content; max-width: min(340px, 80vw);
+              white-space: normal; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line);
+              background: var(--card); color: var(--text); font-size: 12px; font-weight: 400; line-height: 1.4;
+              box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
+            .calc:hover .info, .calc:focus .info { background: var(--accent); color: var(--card); }
+            .tbl { padding-bottom: 120px; margin-bottom: -120px; }
             .nav.gewaehlt { padding: 1px 6px; border-radius: 6px; background: var(--on-bg); color: var(--text); }
             """;
 }
