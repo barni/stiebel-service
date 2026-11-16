@@ -302,9 +302,9 @@ public class StatusService {
                 .row("Regler-Integral (Test)", "", 0, "RegelIntegral", wp::getRegelIntegral)
                 .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
                         + "Steigt, solange der Vorlauf über etwa 34 °C liegt, und fällt darunter, umso schneller, je weiter "
-                        + "er davon entfernt ist. Bei etwa -950 bis -1000 startet der Verdichter, dabei springt das "
-                        + "Integral auf 0. Fällt es danach weiter, steigt die Frequenz-Anforderung und der Verdichter "
-                        + "fährt von etwa 24 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +1000 "
+                        + "er davon entfernt ist. Bei -1000 springt das Integral auf 0, 40 bis 60 s später startet "
+                        + "der Verdichter, kurz mit 40 Hz. Fällt es danach weiter, steigt die Frequenz-Anforderung und "
+                        + "der Verdichter fährt von etwa 26 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +1000 "
                         + "stoppt er, und das Integral springt wieder auf 0 (beobachtet am 16.11.2026 bei 8 °C).")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "

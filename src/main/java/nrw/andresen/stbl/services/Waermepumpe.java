@@ -442,8 +442,8 @@ public class Waermepumpe {
 
     /**
      * Controller integral the manager writes to the heat pump every 10 s (0x0917). It rises while the flow is above
-     * about 34 degC and falls below. Around -950 to -1000 the compressor starts and the integral is reset to 0, the
-     * compressor then ramps up from about 24 Hz with the frequency demand; around +1000 it stops and the integral is
+     * about 34 degC and falls below. At -1000 the integral is reset to 0 and the compressor starts 40 to 60 s
+     * later, briefly at 40 Hz, then it ramps up from about 26 Hz with the frequency demand; around +1000 it stops and the integral is
      * reset to 0 again (2026-11-16, 8 degC outside).
      */
     public ValueContainer<Double> getRegelIntegral() throws KeinMesswert {

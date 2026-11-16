@@ -110,9 +110,9 @@ public final class IndexBeschreibung {
                     + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
                     + "(gedeutet). Steigt, solange der feine Vorlauf über etwa 34 °C liegt, fällt darunter, umso schneller, "
-                    + "je größer die Abweichung. Bei etwa -950 bis -1000 Start, dabei "
-                    + "springt es auf 0 und fällt weiter, der Verdichter fährt mit der Frequenz-Anforderung von etwa "
-                    + "24 Hz hoch. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
+                    + "je größer die Abweichung. Bei -1000 Start: es springt auf 0 und fällt weiter, 40 bis "
+                    + "60 s später läuft der Verdichter an, kurz mit 40 Hz, dann ab etwa 26 Hz mit der "
+                    + "Frequenz-Anforderung. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
                     + "noch, bis der Vorlauf unter den Sollwert fällt (16.11.2026)."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 23, etwa 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
