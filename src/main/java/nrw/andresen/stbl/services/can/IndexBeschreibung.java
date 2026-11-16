@@ -43,7 +43,8 @@ public final class IndexBeschreibung {
                     + "jedem Start nach langem Stillstand auf 100 %."),
             entry((short) 0x07F3, "Soll-Überhitzung des Kältemittels am Verdampferaustritt in K."),
             entry((short) 0x07F4, "Ist-Überhitzung des Kältemittels am Verdampferaustritt in K."),
-            entry((short) 0xC281, "Soll-Drehzahl des Lüfters der Außeneinheit in Hz."),
+            entry((short) 0xC281, "Soll-Drehzahl des Lüfters der Außeneinheit in Hz. Im Stillstand steht sie alle 4 Minuten etwa "
+                    + "1 Minute auf 4 Hz, der Lüfter dreht dabei meist nicht (16.11.2026)."),
             entry((short) 0xC283, "Ist-Drehzahl des Lüfters der Außeneinheit in Hz."),
             entry((short) 0x0833, "Leistung des Lüfters der Außeneinheit in %, etwa 7,5 % je Hz."),
             entry((short) 0x06B1, "Spannung am Inverter in V. Zeigt etwa 11 V weniger als am Hauszähler."),
@@ -107,7 +108,7 @@ public final class IndexBeschreibung {
                     + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
                     + "(gedeutet). Steigt, solange der feine Vorlauf über etwa 34 °C liegt, fällt darunter, umso schneller, "
-                    + "je größer die Abweichung (etwa 40 je Minute und Kelvin). Bei etwa -950 bis -1000 Start, dabei "
+                    + "je größer die Abweichung. Bei etwa -950 bis -1000 Start, dabei "
                     + "springt es auf 0 und fällt weiter, der Verdichter fährt mit der Frequenz-Anforderung von etwa "
                     + "24 Hz hoch. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
                     + "noch, bis der Vorlauf unter den Sollwert fällt (16.11.2026)."),
