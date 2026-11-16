@@ -38,7 +38,7 @@ import static nrw.andresen.stbl.services.can.ElsterTable.PUMPE_PWM;
 import static nrw.andresen.stbl.services.can.ElsterTable.REGEL_INTEGRAL;
 import static nrw.andresen.stbl.services.can.ElsterTable.FREQUENZ_ANFORDERUNG;
 import static nrw.andresen.stbl.services.can.ElsterTable.AUSSENTEMP;
-import static nrw.andresen.stbl.services.can.ElsterTable.ROH_02CA;
+import static nrw.andresen.stbl.services.can.ElsterTable.HEIZKREIS_ISTTEMP;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_07A8;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_0A36;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_FE07;
@@ -92,7 +92,7 @@ public class CanBus {
     static final List<Mitlesen> MITLESEN = List.of(
             new Mitlesen(0x480, 0x500, SPEICHERBEDARF, false),
             new Mitlesen(0x480, 0x500, REGEL_INTEGRAL, false),
-            new Mitlesen(0x480, 0x500, ROH_02CA, false),
+            new Mitlesen(0x480, 0x500, HEIZKREIS_ISTTEMP, false),
             new Mitlesen(0x480, 0x700, PUMPE_PWM, false),
             // 0x700 answers own requests for these with 0x8000 (tested 2026-09-23), but answers the manager
             new Mitlesen(0x700, 0x480, FEIN_VORLAUF, true),

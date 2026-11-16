@@ -43,7 +43,8 @@ public final class IndexBeschreibung {
                     + "jedem Start nach langem Stillstand auf 100 %."),
             entry((short) 0x07F3, "Soll-Überhitzung des Kältemittels am Verdampferaustritt in K."),
             entry((short) 0x07F4, "Ist-Überhitzung des Kältemittels am Verdampferaustritt in K."),
-            entry((short) 0xC281, "Soll-Drehzahl des Lüfters der Außeneinheit in Hz."),
+            entry((short) 0xC281, "Soll-Drehzahl des Lüfters der Außeneinheit in Hz. Im Stillstand steht sie alle 4 Minuten etwa "
+                    + "1 Minute auf 4 Hz, der Lüfter dreht dabei meist nicht (16.11.2026)."),
             entry((short) 0xC283, "Ist-Drehzahl des Lüfters der Außeneinheit in Hz."),
             entry((short) 0x0833, "Leistung des Lüfters der Außeneinheit in %, etwa 7,5 % je Hz."),
             entry((short) 0x06B1, "Spannung am Inverter in V. Zeigt etwa 11 V weniger als am Hauszähler."),
@@ -96,27 +97,32 @@ public final class IndexBeschreibung {
             entry((short) 0x4E9F, "Leistung der Wärmepumpe im Silent Mode in %."),
             entry((short) 0x4EA0, "Lüfterleistung im Silent Mode in %."),
             // Read along
-            entry((short) 0xFDF3, "Vorlauftemperatur in 0,1 K: 0x700 meldet sie dem Manager alle 5 s (gedeutet, Name "
-                    + "falsch). Beim Heizen bis 1 K über dem groben Vorlauf. 0x700 beantwortet eigene Abfragen nicht."),
-            entry((short) 0xFDF4, "Rücklauftemperatur in 0,1 K von 0x700 (gedeutet, Name falsch). Spreizung mit 0xFDF3 "
+            entry((short) 0xFDF3, "Vorlauftemperatur in 0,1 K: 0x700 meldet sie dem Manager alle 5 s (Name falsch, in "
+                    + "OneESP32ToRuleThemAll VORLAUFISTTEMP). Beim Heizen bis 1 K über dem groben Vorlauf. 0x700 beantwortet eigene Abfragen nicht."),
+            entry((short) 0xFDF4, "Rücklauftemperatur in 0,1 K von 0x700 (Name falsch, in OneESP32ToRuleThemAll "
+                    + "RUECKLAUFISTTEMP). Spreizung mit 0xFDF3 "
                     + "4,9 bis 5,2 K bei 5 K Soll."),
-            entry((short) 0xFDF5, "Dritte Temperatur von 0x700 in 0,1 K, liegt nahe am feinen Vorlauf. Bedeutung "
-                    + "unbekannt, Name falsch."),
+            entry((short) 0xFDF5, "Dritte Temperatur von 0x700 in 0,1 K, liegt knapp über dem feinen Vorlauf. "
+                    + "Vermutlich der Vorlauf hinter der elektrischen Nachheizstufe (FLOW_TEMP_NHZ in "
+                    + "ha-stiebel-control), Name falsch."),
             entry((short) 0xFE1B, "PWM-Signal der Umwälzpumpe, das der Manager an 0x700 schreibt (gedeutet, Name "
                     + "unbekannt): 100 im Stillstand. Beim Heizen 70 bis 72 bei 9,0 l/min, 66 bis 67 bei 11,1 l/min, "
                     + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
-                    + "(gedeutet). Steigt, solange der Vorlauf über etwa 33 °C liegt, fällt darunter, umso schneller, je "
-                    + "größer die Abweichung. Bei etwa -950 bis -1000 Start, dabei springt es auf 0 und fällt weiter, "
-                    + "der Verdichter fährt mit der Frequenz-Anforderung von etwa 24 Hz hoch. Bei etwa +900 bis +1000 "
-                    + "Stopp (16.11.2026)."),
+                    + "(gedeutet). Steigt, solange der feine Vorlauf über etwa 34 °C liegt, fällt darunter, umso schneller, "
+                    + "je größer die Abweichung. Bei -1000 Start: es springt auf 0 und fällt weiter, 40 bis "
+                    + "60 s später läuft der Verdichter an, kurz mit 40 Hz, dann ab etwa 26 Hz mit der "
+                    + "Frequenz-Anforderung. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
+                    + "noch, bis der Vorlauf unter den Sollwert fällt (16.11.2026)."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 23, etwa 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
-            entry((short) 0x07A8, "Wärmepumpe an Manager: 8 im Stillstand, 24 beim Heizen. Vermutlich Statusbits, noch "
-                    + "nicht entschlüsselt."),
+            entry((short) 0x07A8, "Status-Wort des Verdichters (VERDICHTER, in ha-stiebel-control für die WPL13E "
+                    + "0x0008 Stillstand, 0x0221/0x0228 Betrieb). Hier 8 im Stillstand, 24 beim Heizen, Bits noch nicht "
+                    + "entschlüsselt."),
             entry((short) 0x0A36, "Die Wärmepumpe schreibt ihn etwa jede Sekunde an den Manager, er springt zwischen "
-                    + "zwei Werten: 349 bis 388 beim Heizen, im Stillstand langsam fallend bis etwa 280. Vielleicht eine "
-                    + "Temperatur in 0,1 °C nahe der Inverter-Temperatur am Verdichter, unbestätigt."),
+                    + "zwei Werten: 349 bis 388 beim Heizen, im Stillstand langsam fallend bis etwa 280. In "
+                    + "OneESP32ToRuleThemAll FROSTSCHUTZTEMPERATUR, also vermutlich eine Wassertemperatur in der "
+                    + "Außeneinheit in 0,1 °C, unbestätigt."),
             entry((short) 0x0669, "Frequenz-Anforderung in 0,01 Hz, die die Wärmepumpe dem Manager alle 10 s meldet "
                     + "(gedeutet, Name falsch). Folgt dem Regler-Integral, auch im Stillstand: etwa 34 Hz bei -1000, "
                     + "12 Hz bei +900. Über etwa 20 Hz läuft der Verdichter damit, darunter mit seinen Mindest-20 Hz."),
@@ -127,8 +133,9 @@ public final class IndexBeschreibung {
                     + "eigene WWK 300."),
             entry((short) 0x002C, "Mischerlaufzeit, der Manager schreibt sie an die Wärmepumpe, immer 0."),
             entry((short) 0x02CA, "Der Manager schreibt ihn alle 10 s an die Wärmepumpe, direkt vor dem "
-                    + "Regler-Integral. Ändert sich langsam (254 bis 279, im Stillstand am 16.11.2026 256 bis 259). "
-                    + "Keine Materialnummer, Bedeutung unbekannt, wird als WP_Roh_02CA mitgelesen."),
+                    + "Regler-Integral: Ist-Temperatur des Heizkreises in 0,1 °C (HKISTTEMP in "
+                    + "OneESP32ToRuleThemAll). Keine Materialnummer. Im Stillstand am 16.11.2026 gleich dem Rücklauf "
+                    + "WPM (254 = 25,4 °C), beim Heizen bis 27,9 °C. Wird als WP_HeizkreisIstWPM mitgelesen."),
             entry((short) 0x0199, "Softwarenummer des Geräts. Beim Abgleich schreibt der Manager seine eigene (331) "
                     + "an die Wärmepumpe, die Wärmepumpe meldet 70."),
             entry((short) 0x019A, "Softwareversion des Geräts. Manager 11, Wärmepumpe 2."),

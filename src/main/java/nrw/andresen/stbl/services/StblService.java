@@ -201,10 +201,10 @@ public class StblService {
             addPoint(points, "Roh_FE07", () -> wp.mitgelesenerWert(ROH_FE07, 1), MAX_AGE_20);
             addPoint(points, "Roh_07A8", () -> wp.mitgelesenerWert(ROH_07A8, 1), MAX_AGE_20);
             addPoint(points, "Roh_0A36", () -> wp.mitgelesenerWert(ROH_0A36, 1), MAX_AGE_20);
-            addPoint(points, "Roh_02CA", () -> wp.mitgelesenerWert(ROH_02CA, 1), MAX_AGE_20);
             addPoint(points, "Roh_FE09", () -> wp.mitgelesenerWert(ROH_FE09, 1), MAX_AGE_20);
             addPoint(points, "AussentempWPM", wp::getAussentempWpm, MAX_AGE_20);
             addPoint(points, "RuecklaufWPM", wp::getRuecklaufWpm, MAX_AGE_20);
+            addPoint(points, "HeizkreisIstWPM", wp::getHeizkreisIstWpm, MAX_AGE_20);
             addPoint(points, "FrequenzAnforderung", wp::getFrequenzAnforderung, MAX_AGE_20);
             addPoint(points, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl, MAX_AGE_20);
             addPoint(points, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp, MAX_AGE_20);

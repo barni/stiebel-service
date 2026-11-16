@@ -289,6 +289,10 @@ public class StatusService {
                 .info("Rücklauf am Fühler des Wärmepumpenmanagers (0x180, 0x0016), den er dem Bedienteil alle 10 s "
                         + "meldet, auf dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Lag am 16.11.2026 im "
                         + "Stillstand etwa 1 K unter dem Rücklauf der Wärmepumpe.")
+                .row("Heizkreis-Ist WPM", "°C", 1, "HeizkreisIstWPM", wp::getHeizkreisIstWpm)
+                .info("Ist-Temperatur des Heizkreises, die der Wärmepumpenmanager alle 10 s an die Wärmepumpe "
+                        + "schreibt (0x02CA, in der Elster-Tabelle falsch MATERIALNUMMER_HIGH), auf dem Bus mitgelesen, "
+                        + "nur mit „Alle Nachrichten empfangen“. Am 16.11.2026 im Stillstand gleich dem Rücklauf WPM.")
                 .row("Spreizung fein (Test)", "K", 1, null, wp::getSpreizungFein)
                 .info("Feiner Vorlauf minus feiner Rücklauf. Lag beim Heizen am 15.11.2026 bei 4,9 bis 5,2 K, der "
                         + "Sollwert ist 5 K.")
@@ -297,11 +301,11 @@ public class StatusService {
                         + "Umwälzpumpe: 100 im Stillstand, beim Heizen 64 bis 72. Je kleiner, desto mehr Durchfluss.")
                 .row("Regler-Integral (Test)", "", 0, "RegelIntegral", wp::getRegelIntegral)
                 .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
-                        + "Steigt, solange der Vorlauf über etwa 33 °C liegt, und fällt darunter, umso schneller, je weiter "
-                        + "er davon entfernt ist. Bei etwa -950 bis -1000 startet der Verdichter, dabei springt das "
-                        + "Integral auf 0. Fällt es danach weiter, steigt die Frequenz-Anforderung und der Verdichter "
-                        + "fährt von etwa 24 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +900 bis "
-                        + "+1000 stoppt er (beobachtet am 16.11.2026 bei 8 °C).")
+                        + "Steigt, solange der Vorlauf über etwa 34 °C liegt, und fällt darunter, umso schneller, je weiter "
+                        + "er davon entfernt ist. Bei -1000 springt das Integral auf 0, 40 bis 60 s später startet "
+                        + "der Verdichter, kurz mit 40 Hz. Fällt es danach weiter, steigt die Frequenz-Anforderung und "
+                        + "der Verdichter fährt von etwa 26 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +1000 "
+                        + "stoppt er, und das Integral springt wieder auf 0 (beobachtet am 16.11.2026 bei 8 °C).")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
