@@ -187,7 +187,7 @@ public final class CanBusSeite {
 
     static List<String> rahmenzeile(CanStatistik.Rahmen r) {
         ElsterMessage m = new ElsterMessage(r.id(), r.daten());
-        String art = art(r.daten());
+        String art = artMitBeschreibung(r.daten());
         boolean mitIndex = r.daten().length >= 3;
         String index = mitIndex ? hex(m.getElsterIndex().getIndex()) + " "
                 + mitBeschreibung(m.getElsterIndex().getIndex(), m.getElsterIndex().getName()) : "";
@@ -207,7 +207,13 @@ public final class CanBusSeite {
      * Escaped name with a small i whose tooltip tells what the index stands for, the name alone if nothing is known
      */
     static String mitBeschreibung(short index, String name) {
-        String beschreibung = IndexBeschreibung.beschreibung(index);
+        return mitHinweis(name, IndexBeschreibung.beschreibung(index));
+    }
+
+    /**
+     * Escaped name with a small i whose tooltip shows the description, the name alone without a description
+     */
+    static String mitHinweis(String name, String beschreibung) {
         if (beschreibung == null) {
             return text(name);
         }
@@ -263,6 +269,32 @@ public final class CanBusSeite {
     /**
      * Kind of the Elster message from the low nibble of the first byte
      */
+    /**
+     * Kind of the message with a small i that explains it
+     */
+    static String artMitBeschreibung(byte[] daten) {
+        if (daten.length == 0) {
+            return "";
+        }
+        return mitHinweis(art(daten), switch (daten[0] & 0x0F) {
+            case 0 -> "Ein Gerät setzt beim Empfänger einen Wert, ohne gefragt zu werden. So verteilen die Geräte "
+                    + "laufend ihre Werte: Der Manager schreibt der Wärmepumpe alle 10 s Anforderung und "
+                    + "Regler-Integral, der Wärmepumpenmanager schickt die Außentemperatur als Rundruf an alle. "
+                    + "Meist folgt keine Antwort, manche Empfänger wie 0x700 bestätigen mit einer Antwort, die den "
+                    + "übernommenen Wert enthält. Der stbl-service schreibt nie, er liest nur.";
+            case 1 -> "Ein Gerät fragt beim Empfänger einen Wert ab, die Nachricht selbst enthält keinen Wert. Der "
+                    + "Empfänger schickt eine Antwort zurück, 0x8000 heißt dort „nicht verfügbar“.";
+            case 2 -> "Antwort auf eine Anfrage mit dem aktuellen Wert, sie geht an das fragende Gerät zurück. "
+                    + "Antworten an andere Geräte sind nur mit „Alle Nachrichten empfangen“ zu sehen.";
+            case 3 -> "Bestätigung eines Empfangs ohne Wert.";
+            case 4 -> "Antwort auf einen Schreibbefehl, bestätigt den übernommenen Wert.";
+            case 6 -> "Systemnachricht zur Teilnehmerprüfung (0xFFFE): Ein Gerät meldet sich am Bus, danach gleichen "
+                    + "Manager und Wärmepumpe Stammdaten, Datum und Uhrzeit ab.";
+            case 7 -> "Antwort auf eine Systemnachricht, das angesprochene Gerät bestätigt, dass es da ist.";
+            default -> null;
+        });
+    }
+
     static String art(byte[] daten) {
         if (daten.length == 0) {
             return "";

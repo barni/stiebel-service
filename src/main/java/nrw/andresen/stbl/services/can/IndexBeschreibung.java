@@ -106,9 +106,10 @@ public final class IndexBeschreibung {
                     + "unbekannt): 100 im Stillstand. Beim Heizen 70 bis 72 bei 9,0 l/min, 66 bis 67 bei 11,1 l/min, "
                     + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
-                    + "(gedeutet). Steigt, solange der Vorlauf über etwa 33 °C liegt, fällt darunter. Bei etwa -1000 "
-                    + "Start und volle Leistung, ab etwa 0 kleinste Drehzahl, bei etwa +900 bis +1000 Stopp "
-                    + "(16.11.2026)."),
+                    + "(gedeutet). Steigt, solange der Vorlauf über etwa 33 °C liegt, fällt darunter, umso schneller, je "
+                    + "größer die Abweichung. Bei etwa -950 bis -1000 Start, dabei springt es auf 0 und fällt weiter, "
+                    + "der Verdichter fährt mit der Frequenz-Anforderung von etwa 24 Hz hoch. Bei etwa +900 bis +1000 "
+                    + "Stopp (16.11.2026)."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 23, etwa 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
             entry((short) 0x07A8, "Wärmepumpe an Manager: 8 im Stillstand, 24 beim Heizen. Vermutlich Statusbits, noch "
@@ -132,13 +133,17 @@ public final class IndexBeschreibung {
                     + "an die Wärmepumpe, die Wärmepumpe meldet 70."),
             entry((short) 0x019A, "Softwareversion des Geräts. Manager 11, Wärmepumpe 2."),
             entry((short) 0x06AF, "Das Bedienteil schreibt jede Minute 1 an den Manager, vermutlich ein Lebenszeichen."),
-            entry((short) 0x0692, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
-            entry((short) 0x4E5E, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
-            entry((short) 0x4E6A, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
-            entry((short) 0x4E7E, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
+            entry((short) 0x0692, "Der Manager schreibt ihn jede Minute an das Bedienteil: 1 beim Heizen, 0 im "
+                    + "Stillstand, vermutlich für die Anzeige."),
+            entry((short) 0x4E5E, "Der Manager schreibt ihn jede Minute an das Bedienteil, beim Heizen und im "
+                    + "Stillstand 1. Bedeutung unbekannt."),
+            entry((short) 0x4E6A, "Der Manager schreibt ihn jede Minute an das Bedienteil: 32 beim Heizen, 0 im "
+                    + "Stillstand, vermutlich ein Zustand für die Anzeige."),
+            entry((short) 0x4E7E, "Der Manager schreibt ihn jede Minute an das Bedienteil: 1 beim Heizen, 0 im "
+                    + "Stillstand, vermutlich für die Anzeige."),
             entry((short) 0x4E30, "Der Manager schreibt ihn jede Minute an die Wärmepumpe, immer 0."),
             entry((short) 0x068D, "Die Wärmepumpe schreibt ihn an den Manager: 0 im Stillstand, beim Heizen 5 bis 8, "
-                    + "höher bei höherer Drehzahl (5 bei 21 Hz, 6 bei 24 Hz, 7 bei 30 Hz). Vermutlich eine "
+                    + "höher bei höherer Drehzahl (5 bei 21 Hz, 6 bei 24 Hz, 7 bei 30 Hz, 8 bei 34 Hz). Vermutlich eine "
                     + "Leistungsstufe, unbestätigt."),
             entry((short) 0xFE09, "Der Manager fragt 0x700 alle 5 s danach, 210 bis 211 (vielleicht 21,0 °C). "
                     + "Bedeutung unbekannt, wird als WP_Roh_FE09 mitgelesen."),

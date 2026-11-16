@@ -92,7 +92,7 @@ public class CanBusSeiteTest {
         assertEquals("←", zeile.get(1));
         assertEquals("0x500 Wärmepumpe", zeile.get(2));
         assertEquals("0x681 stbl-service", zeile.get(3));
-        assertEquals("Antwort", zeile.get(4));
+        assertTrue(zeile.get(4).startsWith("<span class=\"calc\"") && zeile.get(4).contains(">Antwort <span"));
         assertTrue(zeile.get(5).startsWith("0x000C "));
         assertTrue(zeile.get(7).contains(ElsterMessage.bytesToHex(antwort())));
 
@@ -100,7 +100,7 @@ public class CanBusSeiteTest {
         zeile = CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, true, CanBus.CAN_SENDER_ID, anfrage));
         assertEquals("→", zeile.get(1));
         assertEquals("0x500 Wärmepumpe", zeile.get(3));
-        assertEquals("Anfrage", zeile.get(4));
+        assertTrue(zeile.get(4).contains(">Anfrage <span"));
         assertEquals("", zeile.get(6));
         // Too short for an index
         assertEquals("", CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, false, 0x180, new byte[]{0x06}))
@@ -166,7 +166,7 @@ public class CanBusSeiteTest {
         List<String> zeile = CanBusSeite.rahmenzeile(new CanStatistik.Rahmen(JETZT, false, 0x180,
                 hex("A0790C00660000")));
         assertEquals("0x579 Rundruf", zeile.get(3));
-        assertEquals("Schreiben", zeile.get(4));
+        assertTrue(zeile.get(4).contains(">Schreiben <span"));
         assertTrue(zeile.get(5).startsWith("0x000C "));
         assertTrue(zeile.get(6).matches("10[,.]2"));
         // Write of the manager to the heat pump with a long index
@@ -229,6 +229,11 @@ public class CanBusSeiteTest {
         // Exchange on 0xFFFE before the sync of manager and heat pump, 2026-11-16 10:41:58
         assertEquals("System", CanBusSeite.art(hex("9600FE01000000")));
         assertEquals("System-Antwort", CanBusSeite.art(hex("A700FE01000000")));
+        // With an i explaining the kind, a write mentions that this service never writes
+        assertTrue(CanBusSeite.artMitBeschreibung(hex("A0005F02000000")).contains("Schreiben <span class=\"info\""));
+        assertTrue(CanBusSeite.artMitBeschreibung(hex("A0005F02000000")).contains("schreibt nie"));
+        assertTrue(CanBusSeite.artMitBeschreibung(hex("A1005F00000000")).contains("Anfrage <span class=\"info\""));
+        assertEquals("", CanBusSeite.artMitBeschreibung(new byte[0]));
         assertTrue(CanBusSeite.mitBeschreibung((short) 0x07A2, "STUETZSTELLE_HD2").contains("43,00 bar"));
     }
 }
