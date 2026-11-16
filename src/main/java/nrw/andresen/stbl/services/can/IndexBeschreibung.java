@@ -51,7 +51,8 @@ public final class IndexBeschreibung {
             entry((short) 0xC1E6, "Umgebungstemperatur im Inverter in °C."),
             entry((short) 0xC1E7, "Temperatur des Inverters am Verdichter in °C."),
             // Counters
-            entry((short) 0x07FC, "Laufzeit des Verdichters beim Heizen in Stunden (Zugang 0x514)."),
+            entry((short) 0x07FC, "Laufzeit des Verdichters beim Heizen in Stunden (Zugang 0x514). Die Wärmepumpe "
+                    + "(0x500) meldet dem Manager höchstens 9999, über 0x514 kommt der volle Wert."),
             entry((short) 0x0808, "Laufzeit des Verdichters beim Abtauen in Stunden."),
             entry((short) 0x0807, "Dauer der letzten Abtauung: beim Heizmodul (0x514) in Minuten, bei der Wärmepumpe "
                     + "(0x500) in Sekunden."),
@@ -126,8 +127,9 @@ public final class IndexBeschreibung {
             entry((short) 0x002C, "Mischerlaufzeit, der Manager schreibt sie an die Wärmepumpe, immer 0."),
             entry((short) 0x02CA, "Der Manager schreibt ihn alle 10 s an die Wärmepumpe, zählt langsam (254 bis 279). "
                     + "Keine Materialnummer, Bedeutung unbekannt."),
-            entry((short) 0x0199, "Softwarenummer des Geräts."),
-            entry((short) 0x019A, "Softwareversion des Geräts."),
+            entry((short) 0x0199, "Softwarenummer des Geräts. Beim Abgleich schreibt der Manager seine eigene (331) "
+                    + "an die Wärmepumpe, die Wärmepumpe meldet 70."),
+            entry((short) 0x019A, "Softwareversion des Geräts. Manager 11, Wärmepumpe 2."),
             entry((short) 0x06AF, "Das Bedienteil schreibt jede Minute 1 an den Manager, vermutlich ein Lebenszeichen."),
             entry((short) 0x0692, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
             entry((short) 0x4E5E, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
@@ -143,9 +145,11 @@ public final class IndexBeschreibung {
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
             entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
             // Sync of manager and heat pump, seen once on 2026-11-16 10:41:58
-            entry((short) 0xFFFE, "Systemnachricht (Art 6 und 7): Teilnehmerprüfung am ganzen Bus, alle Geräte melden "
-                    + "sich, auch der Mischer 0x601. Danach schreibt die Wärmepumpe ihre Stammdaten an den Manager und "
-                    + "der Manager schickt Datum und Uhrzeit. Gesehen am 16.11.2026 um 10:41 und 16:19 Uhr."),
+            entry((short) 0xFFFE, "Systemnachricht (Art 6 und 7), danach Abgleich: die Wärmepumpe schreibt ihre "
+                    + "Stammdaten an den Manager, der Manager schreibt seine Softwarenummer und fragt Laufzeiten und "
+                    + "Software ab, dann schickt er Datum und Uhrzeit an alle. Mal melden sich alle Geräte (auch der "
+                    + "Mischer 0x601), mal stößt die Wärmepumpe allein an. Kein fester Takt: am 16.11.2026 um 10:41, "
+                    + "16:19 und 16:32 Uhr."),
             entry((short) 0x079F, "Stützstelle des Niederdruckfühlers, unteres Ende: 100 = 1,00 bar."),
             entry((short) 0x07A0, "Stützstelle des Niederdruckfühlers, oberes Ende: 1700 = 17,00 bar. Messbereich also "
                     + "1 bis 17 bar."),
