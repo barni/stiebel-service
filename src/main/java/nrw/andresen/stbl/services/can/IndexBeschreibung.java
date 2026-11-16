@@ -113,10 +113,11 @@ public final class IndexBeschreibung {
             entry((short) 0x07A8, "Wärmepumpe an Manager: 8 im Stillstand, 24 beim Heizen. Vermutlich Statusbits, noch "
                     + "nicht entschlüsselt."),
             entry((short) 0x0A36, "Die Wärmepumpe schreibt ihn etwa jede Sekunde an den Manager, er springt zwischen "
-                    + "zwei Werten (z. B. 298/308 im Stillstand, 355 bis 378 beim Heizen). Noch nicht entschlüsselt."),
-            entry((short) 0x0669, "Verdichterfrequenz in 0,01 Hz, die Wärmepumpe meldet sie dem Manager alle 10 s "
-                    + "(gedeutet, Name falsch): 1922 bis 2070 bei 21 Hz, 2660 bis 2786 bei 27 Hz, 3239 bis 3337 bei "
-                    + "33 Hz. Im Stillstand bleibt etwa 2400 stehen."),
+                    + "zwei Werten: 349 bis 388 beim Heizen, im Stillstand langsam fallend bis etwa 280. Vielleicht eine "
+                    + "Temperatur in 0,1 °C nahe der Inverter-Temperatur am Verdichter, unbestätigt."),
+            entry((short) 0x0669, "Frequenz-Anforderung in 0,01 Hz, die die Wärmepumpe dem Manager alle 10 s meldet "
+                    + "(gedeutet, Name falsch). Folgt dem Regler-Integral, auch im Stillstand: etwa 34 Hz bei -1000, "
+                    + "12 Hz bei +900. Über etwa 20 Hz läuft der Verdichter damit, darunter mit seinen Mindest-20 Hz."),
             // Other traffic on the bus
             entry((short) 0x0126, "Uhrzeit, Minute. Der Manager sendet sie jede Minute als Rundruf und an das "
                     + "Bedienteil."),
@@ -133,15 +134,18 @@ public final class IndexBeschreibung {
             entry((short) 0x4E6A, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
             entry((short) 0x4E7E, "Der Manager schreibt ihn jede Minute an das Bedienteil, Bedeutung unbekannt."),
             entry((short) 0x4E30, "Der Manager schreibt ihn jede Minute an die Wärmepumpe, immer 0."),
-            entry((short) 0x068D, "Die Wärmepumpe schreibt ihn an den Manager (5 oder 6), Bedeutung unbekannt."),
+            entry((short) 0x068D, "Die Wärmepumpe schreibt ihn an den Manager: 0 im Stillstand, beim Heizen 5 bis 8, "
+                    + "höher bei höherer Drehzahl (5 bei 21 Hz, 6 bei 24 Hz, 7 bei 30 Hz). Vermutlich eine "
+                    + "Leistungsstufe, unbestätigt."),
             entry((short) 0xFE09, "Der Manager fragt 0x700 alle 5 s danach, 210 bis 211 (vielleicht 21,0 °C). "
                     + "Bedeutung unbekannt."),
             entry((short) 0xFE4C, "Der Manager fragt 0x700 alle 5 s danach, immer 14. Bedeutung unbekannt."),
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
             entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
             // Sync of manager and heat pump, seen once on 2026-11-16 10:41:58
-            entry((short) 0xFFFE, "Systemnachricht zwischen Manager und Wärmepumpe (Art 6 und 7), danach schreibt die "
-                    + "Wärmepumpe ihre Stammdaten an den Manager und der Manager schickt Datum und Uhrzeit."),
+            entry((short) 0xFFFE, "Systemnachricht (Art 6 und 7): Teilnehmerprüfung am ganzen Bus, alle Geräte melden "
+                    + "sich, auch der Mischer 0x601. Danach schreibt die Wärmepumpe ihre Stammdaten an den Manager und "
+                    + "der Manager schickt Datum und Uhrzeit. Gesehen am 16.11.2026 um 10:41 und 16:19 Uhr."),
             entry((short) 0x079F, "Stützstelle des Niederdruckfühlers, unteres Ende: 100 = 1,00 bar."),
             entry((short) 0x07A0, "Stützstelle des Niederdruckfühlers, oberes Ende: 1700 = 17,00 bar. Messbereich also "
                     + "1 bis 17 bar."),
@@ -149,9 +153,10 @@ public final class IndexBeschreibung {
             entry((short) 0x07A2, "Stützstelle des Hochdruckfühlers, oberes Ende: 4300 = 43,00 bar. Messbereich also "
                     + "1 bis 43 bar."),
             entry((short) 0x000B, "Gerätekennung. Die Wärmepumpe meldet 582, der Manager schreibt -128."),
-            entry((short) 0x07F2, "Betriebsart der Wärmepumpe, beim Abgleich 3."),
+            entry((short) 0x07F2, "Betriebsart der Wärmepumpe, beim Abgleich gemeldet: 3 beim Heizen, 0 im Stillstand."),
+            entry((short) 0x0067, "Sonderkreis-Status, beim Abgleich gemeldet: 3 beim Heizen, 0 im Stillstand."),
             entry((short) 0x0061, "Heißt „Abtauung aktiv“, ist es aber nicht: geht etwa 20 s vor dem Verdichterstart "
-                    + "von 0 auf 512 (Test 2026-09-23)."),
+                    + "von 0 auf 512 (Test 2026-09-23). Beim Abgleich 512 beim Heizen, 0 im Stillstand."),
             entry((short) 0x02C2, "Anzahl der Startversuche des Verdichters, beim Abgleich 0."),
             entry((short) 0x0001, "Fehlermeldung der Wärmepumpe, 0 = keine."),
             entry((short) 0x01F2, "Fehlerart der Wärmepumpe, 0 = keine."),

@@ -407,12 +407,12 @@ public class Waermepumpe {
     }
 
     /**
-     * Compressor frequency in Hz with two decimals, the heat pump answers the manager every 10 s (0x0669 in
-     * 0.01 Hz). Matched the compressor speed at 21, 27 and 33 Hz; at standstill it kept about 24 Hz, so it is only
-     * meaningful while the compressor runs.
+     * Frequency demanded from the compressor in Hz with two decimals, the heat pump answers the manager every 10 s
+     * (0x0669 in 0.01 Hz). It follows the controller integral, also at standstill: about 34 Hz at -1000, 12 Hz at
+     * +900. Above about 20 Hz the compressor runs at it, below it stays at its minimum of 20 Hz (2026-11-16).
      */
-    public ValueContainer<Double> getVerdichterFrequenzFein() throws KeinMesswert {
-        return mitgelesenerWert(VERDICHTER_FREQUENZ_FEIN, 100);
+    public ValueContainer<Double> getFrequenzAnforderung() throws KeinMesswert {
+        return mitgelesenerWert(FREQUENZ_ANFORDERUNG, 100);
     }
 
     /**

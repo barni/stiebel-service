@@ -67,8 +67,9 @@ public class ElsterTable {
     public static short ROH_FE07 = (short)0xfe07;
     public static short ROH_07A8 = (short)0x07a8;
     public static short ROH_0A36 = (short)0x0a36;
-    // Compressor frequency in 0.01 Hz, matched the compressor speed at 21, 27 and 33 Hz on 2026-11-15/16
-    public static short VERDICHTER_FREQUENZ_FEIN = (short)0x0669;
+    // Frequency the manager demands from the compressor in 0.01 Hz, follows the controller integral, also at
+    // standstill; the compressor runs at it above about 20 Hz and at its minimum of 20 Hz below (2026-11-16)
+    public static short FREQUENZ_ANFORDERUNG = (short)0x0669;
     // Meaning and scaling of the following values for WPL taken from https://github.com/kr0ner/OneESP32ToRuleThemAll
     // Same values as ISTDREHZAHL_VERDICHTER (0x06eb), Hz
     public static short VERDICHTER_DREHZAHL = (short)0x063d;
