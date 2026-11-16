@@ -41,6 +41,12 @@ before you rely on it.
   answer with a value (display name, device, value, raw value, whether the index is described), values 0 on request,
   and `/canbus/scan.csv` returns all of them. The warning for a low answer rate is off while the scan runs. The
   result is kept until the service restarts.
+- **Finds of the bus scan** of 2026-11-16: dew point reference and compensated, filtered evaporator pressure and
+  the evaporator temperature before and after compensation from 0x500 every 20 s (`WP_TaupunktReferenz`,
+  `WP_TaupunktKompensiert`, `WP_DruckVerdampfer`, `WP_VerdampferVorKompensation`, `WP_VerdampferNachKompensation`,
+  marked as test on the status page). 28 values of unknown meaning (test objects, sensor inputs) are requested every
+  minute and stored raw as `WP_Roh_<node>_<index>`, e.g. `WP_Roh_500_0668`, to see later which ones change with
+  the operation. The software number and version of the manager and the outdoor unit are read every hour.
 - **Fault list** of the heat pump manager (DIAGNOSE → FEHLERLISTE): the 20 entries with time and fault code are read
   every 10 minutes from `FEHLERFELD_0..139` (0x0B00–0x0B8B at node 0x180, 7 values per entry: minute, hour, day,
   month, year, 0, code). Shown on the status page with text for known codes (e.g. 8116 `INV H ROTORVEKTOR`) and as
@@ -99,8 +105,9 @@ before you rely on it.
   the compressor runs (too little water flow), a failed check of the service.
 - **Settings** of the heat pump manager, read every hour from 0x514 and stored as `WP_Einstellung_<name>`: design
   temperature, heat demand, spread, bivalence, heating limit, silent mode, comfort and eco temperature, heating curve,
-  curve distance, room influence, standstill and minimum run time, controller dynamics, each with the default of the
-  WPM 3 manual in its tooltip. A change is sent by mail (also one made while the service was stopped, compared with
+  curve distance, room influence, standstill and minimum run time, controller dynamics, heating program 1 (weekdays
+  and weekend, shown as time slot), summer/winter switch, frost protection and maximum heating temperature, most with
+  the default of the WPM 3 manual in its tooltip. A change is sent by mail (also one made while the service was stopped, compared with
   the last stored value).
 - **Pressure swing** of the heating circuit per day: span of the pressure divided by the span of the mean water
   temperature in bar per 10 K, shown for yesterday and stored as `WP_DruckhubJe10K`. The value rises over the months

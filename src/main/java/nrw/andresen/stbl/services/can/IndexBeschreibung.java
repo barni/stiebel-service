@@ -139,9 +139,39 @@ public final class IndexBeschreibung {
                     + "OneESP32ToRuleThemAll). Keine Materialnummer. Im Stillstand am 16.11.2026 gleich dem Rücklauf "
                     + "WPM (254 = 25,4 °C), beim Heizen bis 30,7 °C, am 16.11.2026 nie mehr als 0,2 K vom Rücklauf WPM "
                     + "entfernt. Deshalb nicht eigens gespeichert (bis 16.11.2026 abends als WP_HeizkreisIstWPM)."),
-            entry((short) 0x0199, "Softwarenummer des Geräts. Beim Abgleich schreibt der Manager seine eigene (331) "
-                    + "an die Wärmepumpe, die Wärmepumpe meldet 70."),
-            entry((short) 0x019A, "Softwareversion des Geräts. Manager 11, Wärmepumpe 2."),
+            entry((short) 0x0199, "Softwarenummer des Geräts, stündlich vom Manager (0x180) und von der Außeneinheit "
+                    + "(0x500) gelesen: 390 und 446 (Bus-Scan 16.11.2026). Beim Abgleich schreibt der Manager 331 an "
+                    + "die Wärmepumpe und die Wärmepumpe meldet 70, also wohl eine andere Zählung."),
+            entry((short) 0x019A, "Softwareversion des Geräts: Manager 11, Außeneinheit 2, beim Abgleich ebenso."),
+            // Found by the bus scan on 2026-11-16
+            entry((short) 0x080A, "Taupunkttemperatur Referenz in 0,1 °C (0x500), beim Bus-Scan -11,8 °C bei etwa "
+                    + "8 °C außen. Vermutlich Grundlage der Entscheidung zum Abtauen, unbestätigt. Gespeichert als "
+                    + "WP_TaupunktReferenz."),
+            entry((short) 0x080B, "Taupunkttemperatur kompensiert in 0,1 °C (0x500), beim Bus-Scan -13,5 °C. "
+                    + "Gespeichert als WP_TaupunktKompensiert."),
+            entry((short) 0x080D, "Gefilterter Verdampferdruck in 0,01 bar (0x500), beim Bus-Scan 7,48 bar. "
+                    + "Gespeichert als WP_DruckVerdampfer."),
+            entry((short) 0x0820, "Verdampfertemperatur vor der Kompensation in 0,1 °C (0x500), beim Bus-Scan 4,9 °C. "
+                    + "Gespeichert als WP_VerdampferVorKompensation."),
+            entry((short) 0x0821, "Verdampfertemperatur nach der Kompensation in 0,1 °C (0x500), beim Bus-Scan 4,4 °C. "
+                    + "Gespeichert als WP_VerdampferNachKompensation."),
+            entry((short) 0x0822, "Vorlauf der Außeneinheit in 0,1 °C (0x500), aber nur in den groben Stufen von "
+                    + "0x01D6 (16.11.2026: 332 bei 33,2 °C). Deshalb nicht abgefragt, fein ist nur 0xFDF3."),
+            entry((short) 0x0823, "Rücklauf der Außeneinheit in 0,1 °C (0x500), aber nur in den groben Stufen von "
+                    + "0x0016 (16.11.2026: 285 bei 28,5 °C). Deshalb nicht abgefragt, fein ist nur 0xFDF4."),
+            entry((short) 0x01BF, "Außentemperatur der Sommer/Winter-Umschaltung in 0,1 °C, 18 °C. Einstellung, "
+                    + "stündlich gelesen."),
+            entry((short) 0x0A00, "Außentemperatur für den Frostschutz in 0,1 °C, 4 °C. Einstellung, stündlich "
+                    + "gelesen."),
+            entry((short) 0x01E8, "Maximale Heiztemperatur in 0,1 °C, 65 °C. Einstellung, stündlich gelesen."),
+            entry((short) 0x1480, "Heizprogramm 1 Montag bis Freitag: oberes Byte Beginn, unteres Ende in "
+                    + "Viertelstunden, 0x185A = 06:00 bis 22:30. Einstellung, stündlich gelesen."),
+            entry((short) 0x1490, "Heizprogramm 1 Samstag und Sonntag: 0x1E5C = 07:30 bis 23:00. Einstellung, "
+                    + "stündlich gelesen."),
+            entry((short) 0x0074, "EVU-Sperre aktiv, der Manager (0x480) antwortet 1, auch beim Heizen (Bus-Scan "
+                    + "16.11.2026). Vermutlich die Belegung des EVU-Kontakts, keine aktive Sperre."),
+            entry((short) 0xFDAC, "EVU-Einstellung der Wärmepumpe, der Manager (0x480) antwortet 2 (Bus-Scan "
+                    + "16.11.2026). Vermutlich Konfiguration."),
             entry((short) 0x06AF, "Das Bedienteil schreibt jede Minute 1 an den Manager, vermutlich ein Lebenszeichen."),
             entry((short) 0x0692, "Der Manager schreibt ihn jede Minute an das Bedienteil: 1 beim Heizen, 0 im "
                     + "Stillstand, vermutlich für die Anzeige."),
@@ -256,7 +286,27 @@ public final class IndexBeschreibung {
             entry((short) 0x068D, "Leistungsstufe?"),
             entry((short) 0x0692, "Heizen (Anzeige)?"),
             entry((short) 0x4E6A, "Zustand (Anzeige)?"),
-            entry((short) 0x4E7E, "Heizen (Anzeige)?"));
+            entry((short) 0x4E7E, "Heizen (Anzeige)?"),
+            entry((short) 0x0A29, "Fühlereingang 1"),
+            entry((short) 0x0A2A, "Fühlereingang 2"),
+            entry((short) 0x0A2B, "Fühlereingang 3"),
+            entry((short) 0x0A2C, "Fühlereingang 4"),
+            entry((short) 0x0A2E, "Fühlereingang 6"),
+            entry((short) 0x0A2F, "Fühlereingang 7"),
+            entry((short) 0x0A32, "Fühlereingang 10"),
+            entry((short) 0x0A33, "Fühlereingang 11"),
+            entry((short) 0x0A37, "Fühlereingang 15"),
+            entry((short) 0x1480, "Heizprogramm Mo–Fr"),
+            entry((short) 0x1490, "Heizprogramm Sa–So"),
+            entry((short) 0x01BF, "Sommer/Winter-Umschaltung"));
+
+    // Answered with a value by the bus scan on 2026-11-16, meaning unknown, requested every minute and stored raw
+    private static final java.util.Set<Short> SCAN_ROHWERTE = java.util.Set.of(
+            (short) 0x0668, (short) 0x06C2, (short) 0x06C3, (short) 0x06C4, (short) 0x06C5, (short) 0x06FB,
+            (short) 0x0705, (short) 0x0706, (short) 0x0707, (short) 0x0727, (short) 0x0728, (short) 0x0729,
+            (short) 0x0737, (short) 0x0738, (short) 0x0A29, (short) 0x0A2A, (short) 0x0A2B, (short) 0x0A2C,
+            (short) 0x0A2E, (short) 0x0A2F, (short) 0x0A32, (short) 0x0A33, (short) 0x0673, (short) 0x06A0,
+            (short) 0x06A1, (short) 0x06A2, (short) 0x06AC, (short) 0x0A37);
 
     private IndexBeschreibung() {
     }
@@ -273,6 +323,11 @@ public final class IndexBeschreibung {
      */
     public static String beschreibung(short index) {
         String text = BESCHREIBUNG.get(index);
+        if (text == null && SCAN_ROHWERTE.contains(index)) {
+            return "Beim Bus-Scan am 16.11.2026 mit einem Wert gefunden, Bedeutung unbekannt. Wird jede Minute "
+                    + "abgefragt und roh als WP_Roh_Gerät_Index gespeichert, um zu sehen, ob und wie er sich mit dem "
+                    + "Betrieb ändert.";
+        }
         if (text == null && index >= Fehlerliste.ERSTES_FELD && index < Fehlerliste.ERSTES_FELD + Fehlerliste.FELDER) {
             return "Feld der Fehlerliste des Wärmepumpenmanagers: 20 Einträge zu je 7 Feldern, nämlich Minute, Stunde, "
                     + "Tag, Monat, Jahr, ein Feld ohne Bedeutung und der Fehlercode.";

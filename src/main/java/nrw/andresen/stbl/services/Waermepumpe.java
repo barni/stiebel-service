@@ -78,7 +78,8 @@ public class Waermepumpe {
     private static final short[] EINSTELLUNGEN_HEIZMODUL = {
             AUSLEGUNGSTEMPERATUR, WAERMEBEDARF, SOLLSPREIZUNG, BIVALENZTEMPERATUR_HZG, EINSATZGRENZE_HZG,
             SILENT_LEISTUNG, SILENT_LUEFTER, RAUMSOLLTEMP_I, RAUMSOLLTEMP_NACHT, HEIZKURVE, HZK_KURVENABSTAND,
-            RAUMEINFLUSS, SPERRZEIT, MINDESTLAUFZEIT_WE, SCHALTWERKDYNAMIKZEIT
+            RAUMEINFLUSS, SPERRZEIT, MINDESTLAUFZEIT_WE, SCHALTWERKDYNAMIKZEIT, SW_AUSSENTEMP, AUSSEN_FROSTTEMP,
+            MAX_HEIZUNG_TEMP, HEIZPROG_1_MO_FR, HEIZPROG_1_SA_SO
     };
     // Requested every 20 s from the manager, from the heat pump and from the external access
     private static final short[] MONITORING_MANAGER = {
@@ -92,7 +93,8 @@ public class Waermepumpe {
     private static final short[] MONITORING_WAERMEPUMPE = {
             TEST_OBJEKT_113_STROM_INVERTER, TEST_OBJEKT_112_SPANNUNG_INVERTER, ANZEIGE_HOCHDRUCK, ANZEIGE_NIEDERDRUCK,
             AUSSENTEMP, HEISSGAS_TEMP, VERDICHTER_DREHZAHL, VERDICHTER_EINTRITTSTEMP, VERDAMPFERTEMP, OELSUMPFTEMP,
-            HILFSKESSELSOLL
+            HILFSKESSELSOLL, TAUPUNKT_REFERENZ, TAUPUNKT_KOMPENSIERT, DRUCK_VERDAMPFER_GEFILTERT,
+            VERDAMPFERTEMP_VOR_KOMPENSATION, VERDAMPFERTEMP_NACH_KOMPENSATION
     };
     // The EXV every 20 s, the defrost with the fully open EXV lasts only about 1-2 minutes
     private static final short[] MONITORING_HEIZMODUL = {WPVORLAUFIST, RUECKLAUFISTTEMP, OEFFNUNGSGRAD_EXV};
@@ -108,6 +110,35 @@ public class Waermepumpe {
     private static final short[] BETRIEBSWERTE_WAERMEPUMPE = {
             WP_WASSERVOLUMENSTROM, LAUFZEIT_DHC1, LAUFZEIT_DHC2, LAUFZEIT_DHC12, LUEFTERLEISTUNG_REL
     };
+
+    /**
+     * Value found by the bus scan whose meaning is unknown, requested every minute and stored raw as
+     * WP_Roh_knoten_index to see later whether and how it changes with the operation
+     */
+    public record Rohwert(int knoten, short index) {
+
+        public String name() {
+            return String.format("Roh_%03X_%04X", knoten, index & 0xffff);
+        }
+    }
+
+    // Answered with a value by the bus scan on 2026-11-16, unknown counters (TEST_OBJEKT), the sensor inputs of the
+    // heat pump control (EINGANG, 0 left out) and values that look like temperatures in 0.1 K at the manager.
+    // 0x0705 and 0x06a0-0x06a2 are answered by 0x180 and 0x500 with different values, so the node is part of the key.
+    public static final List<Rohwert> ROHWERTE = rohwerte();
+
+    private static List<Rohwert> rohwerte() {
+        List<Rohwert> liste = new java.util.ArrayList<>();
+        for (int index : new int[]{0x0668, 0x06c2, 0x06c3, 0x06c4, 0x06c5, 0x06fb, 0x0705, 0x0706, 0x0707, 0x0727,
+                0x0728, 0x0729, 0x0737, 0x0738, 0x0a29, 0x0a2a, 0x0a2b, 0x0a2c, 0x0a2e, 0x0a2f, 0x0a32, 0x0a33}) {
+            liste.add(new Rohwert(WAERMEPUMPE, (short) index));
+        }
+        for (int index : new int[]{0x0673, 0x06a0, 0x06a1, 0x06a2, 0x06ac}) {
+            liste.add(new Rohwert(MANAGER, (short) index));
+        }
+        liste.add(new Rohwert(WP_MANAGER, (short) 0x0a37));
+        return List.copyOf(liste);
+    }
 
     // Time of the first received compressor speed above 0, null while the compressor stands still
     private volatile Instant verdichterLaeuftSeit;
@@ -136,6 +167,9 @@ public class Waermepumpe {
         can.anfragen(HEIZMODUL, BETRIEBSWERTE_HEIZMODUL);
         can.anfragen(MANAGER, BETRIEBSWERTE_MANAGER);
         can.anfragen(WP_MANAGER, STATUS_WP_MANAGER);
+        for (Rohwert rohwert : ROHWERTE) {
+            can.anfragen(rohwert.knoten(), rohwert.index());
+        }
     }
 
     /**
@@ -144,6 +178,42 @@ public class Waermepumpe {
     public void anfragen3600() throws USBtinException {
         can.anfragen(HEIZMODUL, EINSTELLUNGEN_HEIZMODUL);
         can.anfragen(MANAGER, PROGRAMMSCHALTER);
+        can.anfragen(MANAGER, SOFTWARE_NUMMER, SOFTWARE_VERSION);
+        can.anfragen(WAERMEPUMPE, SOFTWARE_NUMMER, SOFTWARE_VERSION);
+    }
+
+    /**
+     * Raw value of a value found by the bus scan, signed
+     */
+    public ValueContainer<Double> getRohwert(Rohwert rohwert) throws Exception {
+        ElsterMessage msg = can.nachricht(rohwert.knoten(), rohwert.index());
+        if (msg == null) {
+            throw new Exception("NO_VALUES_RECEIVED");
+        }
+        return new ValueContainer<>((double) msg.getRawValue(), msg.getTimestamp());
+    }
+
+    /**
+     * Software number and version of the manager, e.g. "390 Version 11", null if not received yet
+     */
+    public String getSoftwareManager() {
+        return software(MANAGER);
+    }
+
+    /**
+     * Software number and version of the outdoor unit, e.g. "446 Version 2", null if not received yet
+     */
+    public String getSoftwareWaermepumpe() {
+        return software(WAERMEPUMPE);
+    }
+
+    private String software(int knoten) {
+        ElsterMessage nummer = can.nachricht(knoten, SOFTWARE_NUMMER);
+        ElsterMessage version = can.nachricht(knoten, SOFTWARE_VERSION);
+        if (nummer == null || version == null) {
+            return null;
+        }
+        return (nummer.getRawValue() & 0xffff) + " Version " + (version.getRawValue() & 0xffff);
     }
 
     /**
@@ -485,6 +555,26 @@ public class Waermepumpe {
         return new ValueContainer<>(msg.getRawValue() / divisor, msg.getTimestamp());
     }
 
+    public ValueContainer<Double> getTaupunktReferenz() throws Exception {
+        return getScaledValue(TAUPUNKT_REFERENZ, 10);
+    }
+
+    public ValueContainer<Double> getTaupunktKompensiert() throws Exception {
+        return getScaledValue(TAUPUNKT_KOMPENSIERT, 10);
+    }
+
+    public ValueContainer<Double> getDruckVerdampfer() throws Exception {
+        return getScaledValue(DRUCK_VERDAMPFER_GEFILTERT, 100);
+    }
+
+    public ValueContainer<Double> getVerdampferVorKompensation() throws Exception {
+        return getScaledValue(VERDAMPFERTEMP_VOR_KOMPENSATION, 10);
+    }
+
+    public ValueContainer<Double> getVerdampferNachKompensation() throws Exception {
+        return getScaledValue(VERDAMPFERTEMP_NACH_KOMPENSATION, 10);
+    }
+
     public ValueContainer<Double> getVerdichterDrehzahl() throws Exception {
         return getScaledValue(VERDICHTER_DREHZAHL, 1);
     }
@@ -626,6 +716,20 @@ public class Waermepumpe {
             0, "Notbetrieb", 1, "Bereitschaft", 2, "Programmbetrieb", 3, "Komfortbetrieb", 4, "Eco-Betrieb",
             5, "Warmwasserbetrieb");
 
+    /**
+     * Time slot of a heating program, high byte start and low byte end in quarters of an hour, e.g. 0x185a =
+     * "06:00–22:30"; a byte above 96 means no slot
+     */
+    static String heizprogramm(double wert) {
+        int roh = (int) wert & 0xffff;
+        int start = roh >> 8;
+        int ende = roh & 0xff;
+        if (start > 96 || ende > 96) {
+            return "kein Zeitraum";
+        }
+        return String.format("%02d:%02d–%02d:%02d", start / 4, start % 4 * 15, ende / 4, ende % 4 * 15);
+    }
+
     static String betriebsart(double wert) {
         return BETRIEBSARTEN.getOrDefault((int) wert, "Betriebsart " + (int) wert);
     }
@@ -683,7 +787,24 @@ public class Waermepumpe {
                 new Einstellung("Reglerdynamik", "Reglerdynamik", "", 0, this::getReglerdynamik,
                         "Schaltabstand zwischen Verdichter und den Stufen des Heizstabs, 1 bis 500. Richtwert WPL ACS "
                                 + "bei Fußbodenheizung 25, bei Radiatoren 50 (ältere Anleitung: 10; WPM-3-Standard "
-                                + "100)." + WPM));
+                                + "100)." + WPM),
+                new Einstellung("HeizprogrammMoFr", "Heizprogramm Mo–Fr", "", 0,
+                        () -> getScaledValue(HEIZPROG_1_MO_FR, 1),
+                        "Zeitraum von HEIZPROGRAMM 1 an Werktagen (0x1480). Im Programmbetrieb gilt darin die "
+                                + "Komfort-Temperatur, sonst die Eco-Temperatur." + WPM, Waermepumpe::heizprogramm),
+                new Einstellung("HeizprogrammSaSo", "Heizprogramm Sa–So", "", 0,
+                        () -> getScaledValue(HEIZPROG_1_SA_SO, 1),
+                        "Zeitraum von HEIZPROGRAMM 1 am Wochenende (0x1490)." + WPM, Waermepumpe::heizprogramm),
+                new Einstellung("SommerWinter", "Sommer/Winter-Umschaltung", "°C", 1,
+                        () -> getScaledValue(SW_AUSSENTEMP, 10),
+                        "Liegt die Außentemperatur darüber, heizt die Anlage nicht (Sommerbetrieb, 0x01BF)." + WPM),
+                new Einstellung("Frostschutz", "Frostschutz Außentemperatur", "°C", 1,
+                        () -> getScaledValue(AUSSEN_FROSTTEMP, 10),
+                        "Darunter schützt die Anlage den Heizkreis vor Frost, auch außerhalb der Heizzeiten (0x0A00)."
+                                + WPM),
+                new Einstellung("MaxHeiztemperatur", "Maximale Heiztemperatur", "°C", 1,
+                        () -> getScaledValue(MAX_HEIZUNG_TEMP, 10),
+                        "Höchste Vorlauftemperatur im Heizbetrieb (0x01E8)." + WPM));
     }
 
     private ValueContainer<Double> getBetriebsart() throws Exception {

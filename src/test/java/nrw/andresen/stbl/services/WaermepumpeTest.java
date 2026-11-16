@@ -24,6 +24,26 @@ public class WaermepumpeTest {
     }
 
     @Test
+    public void testHeizprogramm() {
+        // Read on 2026-11-16: Mo-Fr 0x185a, Sa-So 0x1e5c
+        assertEquals("06:00–22:30", Waermepumpe.heizprogramm(0x185a));
+        assertEquals("07:30–23:00", Waermepumpe.heizprogramm(0x1e5c));
+        assertEquals("00:00–24:00", Waermepumpe.heizprogramm(0x0060));
+        // 0x8080 as signed raw value means no slot
+        assertEquals("kein Zeitraum", Waermepumpe.heizprogramm((short) 0x8080));
+    }
+
+    @Test
+    public void testRohwerte() {
+        assertEquals(28, Waermepumpe.ROHWERTE.size());
+        // Node and index unique, names as stored in InfluxDB
+        assertEquals(Waermepumpe.ROHWERTE.size(), Waermepumpe.ROHWERTE.stream().distinct().count());
+        assertTrue(Waermepumpe.ROHWERTE.contains(new Waermepumpe.Rohwert(0x500, (short) 0x0705)));
+        assertEquals("Roh_180_06A0", new Waermepumpe.Rohwert(0x180, (short) 0x06a0).name());
+        assertEquals("Roh_480_0A37", new Waermepumpe.Rohwert(0x480, (short) 0x0a37).name());
+    }
+
+    @Test
     public void testWaermeleistungOhneDurchfluss() {
         assertEquals(0.0, Waermepumpe.waermeleistung(0.0, 5.4), 0.0001);
     }

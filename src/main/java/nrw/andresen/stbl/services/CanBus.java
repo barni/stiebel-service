@@ -74,6 +74,8 @@ public class CanBus {
     private SynchronizedUSBtin usbtin;
     // Latest answer per index; the answers carry only the index, so an index is requested from one node only
     private final Map<Short, ElsterMessage> msgs = new ConcurrentHashMap<>();
+    // The same answers by node and index, for indices that several nodes answer with different values
+    private final Map<Integer, ElsterMessage> msgsKnoten = new ConcurrentHashMap<>();
     // Values read along, separate from msgs: AUSSENTEMP and RUECKLAUFISTTEMP are also requested from other devices
     private final Map<Short, ElsterMessage> mitgelesen = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<ElsterMessage> queue = new ConcurrentLinkedQueue<>();
@@ -266,6 +268,7 @@ public class CanBus {
             while (running.get()) {
                 while ((msg = queue.poll()) != null) {
                     msgs.put(msg.getElsterIndex().getIndex(), msg);
+                    msgsKnoten.put(schluessel(msg.getId(), msg.getElsterIndex().getIndex()), msg);
                     logger.debug("Add elster Message: " + msg.getElsterIndex().getName() +
                             " Payload: " + msg.getValue());
                 }
@@ -361,6 +364,17 @@ public class CanBus {
      */
     public ElsterMessage nachricht(short index) {
         return msgs.get(index);
+    }
+
+    /**
+     * Latest answer of the node for the index, null if none was received
+     */
+    public ElsterMessage nachricht(int knoten, short index) {
+        return msgsKnoten.get(schluessel(knoten, index));
+    }
+
+    private static int schluessel(int knoten, short index) {
+        return knoten << 16 | (index & 0xffff);
     }
 
     /**
