@@ -67,8 +67,9 @@ public class ElsterTable {
     public static short ROH_FE07 = (short)0xfe07;
     public static short ROH_07A8 = (short)0x07a8;
     public static short ROH_0A36 = (short)0x0a36;
-    // Written by the manager to the heat pump every 10 s next to the controller integral, not a material number
-    public static short ROH_02CA = (short)0x02ca;
+    // Actual heating circuit temperature in 0.1 K, the manager writes it to the heat pump every 10 s next to the
+    // controller integral (named MATERIALNUMMER_HIGH in the Elster table, HKISTTEMP in OneESP32ToRuleThemAll)
+    public static short HEIZKREIS_ISTTEMP = (short)0x02ca;
     // 0x700 answers the manager every 5 s, changes slowly (211, 210 on 2026-11-16), maybe a temperature
     public static short ROH_FE09 = (short)0xfe09;
     // Frequency the manager demands from the compressor in 0.01 Hz, follows the controller integral, also at

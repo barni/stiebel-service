@@ -289,6 +289,10 @@ public class StatusService {
                 .info("Rücklauf am Fühler des Wärmepumpenmanagers (0x180, 0x0016), den er dem Bedienteil alle 10 s "
                         + "meldet, auf dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Lag am 16.11.2026 im "
                         + "Stillstand etwa 1 K unter dem Rücklauf der Wärmepumpe.")
+                .row("Heizkreis-Ist WPM", "°C", 1, "HeizkreisIstWPM", wp::getHeizkreisIstWpm)
+                .info("Ist-Temperatur des Heizkreises, die der Wärmepumpenmanager alle 10 s an die Wärmepumpe "
+                        + "schreibt (0x02CA, in der Elster-Tabelle falsch MATERIALNUMMER_HIGH), auf dem Bus mitgelesen, "
+                        + "nur mit „Alle Nachrichten empfangen“. Am 16.11.2026 im Stillstand gleich dem Rücklauf WPM.")
                 .row("Spreizung fein (Test)", "K", 1, null, wp::getSpreizungFein)
                 .info("Feiner Vorlauf minus feiner Rücklauf. Lag beim Heizen am 15.11.2026 bei 4,9 bis 5,2 K, der "
                         + "Sollwert ist 5 K.")
