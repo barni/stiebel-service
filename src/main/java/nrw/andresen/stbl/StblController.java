@@ -210,9 +210,13 @@ public class StblController {
      * Page of the scan of all Elster indices: state, start button and the answers with a value
      */
     @GetMapping(value = "/canbus/scan", produces = "text/html;charset=UTF-8")
-    public String scan(@RequestParam(defaultValue = "nein") String nullen) {
+    public String scan(@RequestParam(defaultValue = "nein") String nullen, HttpServletRequest request) {
+        // The start button sends a POST, Spring Security wants the token against forms from other sites
+        Object csrf = request.getAttribute(CsrfToken.class.getName());
         return CanBusSeite.scan(canBus.getIndexScan().status(), canBus.getIndexScan().ergebnisse(),
-                canBus.getAngefragt(), "ja".equals(nullen), Instant.now());
+                canBus.getAngefragt(), "ja".equals(nullen),
+                csrf instanceof CsrfToken token ? token.getParameterName() : null,
+                csrf instanceof CsrfToken token ? token.getToken() : null, Instant.now());
     }
 
     /**

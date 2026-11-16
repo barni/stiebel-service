@@ -193,9 +193,10 @@ public final class CanBusSeite {
      *
      * @param angefragt indices the service requests anyway, they are not scanned
      * @param nullen    also show the answers with the value 0
+     * @param csrfName  name of the hidden form field against requests from other sites, null without protection
      */
     public static String scan(IndexScan.Status st, List<IndexScan.Ergebnis> ergebnisse, Set<Short> angefragt,
-                              boolean nullen, Instant jetzt) {
+                              boolean nullen, String csrfName, String csrfToken, Instant jetzt) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
@@ -222,7 +223,12 @@ public final class CanBusSeite {
                 .append("unbekannte Indizes teils nicht beantworten. Das Ergebnis bleibt bis zum nächsten Neustart ")
                 .append("des Dienstes erhalten, als CSV lässt es sich sichern.</p>");
         if (!st.laeuft()) {
-            html.append("<form method=\"post\" action=\"scan\"><button type=\"submit\">")
+            html.append("<form method=\"post\" action=\"scan\">");
+            if (csrfName != null) {
+                html.append("<input type=\"hidden\" name=\"").append(text(csrfName)).append("\" value=\"")
+                        .append(text(csrfToken)).append("\">");
+            }
+            html.append("<button type=\"submit\">")
                     .append(st.ende() == null ? "Scan starten" : "Scan erneut starten").append("</button></form>");
         }
         html.append("<p class=\"note\"><a href=\"scan.csv\">Alle Werte als CSV</a> · <a href=\"scan")
