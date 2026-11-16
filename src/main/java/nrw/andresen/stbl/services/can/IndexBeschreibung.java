@@ -100,8 +100,9 @@ public final class IndexBeschreibung {
                     + "4,9 bis 5,2 K bei 5 K Soll."),
             entry((short) 0xFDF5, "Dritte Temperatur von 0x700 in 0,1 K, liegt nahe am feinen Vorlauf. Bedeutung "
                     + "unbekannt, Name falsch."),
-            entry((short) 0xFE1B, "PWM-Signal der Umwälzpumpe, das der Manager an 0x700 schreibt (gedeutet): 100 im "
-                    + "Stillstand, beim Heizen 64 bis 72. Je kleiner, desto mehr Durchfluss."),
+            entry((short) 0xFE1B, "PWM-Signal der Umwälzpumpe, das der Manager an 0x700 schreibt (gedeutet, Name "
+                    + "unbekannt): 100 im Stillstand. Beim Heizen 70 bis 72 bei 9,0 l/min, 66 bis 67 bei 11,1 l/min, "
+                    + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
                     + "(gedeutet). Negativ, wenn der Vorlauf über dem Soll liegt, bis -1000."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 23, etwa 0,8 × Verdichterdrehzahl. "
@@ -110,7 +111,9 @@ public final class IndexBeschreibung {
                     + "nicht entschlüsselt."),
             entry((short) 0x0A36, "Die Wärmepumpe schreibt ihn etwa jede Sekunde an den Manager, er springt zwischen "
                     + "zwei Werten (z. B. 298/308 im Stillstand, 355 bis 378 beim Heizen). Noch nicht entschlüsselt."),
-            entry((short) 0x0669, "Wärmepumpe an Manager alle 10 s, 1770 bis 2790. Noch nicht entschlüsselt."),
+            entry((short) 0x0669, "Verdichterfrequenz in 0,01 Hz, die Wärmepumpe meldet sie dem Manager alle 10 s "
+                    + "(gedeutet, Name falsch): 1922 bis 2070 bei 21 Hz, 2660 bis 2786 bei 27 Hz, 3239 bis 3337 bei "
+                    + "33 Hz. Im Stillstand bleibt etwa 2400 stehen."),
             // Other traffic on the bus
             entry((short) 0x0126, "Uhrzeit, Minute. Der Manager sendet sie jede Minute als Rundruf und an das "
                     + "Bedienteil."),
