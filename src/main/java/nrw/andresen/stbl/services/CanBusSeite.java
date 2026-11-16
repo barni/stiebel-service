@@ -225,8 +225,8 @@ public final class CanBusSeite {
         String zustand = st.laeuft() ? "läuft seit " + zeit(st.start())
                 : st.ende() != null ? "fertig " + zeit(st.ende()) : "noch nicht gestartet";
         int nullwerte = (int) ergebnisse.stream().filter(e -> e.roh() == 0).count();
-        // Values may wrap, the long texts would be cut off on a narrow screen
-        html.append("<article class=\"card kv\"><h2>Zustand</h2>").append(tabelle(null, List.of(
+        // As wide as the table of answers; values may wrap, the long texts would be cut off on a narrow screen
+        html.append("<article class=\"card breit kv\"><h2>Zustand</h2>").append(tabelle(null, List.of(
                 List.of("Zustand", text(zustand)),
                 List.of("Fortschritt", st.gesamt() == 0 ? "–" : st.gesendet() + " von " + st.gesamt() + " Anfragen ("
                         + zahl(100d * st.gesendet() / st.gesamt(), 0) + " %)"),

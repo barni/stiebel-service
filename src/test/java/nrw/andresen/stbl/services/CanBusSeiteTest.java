@@ -258,8 +258,8 @@ public class CanBusSeiteTest {
                 false, null, null, 0, 0, 0, 0);
         String html = CanBusSeite.scan(status, List.of(), Set.of(), false, "_csrf", "abc", JETZT);
         assertTrue(html.contains("noch nicht gestartet"));
-        // The state card lets its values wrap on a narrow screen
-        assertTrue(html.contains("<article class=\"card kv\"><h2>Zustand</h2>"));
+        // The state card is as wide as the table below and lets its values wrap on a narrow screen
+        assertTrue(html.contains("<article class=\"card breit kv\"><h2>Zustand</h2>"));
         assertTrue(html.contains("<form method=\"post\" action=\"scan\">"));
         // The token Spring Security checks for every POST
         assertTrue(html.contains("<input type=\"hidden\" name=\"_csrf\" value=\"abc\">"));
