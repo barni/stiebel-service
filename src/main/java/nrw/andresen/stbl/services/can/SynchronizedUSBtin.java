@@ -35,6 +35,19 @@ public class SynchronizedUSBtin extends USBtin {
         this.statistik = statistik;
     }
 
+    /**
+     * The event thread of jssc asks the port for new events in a loop. With the default wait time of -1 it does not
+     * wait at all and took 78 % of a core of the Pi on 2026-11-16, with and without can.logall. With a wait time
+     * poll() blocks until data arrives or the time is over, so messages still arrive at once.
+     */
+    static final int WARTEZEIT_EREIGNISSE_MS = 100;
+
+    @Override
+    public void connect(String portName) throws USBtinException {
+        super.connect(portName);
+        serialPort.setWaitEventsTimeoutMs(WARTEZEIT_EREIGNISSE_MS);
+    }
+
     @Override
     public synchronized void send(CANMessage canmsg) throws USBtinException {
         super.send(canmsg);
