@@ -118,8 +118,9 @@ public final class IndexBeschreibung {
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 29, etwa 0,7 bis 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
             entry((short) 0x07A8, "Status-Wort des Verdichters (VERDICHTER, in ha-stiebel-control für die WPL13E "
-                    + "0x0008 Stillstand, 0x0221/0x0228 Betrieb). Hier 8 im Stillstand, 24 beim Heizen, Bits noch nicht "
-                    + "entschlüsselt."),
+                    + "0x0008 Stillstand, 0x0221/0x0228 Betrieb). Hier 8 (0x008) im Stillstand, 24 (0x018) beim Heizen, "
+                    + "264 (0x108) beim Abtauen am 16.11.2026 um 19:34: Bit 0x010 heißt Heizen, Bit 0x100 Abtauen, "
+                    + "Bit 0x008 ist immer gesetzt. Gespeichert als WP_Roh_07A8."),
             entry((short) 0x0A36, "Die Wärmepumpe schreibt ihn etwa jede Sekunde an den Manager, er springt zwischen "
                     + "zwei Werten: 349 bis 388 beim Heizen, im Stillstand langsam fallend bis etwa 280. In "
                     + "OneESP32ToRuleThemAll FROSTSCHUTZTEMPERATUR, also vermutlich eine Wassertemperatur in der "
@@ -136,7 +137,8 @@ public final class IndexBeschreibung {
             entry((short) 0x02CA, "Der Manager schreibt ihn alle 10 s an die Wärmepumpe, direkt vor dem "
                     + "Regler-Integral: Ist-Temperatur des Heizkreises in 0,1 °C (HKISTTEMP in "
                     + "OneESP32ToRuleThemAll). Keine Materialnummer. Im Stillstand am 16.11.2026 gleich dem Rücklauf "
-                    + "WPM (254 = 25,4 °C), beim Heizen bis 27,9 °C. Wird als WP_HeizkreisIstWPM mitgelesen."),
+                    + "WPM (254 = 25,4 °C), beim Heizen bis 30,7 °C, am 16.11.2026 nie mehr als 0,2 K vom Rücklauf WPM "
+                    + "entfernt. Deshalb nicht eigens gespeichert (bis 16.11.2026 abends als WP_HeizkreisIstWPM)."),
             entry((short) 0x0199, "Softwarenummer des Geräts. Beim Abgleich schreibt der Manager seine eigene (331) "
                     + "an die Wärmepumpe, die Wärmepumpe meldet 70."),
             entry((short) 0x019A, "Softwareversion des Geräts. Manager 11, Wärmepumpe 2."),

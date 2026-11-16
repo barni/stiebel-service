@@ -204,7 +204,6 @@ public class StblService {
             addPoint(points, "Roh_FE09", () -> wp.mitgelesenerWert(ROH_FE09, 1), MAX_AGE_20);
             addPoint(points, "AussentempWPM", wp::getAussentempWpm, MAX_AGE_20);
             addPoint(points, "RuecklaufWPM", wp::getRuecklaufWpm, MAX_AGE_20);
-            addPoint(points, "HeizkreisIstWPM", wp::getHeizkreisIstWpm, MAX_AGE_20);
             addPoint(points, "VorlaufSollWPM", wp::getVorlaufSollWpm, MAX_AGE_20);
             addPoint(points, "WaermeleistungWPM", wp::getWaermeleistungWpm, MAX_AGE_20);
             addPoint(points, "WaermeertragTagWWPM", () -> wp.getDecimalValue(ERTRAG_TAG_W), MAX_AGE_60);

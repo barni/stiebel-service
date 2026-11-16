@@ -354,15 +354,6 @@ public class Waermepumpe {
         return mitgelesenerWert(RUECKLAUFISTTEMP, 10);
     }
 
-    /**
-     * Actual heating circuit temperature in 0.1 K that the manager writes to the heat pump every 10 s (0x02CA,
-     * HKISTTEMP in OneESP32ToRuleThemAll). Equal to the return temperature of the manager at standstill. Read along,
-     * only with can.logall.
-     */
-    public ValueContainer<Double> getHeizkreisIstWpm() throws KeinMesswert {
-        return mitgelesenerWert(HEIZKREIS_ISTTEMP, 10);
-    }
-
     public ValueContainer<Double> getAussentemp() throws Exception {
         return getDecimalValue(AUSSENTEMP);
     }
