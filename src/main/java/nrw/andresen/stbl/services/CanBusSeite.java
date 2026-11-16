@@ -52,7 +52,8 @@ public final class CanBusSeite {
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
                 .append(neuLaden())
                 .append("<title>Wärmepumpe · CAN-Bus</title><style>").append(StatusPage.CSS).append(CSS)
-                .append("</style></head><body><main><header><div><h1>CAN-Bus</h1><p class=\"sub\">USBtin-Adapter ")
+                .append("</style></head>").append(body())
+                .append("<main><header><div><h1>CAN-Bus</h1><p class=\"sub\">USBtin-Adapter ")
                 .append("und Nachrichten, lädt alle ").append(NEU_LADEN_S).append(" s neu</p></div>")
                 .append("<nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a> · ")
@@ -189,17 +190,18 @@ public final class CanBusSeite {
     }
 
     /**
-     * Reloads the page every NEU_LADEN_S seconds like the status page, but not in a hidden tab and not while a
-     * tooltip is shown (hovered or tapped, the i keeps the focus); then as soon as it is closed. Without script a
-     * plain refresh.
+     * Updates the page in place every NEU_LADEN_S seconds like the status page (static/js/aktualisieren.js), so an
+     * open tooltip and the scroll position stay; a plain refresh without script. Goes with body(), which carries the
+     * interval.
      */
     static String neuLaden() {
-        return "<noscript><meta http-equiv=\"refresh\" content=\"" + NEU_LADEN_S + "\"></noscript><script>(() => {"
-                + "const offen = () => document.querySelector('.calc:hover, .calc:focus') !== null;"
-                + "const reload = () => { if (!document.hidden && !offen()) location.reload(); };"
-                + "setTimeout(() => { reload(); setInterval(reload, 1000);"
-                + " document.addEventListener('visibilitychange', reload); }, " + NEU_LADEN_S * 1000 + ");"
-                + "})();</script>";
+        return "<noscript><meta http-equiv=\"refresh\" content=\"" + NEU_LADEN_S + "\"></noscript>"
+                + "<script src=\"/js/idiomorph-0.7.4.min.js\" defer></script>"
+                + "<script src=\"/js/aktualisieren.js\" defer></script>";
+    }
+
+    static String body() {
+        return "<body data-aktualisieren=\"" + NEU_LADEN_S + "\">";
     }
 
     /**
@@ -213,19 +215,20 @@ public final class CanBusSeite {
                               boolean nullen, String csrfName, String csrfToken, Instant jetzt) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
-                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-        if (st.laeuft()) {
-            html.append(neuLaden());
-        }
-        html.append("<title>Wärmepumpe · Bus-Scan</title><style>").append(StatusPage.CSS).append(CSS)
-                .append("</style></head><body><main><header><div><h1>Bus-Scan</h1><p class=\"sub\">Alle Indizes ")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+                // Also after the end, so the page shows when a scan started elsewhere is done
+                .append(neuLaden())
+                .append("<title>Wärmepumpe · Bus-Scan</title><style>").append(StatusPage.CSS).append(CSS)
+                .append("</style></head>").append(body())
+                .append("<main><header><div><h1>Bus-Scan</h1><p class=\"sub\">Alle Indizes ")
                 .append("der Elster-Tabelle einmal bei 0x180, 0x480, 0x500 und 0x514 abfragen, nur lesend</p></div>")
                 .append("<nav><a class=\"nav\" href=\"../canbus\">← CAN-Bus</a> · ")
                 .append("<a class=\"nav\" href=\"../status\">Status</a></nav></header><section class=\"cards\">");
         String zustand = st.laeuft() ? "läuft seit " + zeit(st.start())
                 : st.ende() != null ? "fertig " + zeit(st.ende()) : "noch nicht gestartet";
         int nullwerte = (int) ergebnisse.stream().filter(e -> e.roh() == 0).count();
-        html.append("<article class=\"card\"><h2>Zustand</h2>").append(tabelle(null, List.of(
+        // As wide as the table of answers; values may wrap, the long texts would be cut off on a narrow screen
+        html.append("<article class=\"card breit kv\"><h2>Zustand</h2>").append(tabelle(null, List.of(
                 List.of("Zustand", text(zustand)),
                 List.of("Fortschritt", st.gesamt() == 0 ? "–" : st.gesendet() + " von " + st.gesamt() + " Anfragen ("
                         + zahl(100d * st.gesendet() / st.gesamt(), 0) + " %)"),
@@ -479,6 +482,8 @@ public final class CanBusSeite {
               box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
             .calc:hover .info, .calc:focus .info { background: var(--accent); color: var(--card); }
             .tbl { padding-bottom: 120px; margin-bottom: -120px; }
+            .kv .tbl td { white-space: normal; }
+            .kv .tbl td:first-child { white-space: nowrap; padding-right: 12px; }
             .nav.gewaehlt { padding: 1px 6px; border-radius: 6px; background: var(--on-bg); color: var(--text); }
             """;
 }

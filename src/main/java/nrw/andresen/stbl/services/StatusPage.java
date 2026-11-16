@@ -513,11 +513,11 @@ public class StatusPage {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                // The script reloads the page, the meta refresh is only the fallback without JavaScript
-                .append("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>")
+                // The scripts update the page in place, the meta refresh is only the fallback without JavaScript
+                .append(AKTUALISIEREN)
                 .append("<title>Wärmepumpe</title><style>").append(CSS)
                 .append(hasTooltip ? TOOLTIP_CSS : "").append(hasHistory ? HISTORY_CSS : "")
-                .append("</style></head><body><main>");
+                .append("</style></head><body data-aktualisieren=\"20\"><main>");
 
         html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
                 .append(TIME.format(Instant.now(clock).atZone(zone)))
@@ -558,7 +558,7 @@ public class StatusPage {
             }
             html.append("</section>").append(bereich.klappbar ? "</details>" : "");
         }
-        html.append("</main><script>").append(BEREICH_SCRIPT).append(RELOAD_SCRIPT).append("</script>");
+        html.append("</main><script>").append(BEREICH_SCRIPT).append("</script>");
         if (hasHistory) {
             html.append(HISTORY_DIALOG).append("<script>").append(HISTORY_SCRIPT).append("</script>");
         }
@@ -577,22 +577,11 @@ public class StatusPage {
               d.addEventListener('toggle', () => { try { localStorage.setItem(key, d.open ? '1' : '0'); } catch (e) { } });
             });""";
 
-    // Reloads the page after 20 s, but not in a hidden tab, while the course dialog is open or while a tooltip is
-    // shown (hovered or tapped); then as soon as none of that applies any more. The dialog is looked up on each check,
-    // because it is added to the page after this script.
-    private static final String RELOAD_SCRIPT = """
-            (() => {
-              const offen = () => {
-                const dlg = document.getElementById('verlauf');
-                return (dlg && dlg.open) || document.querySelector('.calc:hover, .calc:focus') !== null;
-              };
-              const reload = () => { if (!document.hidden && !offen()) location.reload(); };
-              setTimeout(() => {
-                reload();
-                setInterval(reload, 1000);
-                document.addEventListener('visibilitychange', reload);
-              }, 20000);
-            })();""";
+    // Updates the page in place instead of reloading it (static/js/aktualisieren.js, interval from data-aktualisieren
+    // on the body), keeps scroll position, tooltips, folded areas and the course dialog; plain refresh without script
+    static final String AKTUALISIEREN = "<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"
+            + "<script src=\"/js/idiomorph-0.7.4.min.js\" defer></script><script src=\"/js/aktualisieren.js\" defer>"
+            + "</script>";
 
     private static final String TOOLTIP_CSS = """
             .calc { position: relative; cursor: help; outline: none; }
@@ -834,11 +823,14 @@ public class StatusPage {
                 load();
               }
 
-              document.querySelectorAll('[data-series]').forEach(row => {
-                row.addEventListener('click', () => open(row));
-                row.addEventListener('keydown', e => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(row); }
-                });
+              // On the document, so rows the update adds later open the course as well
+              document.addEventListener('click', e => {
+                const row = e.target.closest('[data-series]');
+                if (row) open(row);
+              });
+              document.addEventListener('keydown', e => {
+                const row = e.target.closest('[data-series]');
+                if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); open(row); }
               });
             })();
             """;
