@@ -225,7 +225,8 @@ public final class CanBusSeite {
         String zustand = st.laeuft() ? "läuft seit " + zeit(st.start())
                 : st.ende() != null ? "fertig " + zeit(st.ende()) : "noch nicht gestartet";
         int nullwerte = (int) ergebnisse.stream().filter(e -> e.roh() == 0).count();
-        html.append("<article class=\"card\"><h2>Zustand</h2>").append(tabelle(null, List.of(
+        // Values may wrap, the long texts would be cut off on a narrow screen
+        html.append("<article class=\"card kv\"><h2>Zustand</h2>").append(tabelle(null, List.of(
                 List.of("Zustand", text(zustand)),
                 List.of("Fortschritt", st.gesamt() == 0 ? "–" : st.gesendet() + " von " + st.gesamt() + " Anfragen ("
                         + zahl(100d * st.gesendet() / st.gesamt(), 0) + " %)"),
@@ -479,6 +480,8 @@ public final class CanBusSeite {
               box-shadow: 0 4px 14px rgb(0 0 0 / 0.15); }
             .calc:hover .info, .calc:focus .info { background: var(--accent); color: var(--card); }
             .tbl { padding-bottom: 120px; margin-bottom: -120px; }
+            .kv .tbl td { white-space: normal; }
+            .kv .tbl td:first-child { white-space: nowrap; padding-right: 12px; }
             .nav.gewaehlt { padding: 1px 6px; border-radius: 6px; background: var(--on-bg); color: var(--text); }
             """;
 }
