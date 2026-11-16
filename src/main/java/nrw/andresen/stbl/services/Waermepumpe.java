@@ -442,7 +442,7 @@ public class Waermepumpe {
 
     /**
      * Controller integral the manager writes to the heat pump every 10 s (0x0917). It rises while the flow is above
-     * about 34 degC and falls below. At -1000 the integral is reset to 0 and the compressor starts 40 to 60 s
+     * the setpoint (about 34 degC, it follows the heating curve) and falls below. At -1000 the integral is reset to 0 and the compressor starts 40 to 60 s
      * later, briefly at 40 Hz, then it ramps up from about 26 Hz with the frequency demand; around +1000 it stops and the integral is
      * reset to 0 again (2026-11-16, 8 degC outside).
      */
