@@ -273,7 +273,9 @@ public final class CanBusSeite {
             case 2 -> "Antwort";
             case 3 -> "Bestätigung";
             case 4 -> "Schreib-Antwort";
-            case 6 -> "Rundruf";
+            // 6 and 7: system messages, e.g. the exchange on 0xFFFE before manager and heat pump sync their data
+            case 6 -> "System";
+            case 7 -> "System-Antwort";
             default -> String.format("Art %X", daten[0] & 0x0F);
         };
     }

@@ -223,4 +223,12 @@ public class CanBusSeiteTest {
         // Unknown: the escaped name only
         assertEquals("UNKOWN_&lt;x&gt;", CanBusSeite.mitBeschreibung((short) 0x7777, "UNKOWN_<x>"));
     }
+
+    @Test
+    public void testArtSystem() {
+        // Exchange on 0xFFFE before the sync of manager and heat pump, 2026-11-16 10:41:58
+        assertEquals("System", CanBusSeite.art(hex("9600FE01000000")));
+        assertEquals("System-Antwort", CanBusSeite.art(hex("A700FE01000000")));
+        assertTrue(CanBusSeite.mitBeschreibung((short) 0x07A2, "STUETZSTELLE_HD2").contains("43,00 bar"));
+    }
 }
