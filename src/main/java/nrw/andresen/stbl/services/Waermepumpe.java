@@ -87,7 +87,8 @@ public class Waermepumpe {
     };
     // Every minute, test whether they answer here (verified on a WPL17 ICS classic by ha-stiebel-control)
     private static final short[] BETRIEBSWERTE_MANAGER = {ERTRAG_TAG_W};
-    private static final short[] STATUS_WP_MANAGER = {WP_STATUS, SOMMERBETRIEB, ANTILEGIONELLEN};
+    // WP_STATUS and ANTILEGIONELLEN answered 0x8000 (not available) on 2026-11-16 and are no longer requested
+    private static final short[] STATUS_WP_MANAGER = {SOMMERBETRIEB};
     private static final short[] MONITORING_WAERMEPUMPE = {
             TEST_OBJEKT_113_STROM_INVERTER, TEST_OBJEKT_112_SPANNUNG_INVERTER, ANZEIGE_HOCHDRUCK, ANZEIGE_NIEDERDRUCK,
             AUSSENTEMP, HEISSGAS_TEMP, VERDICHTER_DREHZAHL, VERDICHTER_EINTRITTSTEMP, VERDAMPFERTEMP, OELSUMPFTEMP,
