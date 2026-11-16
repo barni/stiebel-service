@@ -127,7 +127,9 @@ public class CanBusSeiteTest {
         assertTrue(html.contains("<h1>CAN-Bus</h1>"));
         assertTrue(html.contains("href=\"konfiguration\""));
         assertTrue(html.contains("http-equiv=\"refresh\""));
-        assertTrue(html.contains("<td>0x000C</td><td>AUSSENTEMP</td>"));
+        // The name carries a small i with what the value stands for
+        assertTrue(html.contains("<td>0x000C</td><td><span class=\"calc\" data-tip=\"Außentemperatur in °C."));
+        assertTrue(html.contains(">AUSSENTEMP <span class=\"info\" aria-hidden=\"true\">i</span></span></td>"));
         assertTrue(CanBusSeite.render(verbindung(true), List.of(new CanBus.Abfrage((short) 0x5F, "SPEICHERBEDARF",
                 "512", null, JETZT, null, true)), List.of(), JETZT).contains("<td>512</td><td>mitgelesen</td>"));
         assertTrue(html.contains("class=\"alt\""));
@@ -211,5 +213,14 @@ public class CanBusSeiteTest {
                 () -> CanBusSeite.knoten("0x1000"));
         assertEquals(1, CanBusSeite.anzahl(-5));
         assertEquals(CanStatistik.RAHMEN_MAX, CanBusSeite.anzahl(1_000_000));
+    }
+
+    @Test
+    public void testMitBeschreibung() {
+        assertTrue(CanBusSeite.mitBeschreibung((short) 0xFE07, "INFOBLOCK_6").contains("Verdichterdrehzahl"));
+        // Fields of the fault list share one description
+        assertTrue(CanBusSeite.mitBeschreibung((short) 0x0B8B, "FEHLERFELD_139").contains("Fehlerliste"));
+        // Unknown: the escaped name only
+        assertEquals("UNKOWN_&lt;x&gt;", CanBusSeite.mitBeschreibung((short) 0x7777, "UNKOWN_<x>"));
     }
 }
