@@ -29,7 +29,32 @@ public class CanBusSeiteTest {
                 1, JETZT.minusSeconds(3600), JETZT.minusSeconds(2), JETZT.minusSeconds(2),
                 new CanStatistik.Minute(JETZT.minusSeconds(30), 60, 60, 60, 1, 100, 4.2),
                 List.of(new CanStatistik.KnotenStatus(0x500, "0x500 Wärmepumpe", 60, JETZT.minusSeconds(2))),
-                1, JETZT.minusSeconds(600), "Fehler im Empfangs-Thread: <x>");
+                1, JETZT.minusSeconds(600), "Fehler im Empfangs-Thread: <x>", true);
+    }
+
+    private static CanBus.Verbindung ohneAlle() {
+        CanBus.Verbindung v = verbindung(true);
+        return new CanBus.Verbindung(v.verbunden(), v.port(), v.bitrate(), v.firmware(), v.hardware(),
+                v.seriennummer(), v.verbundenSeit(), v.usbNeustarts(), v.letzterNeustart(), v.letzteNachricht(),
+                v.letzteAntwort(), v.letzteMinute(), v.knoten(), v.adapterFehler(), v.letzterFehler(),
+                v.letzterFehlerText(), false);
+    }
+
+    @Test
+    public void testMitgelesenAus() {
+        List<CanBus.Abfrage> abfragen = List.of(
+                new CanBus.Abfrage((short) 0x5F, "SPEICHERBEDARF", null, null, null, null, true),
+                new CanBus.Abfrage((short) 0x0C, "AUSSENTEMP", "8,2", JETZT.minusSeconds(5), JETZT.minusSeconds(5)));
+        String html = CanBusSeite.render(ohneAlle(), abfragen, List.of(), JETZT);
+        // Grey, at the end, with the small i to the setting
+        assertTrue(html.indexOf("AUSSENTEMP") < html.indexOf("SPEICHERBEDARF"));
+        assertTrue(html.contains("<span class=\"aus\">aus</span> " + CanBusSeite.HINWEIS_KONFIG));
+        assertTrue(html.contains("href=\"konfiguration#can-logall\""));
+        assertTrue(html.contains("gerade aus."));
+        // With receiving all the value is read along as before
+        html = CanBusSeite.render(verbindung(true), abfragen, List.of(), JETZT);
+        assertTrue(html.contains("<td>mitgelesen</td>"));
+        assertFalse(html.contains(CanBusSeite.HINWEIS_KONFIG));
     }
 
     @Test
