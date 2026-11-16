@@ -50,7 +50,7 @@ public final class CanBusSeite {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                .append("<meta http-equiv=\"refresh\" content=\"").append(NEU_LADEN_S).append("\">")
+                .append(neuLaden())
                 .append("<title>Wärmepumpe · CAN-Bus</title><style>").append(StatusPage.CSS).append(CSS)
                 .append("</style></head><body><main><header><div><h1>CAN-Bus</h1><p class=\"sub\">USBtin-Adapter ")
                 .append("und Nachrichten, lädt alle ").append(NEU_LADEN_S).append(" s neu</p></div>")
@@ -189,6 +189,20 @@ public final class CanBusSeite {
     }
 
     /**
+     * Reloads the page every NEU_LADEN_S seconds like the status page, but not in a hidden tab and not while a
+     * tooltip is shown (hovered or tapped, the i keeps the focus); then as soon as it is closed. Without script a
+     * plain refresh.
+     */
+    static String neuLaden() {
+        return "<noscript><meta http-equiv=\"refresh\" content=\"" + NEU_LADEN_S + "\"></noscript><script>(() => {"
+                + "const offen = () => document.querySelector('.calc:hover, .calc:focus') !== null;"
+                + "const reload = () => { if (!document.hidden && !offen()) location.reload(); };"
+                + "setTimeout(() => { reload(); setInterval(reload, 1000);"
+                + " document.addEventListener('visibilitychange', reload); }, " + NEU_LADEN_S * 1000 + ");"
+                + "})();</script>";
+    }
+
+    /**
      * Page of the scan of all Elster indices at /canbus/scan: state, start button and every answer with a value
      *
      * @param angefragt indices the service requests anyway, they are not scanned
@@ -201,7 +215,7 @@ public final class CanBusSeite {
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
         if (st.laeuft()) {
-            html.append("<meta http-equiv=\"refresh\" content=\"").append(NEU_LADEN_S).append("\">");
+            html.append(neuLaden());
         }
         html.append("<title>Wärmepumpe · Bus-Scan</title><style>").append(StatusPage.CSS).append(CSS)
                 .append("</style></head><body><main><header><div><h1>Bus-Scan</h1><p class=\"sub\">Alle Indizes ")
