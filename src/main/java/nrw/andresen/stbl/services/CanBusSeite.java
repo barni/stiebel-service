@@ -3,6 +3,7 @@ package nrw.andresen.stbl.services;
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterMessage;
 import nrw.andresen.stbl.services.can.IndexBeschreibung;
+import nrw.andresen.stbl.services.can.IndexScan;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -11,6 +12,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * HTML of the CAN bus monitoring page: adapter, rates of the last minute, nodes, age of each requested value and the
@@ -53,7 +55,8 @@ public final class CanBusSeite {
                 .append("</style></head><body><main><header><div><h1>CAN-Bus</h1><p class=\"sub\">USBtin-Adapter ")
                 .append("und Nachrichten, lädt alle ").append(NEU_LADEN_S).append(" s neu</p></div>")
                 .append("<nav><a class=\"nav\" href=\"status\">← Status</a> · ")
-                .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a></nav></header>");
+                .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a> · ")
+                .append("<a class=\"nav\" href=\"canbus/scan\">Bus-Scan</a></nav></header>");
         html.append("<p class=\"meldung ").append(v.verbunden() ? "ok" : "fehler").append("\">")
                 .append(text(satz(v, abfragen, jetzt))).append("</p><section class=\"cards\">");
 
@@ -183,6 +186,64 @@ public final class CanBusSeite {
                 : "letzte Antwort vor " + sekunden(v.letzteAntwort(), jetzt);
         return "Adapter verbunden, " + antwort + (alt == 0 ? ", alle Anfragen beantwortet."
                 : ", " + alt + (alt == 1 ? " Wert" : " Werte") + " ohne Antwort auf die letzte Anfrage.");
+    }
+
+    /**
+     * Page of the scan of all Elster indices at /canbus/scan: state, start button and every answer with a value
+     *
+     * @param angefragt indices the service requests anyway, they are not scanned
+     * @param nullen    also show the answers with the value 0
+     */
+    public static String scan(IndexScan.Status st, List<IndexScan.Ergebnis> ergebnisse, Set<Short> angefragt,
+                              boolean nullen, Instant jetzt) {
+        StringBuilder html = new StringBuilder();
+        html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+        if (st.laeuft()) {
+            html.append("<meta http-equiv=\"refresh\" content=\"").append(NEU_LADEN_S).append("\">");
+        }
+        html.append("<title>Wärmepumpe · Bus-Scan</title><style>").append(StatusPage.CSS).append(CSS)
+                .append("</style></head><body><main><header><div><h1>Bus-Scan</h1><p class=\"sub\">Alle Indizes ")
+                .append("der Elster-Tabelle einmal bei 0x180, 0x480, 0x500 und 0x514 abfragen, nur lesend</p></div>")
+                .append("<nav><a class=\"nav\" href=\"../canbus\">← CAN-Bus</a> · ")
+                .append("<a class=\"nav\" href=\"../status\">Status</a></nav></header><section class=\"cards\">");
+        String zustand = st.laeuft() ? "läuft seit " + zeit(st.start())
+                : st.ende() != null ? "fertig " + zeit(st.ende()) : "noch nicht gestartet";
+        int nullwerte = (int) ergebnisse.stream().filter(e -> e.roh() == 0).count();
+        html.append("<article class=\"card\"><h2>Zustand</h2>").append(tabelle(null, List.of(
+                List.of("Zustand", text(zustand)),
+                List.of("Fortschritt", st.gesamt() == 0 ? "–" : st.gesendet() + " von " + st.gesamt() + " Anfragen ("
+                        + zahl(100d * st.gesendet() / st.gesamt(), 0) + " %)"),
+                List.of("Mit Wert", st.mitWert() + (st.mitWert() == 0 ? "" : ", davon " + nullwerte + " mit 0")),
+                List.of("Nicht verfügbar (0x8000)", String.valueOf(st.nichtVerfuegbar())),
+                List.of("Ausgelassen", angefragt.size() + " regelmäßig abgefragte Indizes und die Fehlerliste"))));
+        html.append("<p class=\"note\">Etwa 10 Leseanfragen pro Sekunde, rund 25 Minuten. Es wird nichts ")
+                .append("geschrieben. Während des Scans ist die Warnung „Antwortquote niedrig“ aus, weil Geräte ")
+                .append("unbekannte Indizes teils nicht beantworten. Das Ergebnis bleibt bis zum nächsten Neustart ")
+                .append("des Dienstes erhalten, als CSV lässt es sich sichern.</p>");
+        if (!st.laeuft()) {
+            html.append("<form method=\"post\" action=\"scan\"><button type=\"submit\">")
+                    .append(st.ende() == null ? "Scan starten" : "Scan erneut starten").append("</button></form>");
+        }
+        html.append("<p class=\"note\"><a href=\"scan.csv\">Alle Werte als CSV</a> · <a href=\"scan")
+                .append(nullen ? "\">Werte 0 ausblenden" : "?nullen=ja\">Auch Werte 0 zeigen").append("</a></p>")
+                .append("</article>");
+        List<List<String>> zeilen = new ArrayList<>();
+        for (IndexScan.Ergebnis e : ergebnisse) {
+            if (!nullen && e.roh() == 0) {
+                continue;
+            }
+            zeilen.add(List.of(hex(e.index()), mitBeschreibung(e.index(), e.name()), text(CanStatistik.knotenName(
+                    e.knoten())), text(e.wert()), String.format("<code>%04X</code>", e.roh()),
+                    IndexBeschreibung.beschreibung(e.index()) == null ? "neu" : "beschrieben"));
+        }
+        html.append("<article class=\"card breit\"><h2>Antworten mit Wert (").append(zeilen.size()).append(")</h2>")
+                .append(zeilen.isEmpty() ? "<p class=\"note\">Noch keine.</p>"
+                        : tabelle(List.of("Index", "Name", "Gerät", "Wert", "Roh", "Bekannt"), zeilen))
+                .append("<p class=\"note\">„neu“: Index ohne Beschreibung im stbl-service. Der Wert ist so ")
+                .append("umgerechnet, wie die Elster-Tabelle den Index führt; bei falschem Namen kann auch die ")
+                .append("Umrechnung falsch sein, dann hilft der Rohwert.</p></article>");
+        return html.append("</section></main></body></html>").toString();
     }
 
     static List<String> rahmenzeile(CanStatistik.Rahmen r) {

@@ -33,6 +33,12 @@ before you rely on it.
   watchdog) and the CAN bus of the last full minute (received messages, answers, sent requests, answer rate, answers
   "not available", estimated bus load, messages per node). Stored every minute as `WP_CAN_*`, e.g.
   `WP_CAN_Antwortquote`, `WP_CAN_Buslast`, `WP_CAN_Knoten_480`, and as JSON from `/verbindung`.
+- **Bus scan** on the page `/canbus/scan` (linked from the CAN bus page): a button starts a one time read of every
+  index of the Elster table at 0x180, 0x480, 0x500 and 0x514, about 10 read requests per second, about 25 minutes.
+  Nothing is written; indices the service requests anyway and the fault list are skipped. The page lists every
+  answer with a value (display name, device, value, raw value, whether the index is described), values 0 on request,
+  and `/canbus/scan.csv` returns all of them. The warning for a low answer rate is off while the scan runs. The
+  result is kept until the service restarts.
 - **Fault list** of the heat pump manager (DIAGNOSE → FEHLERLISTE): the 20 entries with time and fault code are read
   every 10 minutes from `FEHLERFELD_0..139` (0x0B00–0x0B8B at node 0x180, 7 values per entry: minute, hour, day,
   month, year, 0, code). Shown on the status page with text for known codes (e.g. 8116 `INV H ROTORVEKTOR`) and as

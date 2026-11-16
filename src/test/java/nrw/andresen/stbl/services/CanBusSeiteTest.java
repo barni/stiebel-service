@@ -2,11 +2,13 @@ package nrw.andresen.stbl.services;
 
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterMessage;
+import nrw.andresen.stbl.services.can.IndexScan;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -248,4 +250,31 @@ public class CanBusSeiteTest {
         assertEquals("", CanBusSeite.artMitBeschreibung(new byte[0]));
         assertTrue(CanBusSeite.mitBeschreibung((short) 0x07A2, "STUETZSTELLE_HD2").contains("43,00 bar"));
     }
+    @Test
+    public void testScanSeite() {
+        IndexScan.Status status = new IndexScan.Status(
+                false, null, null, 0, 0, 0, 0);
+        String html = CanBusSeite.scan(status, List.of(), Set.of(), false, JETZT);
+        assertTrue(html.contains("noch nicht gestartet"));
+        assertTrue(html.contains("<form method=\"post\" action=\"scan\">"));
+        // A found value with its display name, 0 hidden unless asked for
+        List<IndexScan.Ergebnis> ergebnisse = List.of(
+                new IndexScan.Ergebnis(0x480, (short) 0x02CA, "MATERIALNUMMER_HIGH",
+                        "298", 298, JETZT),
+                new IndexScan.Ergebnis(0x180, (short) 0x7777, "UNKOWN_ELSTERINDEX_7777",
+                        "0", 0, JETZT));
+        status = new IndexScan.Status(true, JETZT, null, 10, 100, 2, 3);
+        html = CanBusSeite.scan(status, ergebnisse, Set.of((short) 0x0176), false, JETZT);
+        assertTrue(html.contains("10 von 100 Anfragen (10 %)"));
+        assertTrue(html.contains("Heizkreis-Isttemperatur"));
+        assertTrue(html.contains("0x480 Manager"));
+        assertTrue(html.contains("Antworten mit Wert (1)"));
+        // While it runs the page reloads and offers no start
+        assertTrue(html.contains("http-equiv=\"refresh\""));
+        assertFalse(html.contains("<form"));
+        html = CanBusSeite.scan(status, ergebnisse, Set.of(), true, JETZT);
+        assertTrue(html.contains("Antworten mit Wert (2)"));
+        assertTrue(html.contains(">neu<"));
+    }
 }
+

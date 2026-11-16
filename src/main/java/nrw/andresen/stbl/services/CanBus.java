@@ -11,6 +11,7 @@ import nrw.andresen.stbl.services.can.ElsterMessage;
 import nrw.andresen.stbl.services.can.ElsterTable;
 import nrw.andresen.stbl.services.can.Fehlerliste;
 import nrw.andresen.stbl.services.can.IndexBeschreibung;
+import nrw.andresen.stbl.services.can.IndexScan;
 import nrw.andresen.stbl.services.can.SynchronizedUSBtin;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import org.slf4j.Logger;
@@ -23,6 +24,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -119,6 +121,12 @@ public class CanBus {
     private final Fehlerliste fehlerliste = new Fehlerliste();
     // Time of the last request of the fault list, null before the first one
     private volatile Instant fehlerlisteAngefragt;
+    // One time scan of all Elster indices, started from the scan page
+    private final IndexScan indexScan = new IndexScan();
+    // Pause between two scan requests, about 10 per second like can_scan, the scan takes about 25 minutes
+    private static final Duration SCAN_PAUSE = Duration.ofMillis(100);
+    // Wait for late answers after the last request
+    private static final Duration SCAN_NACHLAUF = Duration.ofSeconds(2);
     private final String usbPort;
     private final int usbSpeed;
     // Changed at runtime by setLogall, the next USB restart uses the new value too
@@ -212,6 +220,12 @@ public class CanBus {
                 fehlerliste.feld(index, rawValue, jetzt);
                 canStatistik.antwort(rawValue == VALUE_NOT_AVAILABLE, jetzt);
             }
+            // Answers to the scan only for indices the service does not request anyway
+            if (!angefragt.contains(index) && !Fehlerliste.istFeld(elsterMessage.getId(), index)
+                    && indexScan.antwort(elsterMessage, jetzt)) {
+                letzteAntwort = jetzt;
+                canStatistik.antwort(rawValue != null && rawValue == VALUE_NOT_AVAILABLE, jetzt);
+            }
             if (angefragt.contains(index)) {
                 letzteAntwort = jetzt;
                 canStatistik.antwort(rawValue != null && index != BETRIEBS_STATUS
@@ -281,6 +295,43 @@ public class CanBus {
             }
             usbtin.send(ElsterMessage.readRequest(CAN_SENDER_ID, knoten, index).getMessage());
         }
+    }
+
+    /**
+     * Starts the scan of all Elster indices at 0x180, 0x480, 0x500 and 0x514 in the background, read only. False if
+     * one runs already. Indices the service requests anyway and the fault list are skipped.
+     */
+    public boolean starteScan() {
+        if (indexScan.laeuft()) {
+            return false;
+        }
+        Set<Short> ausgenommen = new HashSet<>(angefragt);
+        for (int feld = 0; feld < Fehlerliste.FELDER; feld++) {
+            ausgenommen.add((short) (Fehlerliste.ERSTES_FELD + feld));
+        }
+        Thread scan = new Thread(() -> indexScan.scannen(CAN_SENDER_ID, ausgenommen, SCAN_PAUSE, SCAN_NACHLAUF,
+                anfrage -> {
+                    try {
+                        usbtin.send(anfrage.getMessage());
+                    } catch (Exception e) {
+                        logger.warn("Scan request failed: " + e.getMessage());
+                    }
+                }), "index-scan");
+        scan.setDaemon(true);
+        scan.start();
+        logger.info("Scan of all Elster indices started");
+        return true;
+    }
+
+    public IndexScan getIndexScan() {
+        return indexScan;
+    }
+
+    /**
+     * Indices the service requests anyway, they are not part of the scan
+     */
+    public Set<Short> getAngefragt() {
+        return Set.copyOf(angefragt);
     }
 
     /**
