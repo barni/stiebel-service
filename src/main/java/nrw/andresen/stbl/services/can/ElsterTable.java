@@ -76,6 +76,23 @@ public class ElsterTable {
     public static short WP_STATUS = (short)0xfdae;
     public static short SOMMERBETRIEB = (short)0xfdb4;
     public static short ANTILEGIONELLEN = (short)0x0101;
+    // Found by the bus scan on 2026-11-16 at 0x500, 1/10 degC and 1/100 bar; the dew points are probably the base of
+    // the defrost decision
+    public static short TAUPUNKT_REFERENZ = (short)0x080a;
+    public static short TAUPUNKT_KOMPENSIERT = (short)0x080b;
+    public static short DRUCK_VERDAMPFER_GEFILTERT = (short)0x080d;
+    public static short VERDAMPFERTEMP_VOR_KOMPENSATION = (short)0x0820;
+    public static short VERDAMPFERTEMP_NACH_KOMPENSATION = (short)0x0821;
+    // Settings found by the bus scan, read at 0x514: summer/winter switch and frost protection outside temperature,
+    // maximum heating temperature in 1/10 degC; heating program 1 as start and end in quarters of an hour
+    public static short SW_AUSSENTEMP = (short)0x01bf;
+    public static short AUSSEN_FROSTTEMP = (short)0x0a00;
+    public static short MAX_HEIZUNG_TEMP = (short)0x01e8;
+    public static short HEIZPROG_1_MO_FR = (short)0x1480;
+    public static short HEIZPROG_1_SA_SO = (short)0x1490;
+    // Software number and version, different per device: 390 / 11 at the manager, 446 / 2 at the heat pump
+    public static short SOFTWARE_NUMMER = (short)0x0199;
+    public static short SOFTWARE_VERSION = (short)0x019a;
     // Not decoded yet, stored raw to compare them later
     public static short ROH_FE07 = (short)0xfe07;
     public static short ROH_07A8 = (short)0x07a8;
@@ -161,7 +178,8 @@ public class ElsterTable {
     // No finer flow / return temperature than 0x01d6 / 0x0016 (steps of about 1.1 K), tested on 2026-09-23:
     // 0x4f41 / 0x4f43 at 0x180, 0xfdf3 / 0xfdf4 at 0x700 and SAMMLERISTTEMP 0x000d at 0x180 answer 0x8000,
     // VORLAUFISTTEMP 0x000f at 0x180 is always -40 degC (no sensor). HEIZKURVE 0x010e at 0x180 is always 0.
-    // VORLAUFISTTEMP_WP_IWS 0x0822 / RUECKLAUFISTTEMP_WP_IWS 0x0823 at 0x500 give the same values in the same steps.
+    // VORLAUFISTTEMP_WP_IWS 0x0822 / RUECKLAUFISTTEMP_WP_IWS 0x0823 at 0x500 give the same values in the same steps
+    // (again on 2026-11-16: 332 / 285 while 0x01d6 / 0x0016 showed 33.2 / 28.5 degC).
 
     public static short WAERMEERTRAG_2WE_HEIZ_TAG_WH =  (short)0x0926;
     public static short WAERMEERTRAG_2WE_HEIZ_TAG_KWH =  (short)0x0927;

@@ -359,6 +359,9 @@ public class StatusService {
                 .info("Absoluter Druck auf der Saugseite des Kältekreises (0x500). Entspricht der "
                         + "Verdampfungstemperatur, im Betrieb einige Kelvin unter der Außentemperatur. Sensor bis "
                         + "16 bar.")
+                .row("Verdampferdruck gefiltert (Test)", "bar", 2, "DruckVerdampfer", wp::getDruckVerdampfer)
+                .info("Gefilterter Druck im Verdampfer (0x500, 0x080D), beim Bus-Scan am 16.11.2026 gefunden. Test, "
+                        + "bis der Vergleich mit dem Niederdruck zeigt, ob er etwas Neues sagt.")
                 .row("Heißgas", "°C", 1, "HeissgasTemp", wp::getHeissgasTemp)
                 .info("Temperatur des Kältemittels direkt hinter dem Verdichter (0x500).")
                 .row("Verdichter-Eintritt", "°C", 1, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp)
@@ -366,6 +369,17 @@ public class StatusService {
                 .row("Verdampfer", "°C", 1, "VerdampferTemp", wp::getVerdampferTemp)
                 .info("Temperatur am Austritt des Verdampfers in der Außeneinheit (0x500). Steigt beim Abtauen stark "
                         + "an.")
+                .row("Verdampfer vor Kompensation (Test)", "°C", 1, "VerdampferVorKompensation",
+                        wp::getVerdampferVorKompensation)
+                .info("Verdampfertemperatur vor der Kompensation (0x500, 0x0820), beim Bus-Scan gefunden. Test.")
+                .row("Verdampfer nach Kompensation (Test)", "°C", 1, "VerdampferNachKompensation",
+                        wp::getVerdampferNachKompensation)
+                .info("Verdampfertemperatur nach der Kompensation (0x500, 0x0821), beim Bus-Scan gefunden. Test.")
+                .row("Taupunkt Referenz (Test)", "°C", 1, "TaupunktReferenz", wp::getTaupunktReferenz)
+                .info("Taupunkttemperatur als Referenz (0x500, 0x080A), beim Bus-Scan gefunden: −11,8 °C bei etwa "
+                        + "8 °C außen. Vermutlich Grundlage der Entscheidung zum Abtauen, unbestätigt.")
+                .row("Taupunkt kompensiert (Test)", "°C", 1, "TaupunktKompensiert", wp::getTaupunktKompensiert)
+                .info("Kompensierte Taupunkttemperatur (0x500, 0x080B), beim Bus-Scan gefunden: −13,5 °C. Test.")
                 .row("Überhitzung", "K", 1, "UeberhitzungIst", wp::getIstUeberhitzung)
                 .info("Wie viel wärmer das Kältemittel am Verdampferaustritt ist als seine Verdampfungstemperatur "
                         + "(0x514). Darauf regelt das Expansionsventil.")
@@ -562,6 +576,14 @@ public class StatusService {
         }
         page.note("Geprüft " + (ueberwachung.getGeprueft() == null ? "noch nicht"
                         : zeitpunkt(ueberwachung.getGeprueft())) + ", alle 15 Minuten neu.")
+                .card("Software der Geräte")
+                .text("Wärmepumpenmanager", wp.getSoftwareManager())
+                .info("Softwarenummer und -version des Wärmepumpenmanagers (0x180, 0x0199/0x019A), stündlich "
+                        + "gelesen. Beim Abgleich schreibt der Manager 331 Version 11 an die Wärmepumpe, also wohl "
+                        + "eine andere Zählung.")
+                .text("Außeneinheit", wp.getSoftwareWaermepumpe())
+                .info("Softwarenummer und -version der Außeneinheit (0x500), stündlich gelesen. Beim Abgleich "
+                        + "meldet sie 70 Version 2.")
                 .card("USB-Adapter")
                 .pill("Verbindung", can::isAdapterVerbunden)
                 .info("USBtin am Pi verbunden und CAN-Kanal geöffnet.")

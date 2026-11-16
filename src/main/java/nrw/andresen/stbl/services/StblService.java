@@ -216,6 +216,11 @@ public class StblService {
             addPoint(points, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp, MAX_AGE_20);
             addPoint(points, "VerdampferTemp", wp::getVerdampferTemp, MAX_AGE_20);
             addPoint(points, "OelsumpfTemp", wp::getOelsumpfTemp, MAX_AGE_20);
+            addPoint(points, "TaupunktReferenz", wp::getTaupunktReferenz, MAX_AGE_20);
+            addPoint(points, "TaupunktKompensiert", wp::getTaupunktKompensiert, MAX_AGE_20);
+            addPoint(points, "DruckVerdampfer", wp::getDruckVerdampfer, MAX_AGE_20);
+            addPoint(points, "VerdampferVorKompensation", wp::getVerdampferVorKompensation, MAX_AGE_20);
+            addPoint(points, "VerdampferNachKompensation", wp::getVerdampferNachKompensation, MAX_AGE_20);
             addPoint(points, "Abtauung", wp::getAbtauung, MAX_AGE_60);
             influxController.storePoints(points);
 
@@ -256,6 +261,9 @@ public class StblService {
             addPoint(points, "LuefterLeistung", wp::getLuefterLeistung, MAX_AGE_60);
             addPoint(points, "UmgebungstempInverter", wp::getUmgebungstempInverter, MAX_AGE_60);
             addPoint(points, "TempInverterVerdichter", wp::getTempInverterVerdichter, MAX_AGE_60);
+            for (Waermepumpe.Rohwert rohwert : Waermepumpe.ROHWERTE) {
+                addPoint(points, rohwert.name(), () -> wp.getRohwert(rohwert), MAX_AGE_60);
+            }
             addPoint(points, "CAN_Empfangen", () -> can.minute(CanStatistik.Minute::empfangen), MAX_AGE_60);
             addPoint(points, "CAN_Antworten", () -> can.minute(CanStatistik.Minute::antworten), MAX_AGE_60);
             addPoint(points, "CAN_Gesendet", () -> can.minute(CanStatistik.Minute::gesendet), MAX_AGE_60);
