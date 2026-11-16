@@ -21,6 +21,10 @@ public final class CanBusSeite {
     private static final DateTimeFormatter ZEIT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss").withZone(ZONE);
     private static final DateTimeFormatter UHRZEIT = DateTimeFormatter.ofPattern("HH:mm:ss.SSS").withZone(ZONE);
     static final int NEU_LADEN_S = 10;
+    // Small i linking to the setting on the configuration page, whose fields carry the name with - for .
+    static final String HINWEIS_KONFIG = "<a class=\"info\" href=\"konfiguration#can-logall\" title=\"Wird nur "
+            + "mitgelesen, wenn „Alle Nachrichten empfangen“ in der Konfiguration an ist\" "
+            + "aria-label=\"Zur Einstellung „Alle Nachrichten empfangen“\">i</a>";
     // Messages shown without a choice
     public static final int ANZAHL_STANDARD = 100;
     // Receiver of a message to all devices of a group, e.g. 0x579
@@ -107,11 +111,22 @@ public final class CanBusSeite {
                 .append("</article>");
 
         List<List<String>> werte = new ArrayList<>();
-        for (CanBus.Abfrage a : abfragen) {
+        // Without receiving all messages nothing is read along: those values go grey to the end
+        List<CanBus.Abfrage> sortiert = new ArrayList<>(abfragen);
+        if (!v.alleNachrichten()) {
+            sortiert.sort(java.util.Comparator.comparing(CanBus.Abfrage::mitgelesen));
+        }
+        for (CanBus.Abfrage a : sortiert) {
             boolean offen = a.offen(jetzt);
-            werte.add(List.of(hex(a.index()), text(a.name()), text(wert(a.wert())),
-                    a.mitgelesen() ? "mitgelesen" : alter(a.angefragt(), jetzt),
-                    (offen ? "<span class=\"alt\">" : "") + alter(a.zeit(), jetzt) + (offen ? "</span>" : "")));
+            boolean aus = a.mitgelesen() && !v.alleNachrichten();
+            String grau = aus ? "<span class=\"aus\">" : "";
+            String ende = aus ? "</span>" : "";
+            werte.add(List.of(grau + hex(a.index()) + ende, grau + text(a.name()) + ende,
+                    grau + text(wert(a.wert())) + ende,
+                    !a.mitgelesen() ? alter(a.angefragt(), jetzt) : aus ? grau + "aus" + ende + " " + HINWEIS_KONFIG
+                            : "mitgelesen",
+                    (offen ? "<span class=\"alt\">" : "") + grau + alter(a.zeit(), jetzt) + ende
+                            + (offen ? "</span>" : "")));
         }
         html.append("<article class=\"card breit\"><h2>Abgefragte Werte (").append(abfragen.size())
                 .append(")</h2>")
@@ -121,7 +136,8 @@ public final class CanBusSeite {
                 .append(CanBus.ANTWORTZEIT.toSeconds()).append(" s keine gültige Antwort. Antworten mit 0x8000 ")
                 .append("(nicht verfügbar) zählen nicht. Die Einstellungen werden nur stündlich angefragt. ")
                 .append("„mitgelesen“: Wert, den ein anderes Gerät auf den Bus schreibt, nur mit „Alle Nachrichten ")
-                .append("empfangen“.</p>")
+                .append("empfangen“ in der ").append("<a class=\"nav\" href=\"konfiguration#can-logall\">")
+                .append("Konfiguration</a>").append(v.alleNachrichten() ? " (an)." : ", gerade aus.").append("</p>")
                 .append("</article>");
 
         List<CanStatistik.Rahmen> auswahl = auswahl(rahmen, knoten, anzahl);
@@ -313,6 +329,11 @@ public final class CanBusSeite {
             .tbl code { font-size: 12px; color: var(--muted); }
             .alt { color: var(--stale); font-weight: 600; }
             .auswahl { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+            .aus { color: var(--muted); }
+            .info { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%;
+              border: 1px solid var(--accent); color: var(--accent); font-size: 10px; font-weight: 700;
+              font-style: italic; text-decoration: none; vertical-align: 1px; }
+            .info:hover, .info:focus-visible { background: var(--accent); color: var(--card); }
             .nav.gewaehlt { padding: 1px 6px; border-radius: 6px; background: var(--on-bg); color: var(--text); }
             """;
 }

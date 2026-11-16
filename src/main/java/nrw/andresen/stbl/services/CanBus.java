@@ -405,7 +405,7 @@ public class CanBus {
                              String seriennummer, Instant verbundenSeit, long usbNeustarts, Instant letzterNeustart,
                              Instant letzteNachricht, Instant letzteAntwort, CanStatistik.Minute letzteMinute,
                              List<CanStatistik.KnotenStatus> knoten, long adapterFehler, Instant letzterFehler,
-                             String letzterFehlerText) {
+                             String letzterFehlerText, boolean alleNachrichten) {
     }
 
     // Time the device gets for an answer before a request counts as unanswered
@@ -483,6 +483,6 @@ public class CanBus {
                 canStatistik.getHardware(), canStatistik.getSeriennummer(), canStatistik.getVerbundenSeit(),
                 canStatistik.getNeustarts(), canStatistik.getLetzterNeustart(), canStatistik.getLetzteNachricht(),
                 canStatistik.getLetzteAntwort(), canStatistik.getLetzteMinute(), canStatistik.getKnoten(),
-                canStatistik.getFehler(), canStatistik.getLetzterFehler(), canStatistik.getLetzterFehlerText());
+                canStatistik.getFehler(), canStatistik.getLetzterFehler(), canStatistik.getLetzterFehlerText(), logall);
     }
 }
