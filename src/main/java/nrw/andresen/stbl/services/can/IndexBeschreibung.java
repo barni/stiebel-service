@@ -158,18 +158,20 @@ public final class IndexBeschreibung {
             entry((short) 0xFE4C, "Der Manager fragt 0x700 alle 5 s danach, immer 14. Bedeutung unbekannt."),
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
             entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
-            // Verified on CAN-B of a WPL17 by ha-stiebel-control, requested here since 2026-11-16 as a test
-            entry((short) 0x0004, "Vorlauf-Solltemperatur, die der Heizungsregler berechnet. An einer WPL 17 über "
-                    + "CAN-B bestätigt (ha-stiebel-control), hier Test. Vermutlich der Sollwert des Regler-Integrals."),
-            entry((short) 0x01DB, "Aktuelle Wärmeleistung, vom Heizungsregler gemeldet. An einer WPL 17 über CAN-B "
-                    + "bestätigt (ha-stiebel-control), Einheit noch offen."),
-            entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil, vom Heizungsregler. An einer WPL 17 über CAN-B "
-                    + "bestätigt (ha-stiebel-control)."),
-            entry((short) 0x0053, "Heizkreispumpe an (1) oder aus (0). An einer WPL 17 über CAN-B bestätigt "
+            // Verified on a WPL17 ICS classic (newer generation with CAN A/B) by ha-stiebel-control, requested here
+            // since 2026-11-16 as a test
+            entry((short) 0x0004, "Vorlauf-Solltemperatur, die der Heizungsregler berechnet. An einer WPL 17 ICS "
+                    + "classic (neuere Generation) bestätigt (ha-stiebel-control), hier Test. Vermutlich der Sollwert "
+                    + "des Regler-Integrals."),
+            entry((short) 0x01DB, "Aktuelle Wärmeleistung, vom Heizungsregler gemeldet. An einer WPL 17 ICS classic "
+                    + "(neuere Generation) bestätigt (ha-stiebel-control), Einheit noch offen."),
+            entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil, vom Heizungsregler. An einer WPL 17 ICS classic "
+                    + "(neuere Generation) bestätigt (ha-stiebel-control)."),
+            entry((short) 0x0053, "Heizkreispumpe an (1) oder aus (0). An einer WPL 17 ICS classic bestätigt "
                     + "(ha-stiebel-control)."),
-            entry((short) 0x01D2, "Pumpenstatus als Bitfeld: welche Pumpe läuft. An einer WPL 17 über CAN-B bestätigt "
+            entry((short) 0x01D2, "Pumpenstatus als Bitfeld: welche Pumpe läuft. An einer WPL 17 ICS classic bestätigt "
                     + "(ha-stiebel-control), Bits noch nicht entschlüsselt."),
-            entry((short) 0x0059, "Status des Heizkreises als Bitfeld. An einer WPL 17 über CAN-B bestätigt "
+            entry((short) 0x0059, "Status des Heizkreises als Bitfeld. An einer WPL 17 ICS classic bestätigt "
                     + "(ha-stiebel-control), Bits noch nicht entschlüsselt."),
             entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (Verdichter, Heizen, Warmwasser, Kühlen), beim "
                     + "Manager 0x480 abgefragt. Beim Abgleich schreibt der Manager 0 an die Wärmepumpe."),

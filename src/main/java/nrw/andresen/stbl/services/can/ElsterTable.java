@@ -63,8 +63,8 @@ public class ElsterTable {
     public static short FEIN_FDF5 = (short)0xfdf5;
     public static short PUMPE_PWM = (short)0xfe1b;
     public static short REGEL_INTEGRAL = (short)0x0917;
-    // Answered on a WPL17 by the heating controller 0x180 or the manager 0x480 according to ha-stiebel-control (CAN-B),
-    // requested here to test whether they answer on CAN-A too (2026-11-16)
+    // Answered on a WPL17 ICS classic (newer generation with CAN A/B) by 0x180 or 0x480 according to ha-stiebel-control;
+    // this installation has only one CAN bus, requested here to test whether they answer (2026-11-16)
     public static short VORLAUFSOLLTEMP = (short)0x0004;
     public static short ERTRAG_AKT = (short)0x01db;
     public static short ERTRAG_TAG_W = (short)0x01dc;

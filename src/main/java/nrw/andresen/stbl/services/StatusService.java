@@ -138,7 +138,8 @@ public class StatusService {
                 .formula(Waermepumpe.formelWaermeleistung())
                 .row("Wärmeleistung WPM (Test)", "", 0, "WaermeleistungWPM", wp::getWaermeleistungWpm)
                 .info("Aktuelle Wärmeleistung, wie sie der Heizungsregler (0x180) meldet (ERTRAG_AKT, 0x01DB), alle "
-                        + "20 s abgefragt. An einer WPL 17 über CAN-B bestätigt (ha-stiebel-control), Einheit noch "
+                        + "20 s abgefragt. An einer WPL 17 ICS classic (neuere Generation) bestätigt "
+                        + "(ha-stiebel-control), Einheit noch "
                         + "offen: mit der berechneten Wärmeleistung vergleichen.")
                 .ersatz("–")
                 .kpi("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
@@ -280,7 +281,8 @@ public class StatusService {
                         + "33 °C, gut 6 K über diesem Wert. Gespeichert als VorlaufSoll.")
                 .row("Vorlauf-Soll WPM (Test)", "°C", 1, "VorlaufSollWPM", wp::getVorlaufSollWpm)
                 .info("Vorlauf-Solltemperatur, die der Heizungsregler (0x180) berechnet (VORLAUFSOLLTEMP, 0x0004), "
-                        + "alle 20 s abgefragt. An einer WPL 17 über CAN-B bestätigt (ha-stiebel-control), hier ein "
+                        + "alle 20 s abgefragt. An einer WPL 17 ICS classic (neuere Generation) bestätigt "
+                        + "(ha-stiebel-control), hier ein "
                         + "Test, ob er auch auf unserem Bus antwortet. Vermutlich der Sollwert, gegen den das "
                         + "Regler-Integral rechnet: am 16.11.2026 etwa Hilfskessel-Soll plus 7 K.")
                 .row("Anforderung", "", 0, "Anforderung", wp::getAnforderung)
