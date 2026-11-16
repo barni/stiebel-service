@@ -51,5 +51,15 @@ public class CanBusTest {
         assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A0005F80000000")));
         // Another index
         assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A0002C00000000")));
+        // 0x700 answers the manager the fine flow 33.9 degC, 2026-11-15 22:53
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x700, "9200FAFDF30153")));
+        // but not its request, and not the same index as write
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "E100FAFDF30000")));
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x700, "9000FAFDF30153")));
+        // The manager writes the pump PWM 72 to 0x700 and the controller integral -327 to the heat pump
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "E000FAFE1B0048")));
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A000FA0917FEB9")));
+        // Raw values: answer of the heat pump to the manager
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x500, "9200FA07A80018")));
     }
 }

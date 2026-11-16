@@ -279,6 +279,21 @@ public class StatusService {
                         + "Die Wärmepumpe beantwortet keine Abfrage danach, der Wert wird deshalb auf dem Bus "
                         + "mitgelesen, nur mit „Alle Nachrichten empfangen“. Am 15.11.2026 0 bei Stillstand und 512 "
                         + "beim Heizen, andere Werte sind noch unbekannt.")
+                .row("Vorlauf fein (Test)", "°C", 1, "VorlaufFein", wp::getVorlaufFein)
+                .info("Vorlauf in 0,1 K, den das Gerät 0x700 dem Manager alle 5 s meldet (0xFDF3), auf dem Bus "
+                        + "mitgelesen, nur mit „Alle Nachrichten empfangen“. Lag beim Heizen am 15.11.2026 bis 1 K über "
+                        + "dem groben Vorlauf. Test, bis die Deutung bestätigt ist.")
+                .row("Rücklauf fein (Test)", "°C", 1, "RuecklaufFein", wp::getRuecklaufFein)
+                .info("Rücklauf in 0,1 K von 0x700 (0xFDF4), wie der feine Vorlauf mitgelesen.")
+                .row("Spreizung fein (Test)", "K", 1, null, wp::getSpreizungFein)
+                .info("Feiner Vorlauf minus feiner Rücklauf. Lag beim Heizen am 15.11.2026 bei 4,9 bis 5,2 K, der "
+                        + "Sollwert ist 5 K.")
+                .row("Pumpe PWM (Test)", "%", 0, "PumpePWM", wp::getPumpePwm)
+                .info("Wert, den der Manager an 0x700 schreibt (0xFE1B), sehr wahrscheinlich das PWM-Signal der "
+                        + "Umwälzpumpe: 100 im Stillstand, beim Heizen 64 bis 72. Je kleiner, desto mehr Durchfluss.")
+                .row("Regler-Integral (Test)", "", 0, "RegelIntegral", wp::getRegelIntegral)
+                .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
+                        + "Negativ, wenn der Vorlauf über dem Soll liegt, am 15.11.2026 bis -1000.")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")

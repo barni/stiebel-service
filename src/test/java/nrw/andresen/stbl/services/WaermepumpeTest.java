@@ -130,4 +130,13 @@ public class WaermepumpeTest {
         assertTrue(Waermepumpe.formelAbtauung().contains("mindestens 90 %"));
         assertTrue(Waermepumpe.formelAbtauung().contains("mehr als 5 K"));
     }
+
+    @Test
+    public void testMitgelesen() {
+        Instant jetzt = Instant.parse("2026-11-15T22:00:00Z");
+        // Without can.logall nothing arrives, after switching it off the last value gets old
+        assertFalse(Waermepumpe.mitgelesen(null, jetzt));
+        assertTrue(Waermepumpe.mitgelesen(jetzt.minusSeconds(10), jetzt));
+        assertFalse(Waermepumpe.mitgelesen(jetzt.minusSeconds(61), jetzt));
+    }
 }
