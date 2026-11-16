@@ -85,7 +85,7 @@ public class Waermepumpe {
             BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK, VORLAUFSOLLTEMP, ERTRAG_AKT, HZK_PUMPE, PUMPENSTATUS,
             HEIZKREIS_STATUS
     };
-    // Every minute, test whether they answer on CAN-A (verified on CAN-B of a WPL17 by ha-stiebel-control)
+    // Every minute, test whether they answer here (verified on a WPL17 ICS classic by ha-stiebel-control)
     private static final short[] BETRIEBSWERTE_MANAGER = {ERTRAG_TAG_W};
     private static final short[] STATUS_WP_MANAGER = {WP_STATUS, SOMMERBETRIEB, ANTILEGIONELLEN};
     private static final short[] MONITORING_WAERMEPUMPE = {
@@ -380,7 +380,7 @@ public class Waermepumpe {
     }
 
     /**
-     * Flow setpoint the heating controller 0x180 calculates (VORLAUFSOLLTEMP, 0x0004), verified on CAN-B of a WPL17 by
+     * Flow setpoint the heating controller 0x180 calculates (VORLAUFSOLLTEMP, 0x0004), verified on a WPL17 ICS classic by
      * ha-stiebel-control. Probably the setpoint the controller integral works against, test until confirmed.
      */
     public ValueContainer<Double> getVorlaufSollWpm() throws Exception {
