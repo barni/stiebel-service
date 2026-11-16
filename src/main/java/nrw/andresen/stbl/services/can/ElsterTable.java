@@ -69,6 +69,8 @@ public class ElsterTable {
     public static short ROH_0A36 = (short)0x0a36;
     // Written by the manager to the heat pump every 10 s next to the controller integral, not a material number
     public static short ROH_02CA = (short)0x02ca;
+    // 0x700 answers the manager every 5 s, changes slowly (211, 210 on 2026-11-16), maybe a temperature
+    public static short ROH_FE09 = (short)0xfe09;
     // Frequency the manager demands from the compressor in 0.01 Hz, follows the controller integral, also at
     // standstill; the compressor runs at it above about 20 Hz and at its minimum of 20 Hz below (2026-11-16)
     public static short FREQUENZ_ANFORDERUNG = (short)0x0669;

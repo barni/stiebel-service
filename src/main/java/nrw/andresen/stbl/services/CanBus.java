@@ -37,10 +37,13 @@ import static nrw.andresen.stbl.services.can.ElsterTable.FEIN_VORLAUF;
 import static nrw.andresen.stbl.services.can.ElsterTable.PUMPE_PWM;
 import static nrw.andresen.stbl.services.can.ElsterTable.REGEL_INTEGRAL;
 import static nrw.andresen.stbl.services.can.ElsterTable.FREQUENZ_ANFORDERUNG;
+import static nrw.andresen.stbl.services.can.ElsterTable.AUSSENTEMP;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_02CA;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_07A8;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_0A36;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_FE07;
+import static nrw.andresen.stbl.services.can.ElsterTable.ROH_FE09;
+import static nrw.andresen.stbl.services.can.ElsterTable.RUECKLAUFISTTEMP;
 import static nrw.andresen.stbl.services.can.ElsterTable.SPEICHERBEDARF;
 
 /**
@@ -68,6 +71,8 @@ public class CanBus {
     private SynchronizedUSBtin usbtin;
     // Latest answer per index; the answers carry only the index, so an index is requested from one node only
     private final Map<Short, ElsterMessage> msgs = new ConcurrentHashMap<>();
+    // Values read along, separate from msgs: AUSSENTEMP and RUECKLAUFISTTEMP are also requested from other devices
+    private final Map<Short, ElsterMessage> mitgelesen = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<ElsterMessage> queue = new ConcurrentLinkedQueue<>();
     // Indices requested by this service, answers to other indices are ignored
     private final Set<Short> angefragt = ConcurrentHashMap.newKeySet();
@@ -94,6 +99,11 @@ public class CanBus {
             new Mitlesen(0x700, 0x480, FEIN_RUECKLAUF, true),
             new Mitlesen(0x700, 0x480, FEIN_FDF5, true),
             new Mitlesen(0x700, 0x480, ROH_FE07, true),
+            new Mitlesen(0x700, 0x480, ROH_FE09, true),
+            // Outdoor temperature of the manager (heating curve), broadcast by 0x180 every 5 s
+            new Mitlesen(0x180, 0x579, AUSSENTEMP, false),
+            // Return temperature at the manager, 0x180 answers the control unit every 10 s
+            new Mitlesen(0x180, 0x100, RUECKLAUFISTTEMP, true),
             new Mitlesen(0x500, 0x480, ROH_07A8, true),
             new Mitlesen(0x500, 0x480, ROH_0A36, true),
             new Mitlesen(0x500, 0x480, FREQUENZ_ANFORDERUNG, true));
@@ -212,7 +222,7 @@ public class CanBus {
             }
         }
         if (mitlesen(elsterMessage)) {
-            queue.add(elsterMessage);
+            mitgelesen.put(elsterMessage.getElsterIndex().getIndex(), elsterMessage);
         }
         if (logger.isDebugEnabled()) {
             logger.debug(elsterMessage + " INDEX: " + elsterMessage.getElsterIndex().getName() +
@@ -299,6 +309,13 @@ public class CanBus {
      */
     public ElsterMessage nachricht(short index) {
         return msgs.get(index);
+    }
+
+    /**
+     * Last message read along for the index, see MITLESEN
+     */
+    public ElsterMessage mitgelesen(short index) {
+        return mitgelesen.get(index);
     }
 
     public Fehlerliste getFehlerliste() {
@@ -470,11 +487,9 @@ public class CanBus {
                     angefragtUm.get(index), m == null ? null : m.getTimestamp(), vorherAngefragt.get(index), false);
         }).toList());
         for (Mitlesen l : MITLESEN) {
-            if (!angefragt.contains(l.index())) {
-                ElsterMessage m = msgs.get(l.index());
-                abfragen.add(new Abfrage(l.index(), TABELLE.findByIndex(l.index()).getName(),
-                        m == null ? null : m.getValue(), null, m == null ? null : m.getTimestamp(), null, true));
-            }
+            ElsterMessage m = mitgelesen.get(l.index());
+            abfragen.add(new Abfrage(l.index(), TABELLE.findByIndex(l.index()).getName(),
+                    m == null ? null : m.getValue(), null, m == null ? null : m.getTimestamp(), null, true));
         }
         abfragen.sort(Comparator.comparing((Abfrage a) -> !a.offen(jetzt)).thenComparing(Abfrage::name));
         return abfragen;

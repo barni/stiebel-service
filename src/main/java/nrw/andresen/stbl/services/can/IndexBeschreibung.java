@@ -141,7 +141,7 @@ public final class IndexBeschreibung {
                     + "höher bei höherer Drehzahl (5 bei 21 Hz, 6 bei 24 Hz, 7 bei 30 Hz). Vermutlich eine "
                     + "Leistungsstufe, unbestätigt."),
             entry((short) 0xFE09, "Der Manager fragt 0x700 alle 5 s danach, 210 bis 211 (vielleicht 21,0 °C). "
-                    + "Bedeutung unbekannt."),
+                    + "Bedeutung unbekannt, wird als WP_Roh_FE09 mitgelesen."),
             entry((short) 0xFE4C, "Der Manager fragt 0x700 alle 5 s danach, immer 14. Bedeutung unbekannt."),
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
             entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
