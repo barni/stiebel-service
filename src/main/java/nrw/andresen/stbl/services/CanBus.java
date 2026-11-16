@@ -31,6 +31,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.ToDoubleFunction;
 
 import static nrw.andresen.stbl.services.can.ElsterTable.BETRIEBS_STATUS;
+import static nrw.andresen.stbl.services.can.ElsterTable.FEIN_FDF5;
+import static nrw.andresen.stbl.services.can.ElsterTable.FEIN_RUECKLAUF;
+import static nrw.andresen.stbl.services.can.ElsterTable.FEIN_VORLAUF;
+import static nrw.andresen.stbl.services.can.ElsterTable.PUMPE_PWM;
+import static nrw.andresen.stbl.services.can.ElsterTable.REGEL_INTEGRAL;
+import static nrw.andresen.stbl.services.can.ElsterTable.ROH_0669;
+import static nrw.andresen.stbl.services.can.ElsterTable.ROH_07A8;
+import static nrw.andresen.stbl.services.can.ElsterTable.ROH_0A36;
+import static nrw.andresen.stbl.services.can.ElsterTable.ROH_FE07;
 import static nrw.andresen.stbl.services.can.ElsterTable.SPEICHERBEDARF;
 
 /**
@@ -69,12 +78,23 @@ public class CanBus {
      * A value another device writes on the bus, taken over like an answer. Only seen with can.logall, the adapter
      * filters it otherwise.
      */
-    record Mitlesen(int von, int an, short index) {
+    record Mitlesen(int von, int an, short index, boolean antwort) {
     }
 
     // The heat pump answers a request for SPEICHERBEDARF with 0x8000 (tested 2026-11-15), the manager writes it
     // every 10 s
-    static final List<Mitlesen> MITLESEN = List.of(new Mitlesen(0x480, 0x500, SPEICHERBEDARF));
+    static final List<Mitlesen> MITLESEN = List.of(
+            new Mitlesen(0x480, 0x500, SPEICHERBEDARF, false),
+            new Mitlesen(0x480, 0x500, REGEL_INTEGRAL, false),
+            new Mitlesen(0x480, 0x700, PUMPE_PWM, false),
+            // 0x700 answers own requests for these with 0x8000 (tested 2026-09-23), but answers the manager
+            new Mitlesen(0x700, 0x480, FEIN_VORLAUF, true),
+            new Mitlesen(0x700, 0x480, FEIN_RUECKLAUF, true),
+            new Mitlesen(0x700, 0x480, FEIN_FDF5, true),
+            new Mitlesen(0x700, 0x480, ROH_FE07, true),
+            new Mitlesen(0x500, 0x480, ROH_07A8, true),
+            new Mitlesen(0x500, 0x480, ROH_0A36, true),
+            new Mitlesen(0x500, 0x480, ROH_0669, true));
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Instant letzteAntwort;
     // Time of the last alert about a USB restart and the restarts since then, see checkUSBisAlive
@@ -428,12 +448,13 @@ public class CanBus {
      * True if the message is a write this service reads along, with a valid value
      */
     static boolean mitlesen(ElsterMessage m) {
-        if (!m.isWrite() || m.getRawValue() == null || m.getRawValue() == VALUE_NOT_AVAILABLE) {
+        if (!(m.isWrite() || m.isResponse()) || m.getRawValue() == null || m.getRawValue() == VALUE_NOT_AVAILABLE) {
             return false;
         }
         short index = m.getElsterIndex().getIndex();
+        boolean antwort = m.isResponse();
         return MITLESEN.stream().anyMatch(l -> l.von() == m.getId() && l.an() == m.getReceiverId()
-                && l.index() == index);
+                && l.index() == index && l.antwort() == antwort);
     }
 
     /**

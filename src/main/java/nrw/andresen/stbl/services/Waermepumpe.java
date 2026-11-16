@@ -349,12 +349,68 @@ public class Waermepumpe {
      * read along on the bus, only with can.logall.
      */
     public ValueContainer<Double> getAnforderung() throws Exception {
-        ElsterMessage msg = can.nachricht(SPEICHERBEDARF);
+        return mitgelesenerWert(SPEICHERBEDARF, 1);
+    }
+
+    /**
+     * Value read along on the bus, only with can.logall
+     *
+     * @throws KeinMesswert without a current value: expected without can.logall, no warning every 20 s
+     */
+    public ValueContainer<Double> mitgelesenerWert(short index, double divisor) throws KeinMesswert {
+        ElsterMessage msg = can.nachricht(index);
         if (!mitgelesen(msg == null ? null : msg.getTimestamp(), Instant.now())) {
-            // Expected without can.logall: no warning every 20 s
             throw new KeinMesswert("NUR_MIT_ALLEN_NACHRICHTEN");
         }
-        return new ValueContainer<>((double) msg.getRawValue(), msg.getTimestamp());
+        return new ValueContainer<>(msg.getRawValue() / divisor, msg.getTimestamp());
+    }
+
+    /**
+     * Flow temperature in 0.1 K, 0x700 answers the manager every 5 s (0xFDF3). Matched the coarse flow of 0x514
+     * within 1 K while heating on 2026-11-15, test until confirmed.
+     */
+    public ValueContainer<Double> getVorlaufFein() throws KeinMesswert {
+        return mitgelesenerWert(FEIN_VORLAUF, 10);
+    }
+
+    /**
+     * Return temperature in 0.1 K (0xFDF4), like getVorlaufFein
+     */
+    public ValueContainer<Double> getRuecklaufFein() throws KeinMesswert {
+        return mitgelesenerWert(FEIN_RUECKLAUF, 10);
+    }
+
+    /**
+     * Spread from the fine flow and return
+     */
+    public ValueContainer<Double> getSpreizungFein() throws KeinMesswert {
+        ValueContainer<Double> vorlauf = getVorlaufFein();
+        ValueContainer<Double> ruecklauf = getRuecklaufFein();
+        return new ValueContainer<>(vorlauf.getValue() - ruecklauf.getValue(),
+                Collections.min(Arrays.asList(vorlauf.getTimestamp(), ruecklauf.getTimestamp())));
+    }
+
+    /**
+     * Third temperature of 0x700 in 0.1 K (0xFDF5), close to the fine flow, meaning unknown
+     */
+    public ValueContainer<Double> getFdf5() throws KeinMesswert {
+        return mitgelesenerWert(FEIN_FDF5, 10);
+    }
+
+    /**
+     * PWM the manager writes to 0x700 (0xFE1B), very likely the circulation pump: 100 at standstill, lower while
+     * heating, the lower the more flow
+     */
+    public ValueContainer<Double> getPumpePwm() throws KeinMesswert {
+        return mitgelesenerWert(PUMPE_PWM, 1);
+    }
+
+    /**
+     * Controller integral the manager writes to the heat pump every 10 s (0x0917), down to -1000 while the flow
+     * is above its setpoint
+     */
+    public ValueContainer<Double> getRegelIntegral() throws KeinMesswert {
+        return mitgelesenerWert(REGEL_INTEGRAL, 1);
     }
 
     // The manager writes the demand every 10 s

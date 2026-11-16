@@ -55,6 +55,19 @@ public class ElsterTable {
     public static short HEISSGAS_TEMP = (short)0x0265;
     public static short HILFSKESSELSOLL = (short)0x01d7;
     public static short SPEICHERBEDARF = (short)0x005f;
+    // Read along on the bus since 2026-11-16, meaning derived from the traffic, the names in the table do not fit:
+    // 0x700 answers the manager with flow and return in 0.1 K and a third sensor, the manager writes the pump PWM
+    // to 0x700 and its controller integral to the heat pump
+    public static short FEIN_VORLAUF = (short)0xfdf3;
+    public static short FEIN_RUECKLAUF = (short)0xfdf4;
+    public static short FEIN_FDF5 = (short)0xfdf5;
+    public static short PUMPE_PWM = (short)0xfe1b;
+    public static short REGEL_INTEGRAL = (short)0x0917;
+    // Not decoded yet, stored raw to compare them later
+    public static short ROH_FE07 = (short)0xfe07;
+    public static short ROH_07A8 = (short)0x07a8;
+    public static short ROH_0A36 = (short)0x0a36;
+    public static short ROH_0669 = (short)0x0669;
     // Meaning and scaling of the following values for WPL taken from https://github.com/kr0ner/OneESP32ToRuleThemAll
     // Same values as ISTDREHZAHL_VERDICHTER (0x06eb), Hz
     public static short VERDICHTER_DREHZAHL = (short)0x063d;

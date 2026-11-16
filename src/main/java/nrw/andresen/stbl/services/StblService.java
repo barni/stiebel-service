@@ -191,6 +191,17 @@ public class StblService {
             addPoint(points, "HeissgasTemp", wp::getHeissgasTemp, MAX_AGE_20);
             addPoint(points, "VorlaufSoll", wp::getVorlaufSoll, MAX_AGE_20);
             addPoint(points, "Anforderung", wp::getAnforderung, MAX_AGE_20);
+            // Read along with can.logall, see ElsterTable: fine flow and return, pump, controller, and raw values
+            // not decoded yet
+            addPoint(points, "VorlaufFein", wp::getVorlaufFein, MAX_AGE_20);
+            addPoint(points, "RuecklaufFein", wp::getRuecklaufFein, MAX_AGE_20);
+            addPoint(points, "Fuehler_FDF5", wp::getFdf5, MAX_AGE_20);
+            addPoint(points, "PumpePWM", wp::getPumpePwm, MAX_AGE_20);
+            addPoint(points, "RegelIntegral", wp::getRegelIntegral, MAX_AGE_20);
+            addPoint(points, "Roh_FE07", () -> wp.mitgelesenerWert(ROH_FE07, 1), MAX_AGE_20);
+            addPoint(points, "Roh_07A8", () -> wp.mitgelesenerWert(ROH_07A8, 1), MAX_AGE_20);
+            addPoint(points, "Roh_0A36", () -> wp.mitgelesenerWert(ROH_0A36, 1), MAX_AGE_20);
+            addPoint(points, "Roh_0669", () -> wp.mitgelesenerWert(ROH_0669, 1), MAX_AGE_20);
             addPoint(points, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl, MAX_AGE_20);
             addPoint(points, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp, MAX_AGE_20);
             addPoint(points, "VerdampferTemp", wp::getVerdampferTemp, MAX_AGE_20);
