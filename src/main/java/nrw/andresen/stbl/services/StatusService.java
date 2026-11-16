@@ -136,6 +136,10 @@ public class StatusService {
                         + "bei A7/W35 2,6–8,5 kW und bei A−7/W35 3,0–7,8 kW; braucht das Haus weniger als das "
                         + "Minimum, taktet sie.")
                 .formula(Waermepumpe.formelWaermeleistung())
+                .row("Wärmeleistung WPM (Test)", "", 0, "WaermeleistungWPM", wp::getWaermeleistungWpm)
+                .info("Aktuelle Wärmeleistung, wie sie der Heizungsregler (0x180) meldet (ERTRAG_AKT, 0x01DB), alle "
+                        + "20 s abgefragt. An einer WPL 17 über CAN-B bestätigt (ha-stiebel-control), Einheit noch "
+                        + "offen: mit der berechneten Wärmeleistung vergleichen.")
                 .ersatz("–")
                 .kpi("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
                 .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
@@ -274,6 +278,11 @@ public class StatusService {
                         + "(HILFSKESSELSOLL, 0x01D7), abgefragt bei der Wärmepumpe (0x500). Folgt der Heizkurve, ist aber "
                         + "nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: Am 16.11.2026 lag dieser bei etwa "
                         + "33 °C, gut 6 K über diesem Wert. Gespeichert als VorlaufSoll.")
+                .row("Vorlauf-Soll WPM (Test)", "°C", 1, "VorlaufSollWPM", wp::getVorlaufSollWpm)
+                .info("Vorlauf-Solltemperatur, die der Heizungsregler (0x180) berechnet (VORLAUFSOLLTEMP, 0x0004), "
+                        + "alle 20 s abgefragt. An einer WPL 17 über CAN-B bestätigt (ha-stiebel-control), hier ein "
+                        + "Test, ob er auch auf unserem Bus antwortet. Vermutlich der Sollwert, gegen den das "
+                        + "Regler-Integral rechnet: am 16.11.2026 etwa Hilfskessel-Soll plus 7 K.")
                 .row("Anforderung", "", 0, "Anforderung", wp::getAnforderung)
                 .info("Anforderung, die der Manager alle 10 s an die Wärmepumpe schreibt (SPEICHERBEDARF, 0x005F). "
                         + "Die Wärmepumpe beantwortet keine Abfrage danach, der Wert wird deshalb auf dem Bus "

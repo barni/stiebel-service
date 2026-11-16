@@ -36,6 +36,9 @@ public class CanStatistik {
             0x514, "Heizmodul",
             0x601, "Mischer HK2",
             0x380, "unbekannt, antwortet nicht",
+            // Called FREMDGERAET (external device) in the member list of ha-stiebel-control; delivers the fine flow and
+            // return temperatures and gets the pump PWM, probably the hydraulic module
+            0x700, "Fremdgerät",
             // This service, CanBus.CAN_SENDER_ID
             0x681, "stbl-service");
 

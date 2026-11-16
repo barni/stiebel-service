@@ -96,7 +96,8 @@ public class CanStatistikTest {
         assertEquals("0x601 Mischer HK2", CanStatistik.knotenName(0x601));
         // Gets the compressor speed from the heat pump but never answers
         assertEquals("0x380 unbekannt, antwortet nicht", CanStatistik.knotenName(0x380));
-        assertEquals("0x700", CanStatistik.knotenName(0x700));
+        assertEquals("0x700 Fremdgerät", CanStatistik.knotenName(0x700));
+        assertEquals("0x7FF", CanStatistik.knotenName(0x7FF));
         assertEquals("0x681 stbl-service", CanStatistik.knotenName(nrw.andresen.stbl.services.CanBus.CAN_SENDER_ID));
     }
 
