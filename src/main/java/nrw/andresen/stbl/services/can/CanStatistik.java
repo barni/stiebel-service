@@ -26,7 +26,8 @@ public class CanStatistik {
     public static final int RAHMEN_MAX = 1000;
 
     // 0x100 gets the time from the manager every minute like a display (Elster: FES_COMFORT); 0x601 named after the
-    // Elster module list (Mixer), not confirmed on this installation
+    // Elster module list (Mixer), not confirmed on this installation; 0x380 gets the compressor speed from the heat
+    // pump now and then but never answers (2026-11-16), probably an optional device that is not installed
     private static final Map<Integer, String> KNOTEN_NAMEN = Map.of(
             0x100, "Bedienteil",
             0x180, "Kessel",
@@ -34,6 +35,7 @@ public class CanStatistik {
             0x500, "Wärmepumpe",
             0x514, "Heizmodul",
             0x601, "Mischer HK2",
+            0x380, "unbekannt, antwortet nicht",
             // This service, CanBus.CAN_SENDER_ID
             0x681, "stbl-service");
 

@@ -94,6 +94,8 @@ public class CanStatistikTest {
     public void testKnotenName() {
         assertEquals("0x180 Kessel", CanStatistik.knotenName(0x180));
         assertEquals("0x601 Mischer HK2", CanStatistik.knotenName(0x601));
+        // Gets the compressor speed from the heat pump but never answers
+        assertEquals("0x380 unbekannt, antwortet nicht", CanStatistik.knotenName(0x380));
         assertEquals("0x700", CanStatistik.knotenName(0x700));
         assertEquals("0x681 stbl-service", CanStatistik.knotenName(nrw.andresen.stbl.services.CanBus.CAN_SENDER_ID));
     }
