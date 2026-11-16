@@ -297,9 +297,11 @@ public class StatusService {
                         + "Umwälzpumpe: 100 im Stillstand, beim Heizen 64 bis 72. Je kleiner, desto mehr Durchfluss.")
                 .row("Regler-Integral (Test)", "", 0, "RegelIntegral", wp::getRegelIntegral)
                 .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
-                        + "Steigt, solange der Vorlauf über etwa 33 °C liegt, und fällt darunter. Bei etwa -1000 startet "
-                        + "der Verdichter und läuft mit voller Leistung, ab etwa 0 nur noch mit kleinster Drehzahl, bei "
-                        + "etwa +900 bis +1000 stoppt er (beobachtet am 16.11.2026 bei 8 °C).")
+                        + "Steigt, solange der Vorlauf über etwa 33 °C liegt, und fällt darunter, umso schneller, je weiter "
+                        + "er davon entfernt ist. Bei etwa -950 bis -1000 startet der Verdichter, dabei springt das "
+                        + "Integral auf 0. Fällt es danach weiter, steigt die Frequenz-Anforderung und der Verdichter "
+                        + "fährt von etwa 24 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +900 bis "
+                        + "+1000 stoppt er (beobachtet am 16.11.2026 bei 8 °C).")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
