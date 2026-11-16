@@ -14,3 +14,10 @@
 - License: GNU Lesser General Public License v3.0 (header of `KElsterTable.cpp` in `can_progs.zip` of 2020-03-29)
 - `src/main/java/nrw/andresen/stbl/services/can/ElsterTable.java` is a Java translation of `ElsterTable.inc`, with
   names and types corrected and added for the Stiebel Eltron WPL 17 ACS classic.
+
+## idiomorph 0.7.4
+
+- Authors: Big Sky Software and contributors, https://github.com/bigskysoftware/idiomorph
+- License: Zero-Clause BSD (0BSD), free to use without conditions
+- Included unmodified as `src/main/resources/static/js/idiomorph-0.7.4.min.js` (npm package `idiomorph`, file
+  `dist/idiomorph.min.js`); `aktualisieren.js` uses it to update the status, CAN bus and scan page in place.

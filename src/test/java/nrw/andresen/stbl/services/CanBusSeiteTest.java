@@ -128,9 +128,10 @@ public class CanBusSeiteTest {
                 List.of(new CanStatistik.Rahmen(JETZT, false, 0x500, antwort())), JETZT);
         assertTrue(html.contains("<h1>CAN-Bus</h1>"));
         assertTrue(html.contains("href=\"konfiguration\""));
-        assertTrue(html.contains("http-equiv=\"refresh\""));
-        // No reload while a tooltip is open
-        assertTrue(html.contains(".calc:hover, .calc:focus"));
+        // Updated in place every 10 s by the script, a plain refresh only without script
+        assertTrue(html.contains("<noscript><meta http-equiv=\"refresh\" content=\"10\"></noscript>"));
+        assertTrue(html.contains("<script src=\"/js/aktualisieren.js\" defer></script>"));
+        assertTrue(html.contains("<body data-aktualisieren=\"10\">"));
         // The name carries a small i with what the value stands for
         assertTrue(html.contains("<td>0x000C</td><td><span class=\"calc\" data-tip=\"Außentemperatur in °C."));
         assertTrue(html.contains(">AUSSENTEMP <span class=\"info\" aria-hidden=\"true\">i</span></span></td>"));
@@ -275,8 +276,8 @@ public class CanBusSeiteTest {
         assertTrue(html.contains("Heizkreis-Isttemperatur"));
         assertTrue(html.contains("0x480 Manager"));
         assertTrue(html.contains("Antworten mit Wert (1)"));
-        // While it runs the page reloads and offers no start
-        assertTrue(html.contains("http-equiv=\"refresh\""));
+        // While it runs the page is updated and offers no start
+        assertTrue(html.contains("<body data-aktualisieren=\"10\">"));
         assertFalse(html.contains("<form"));
         html = CanBusSeite.scan(status, ergebnisse, Set.of(), true, null, null, JETZT);
         assertTrue(html.contains("Antworten mit Wert (2)"));

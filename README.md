@@ -27,6 +27,8 @@ before you rely on it.
   as chart, selectable for 6 h, 24 h, 7 days, 30 days or 1 year (from `/history/<name>?range=6h|24h|7d|30d|1y`,
   name as in InfluxDB without `WP_`, e.g. `/history/VorlaufIstTemp?range=7d`; means over 1 min to 12 h, default
   24h). The InfluxDB token then also needs read access to the bucket.
+  The status page, the CAN bus page and the scan page update themselves in place (20 s, 10 s) without reloading, so
+  an open tooltip, folded areas, the course dialog and the scroll position stay.
   Every value has an ⓘ tooltip that explains it and names the CAN node it comes from; values calculated by the
   service are marked "(berechnet)" and show their formula as well.
 - **Connection**: the status page shows the USBtin adapter (port, firmware, connected since, restarts by the

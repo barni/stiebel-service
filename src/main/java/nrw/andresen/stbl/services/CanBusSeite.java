@@ -52,7 +52,8 @@ public final class CanBusSeite {
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
                 .append(neuLaden())
                 .append("<title>Wärmepumpe · CAN-Bus</title><style>").append(StatusPage.CSS).append(CSS)
-                .append("</style></head><body><main><header><div><h1>CAN-Bus</h1><p class=\"sub\">USBtin-Adapter ")
+                .append("</style></head>").append(body())
+                .append("<main><header><div><h1>CAN-Bus</h1><p class=\"sub\">USBtin-Adapter ")
                 .append("und Nachrichten, lädt alle ").append(NEU_LADEN_S).append(" s neu</p></div>")
                 .append("<nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a> · ")
@@ -189,17 +190,18 @@ public final class CanBusSeite {
     }
 
     /**
-     * Reloads the page every NEU_LADEN_S seconds like the status page, but not in a hidden tab and not while a
-     * tooltip is shown (hovered or tapped, the i keeps the focus); then as soon as it is closed. Without script a
-     * plain refresh.
+     * Updates the page in place every NEU_LADEN_S seconds like the status page (static/js/aktualisieren.js), so an
+     * open tooltip and the scroll position stay; a plain refresh without script. Goes with body(), which carries the
+     * interval.
      */
     static String neuLaden() {
-        return "<noscript><meta http-equiv=\"refresh\" content=\"" + NEU_LADEN_S + "\"></noscript><script>(() => {"
-                + "const offen = () => document.querySelector('.calc:hover, .calc:focus') !== null;"
-                + "const reload = () => { if (!document.hidden && !offen()) location.reload(); };"
-                + "setTimeout(() => { reload(); setInterval(reload, 1000);"
-                + " document.addEventListener('visibilitychange', reload); }, " + NEU_LADEN_S * 1000 + ");"
-                + "})();</script>";
+        return "<noscript><meta http-equiv=\"refresh\" content=\"" + NEU_LADEN_S + "\"></noscript>"
+                + "<script src=\"/js/idiomorph-0.7.4.min.js\" defer></script>"
+                + "<script src=\"/js/aktualisieren.js\" defer></script>";
+    }
+
+    static String body() {
+        return "<body data-aktualisieren=\"" + NEU_LADEN_S + "\">";
     }
 
     /**
@@ -213,12 +215,12 @@ public final class CanBusSeite {
                               boolean nullen, String csrfName, String csrfToken, Instant jetzt) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
-                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-        if (st.laeuft()) {
-            html.append(neuLaden());
-        }
-        html.append("<title>Wärmepumpe · Bus-Scan</title><style>").append(StatusPage.CSS).append(CSS)
-                .append("</style></head><body><main><header><div><h1>Bus-Scan</h1><p class=\"sub\">Alle Indizes ")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+                // Also after the end, so the page shows when a scan started elsewhere is done
+                .append(neuLaden())
+                .append("<title>Wärmepumpe · Bus-Scan</title><style>").append(StatusPage.CSS).append(CSS)
+                .append("</style></head>").append(body())
+                .append("<main><header><div><h1>Bus-Scan</h1><p class=\"sub\">Alle Indizes ")
                 .append("der Elster-Tabelle einmal bei 0x180, 0x480, 0x500 und 0x514 abfragen, nur lesend</p></div>")
                 .append("<nav><a class=\"nav\" href=\"../canbus\">← CAN-Bus</a> · ")
                 .append("<a class=\"nav\" href=\"../status\">Status</a></nav></header><section class=\"cards\">");

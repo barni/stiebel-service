@@ -149,14 +149,12 @@ public class StatusPageTest {
         for (String range : new String[]{"6h", "24h", "7d", "30d", "1y"}) {
             assertTrue(html.contains("data-range=\"" + range + "\""));
         }
-        // The page is reloaded by the script, not while the dialog or a tooltip is open or the tab is hidden
+        // The page is updated in place every 20 s, the dialog sits outside <main> and stays open
         assertTrue(html.contains("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"));
-        assertTrue(html.contains("document.hidden"));
-        assertTrue(html.contains(".calc:hover, .calc:focus"));
-        // The dialog comes after the script, so it must be looked up on each check, not once at the start
-        int script = html.indexOf("const offen = () => {");
-        assertTrue(script > 0 && script < html.indexOf("<dialog id=\"verlauf\""));
-        assertTrue(html.indexOf("getElementById('verlauf')", script) < html.indexOf("const reload", script));
+        assertTrue(html.contains("<body data-aktualisieren=\"20\">"));
+        assertTrue(html.indexOf("</main>") < html.indexOf("<dialog id=\"verlauf\""));
+        // Rows added by an update open the course as well: the listener sits on the document
+        assertTrue(html.contains("e.target.closest('[data-series]')"));
     }
 
     @Test
@@ -167,9 +165,9 @@ public class StatusPageTest {
                 .render();
         assertFalse(html.contains("data-series"));
         assertFalse(html.contains("<dialog"));
-        // Also without the dialog the script reloads the page, so a hidden tab is not reloaded
+        // Also without the dialog the page is updated in place
         assertTrue(html.contains("<noscript><meta http-equiv=\"refresh\" content=\"20\"></noscript>"));
-        assertTrue(html.contains("document.addEventListener('visibilitychange', reload)"));
+        assertTrue(html.contains("<script src=\"/js/aktualisieren.js\" defer></script>"));
     }
 
     @Test
