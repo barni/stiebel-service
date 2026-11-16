@@ -10,6 +10,10 @@ import static java.util.Map.entry;
  */
 public final class IndexBeschreibung {
 
+    // For the values from ha-stiebel-control that did not change on this installation
+    private static final String KONSTANT = " Auf dieser Anlage am 16.11.2026 über Stunden mit Heizen und Stillstand "
+            + "unverändert, misst hier also nichts und wird nicht mehr abgefragt.";
+
     private static final Map<Short, String> BESCHREIBUNG = Map.ofEntries(
             // Heating circuit
             entry((short) 0x000C, "Außentemperatur in °C. Von der Wärmepumpe (0x500): Fühler der Außeneinheit, beim "
@@ -190,27 +194,22 @@ public final class IndexBeschreibung {
             entry((short) 0xFE4C, "Der Manager fragt 0x700 alle 5 s danach, immer 14. Bedeutung unbekannt."),
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
             entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
-            // Verified on a WPL17 ICS classic (newer generation with CAN A/B) by ha-stiebel-control, requested here
-            // since 2026-11-16 as a test
-            entry((short) 0x0004, "Vorlauf-Solltemperatur, die der Heizungsregler berechnet. An einer WPL 17 ICS "
-                    + "classic (neuere Generation) bestätigt (ha-stiebel-control), hier Test. Vermutlich der Sollwert "
-                    + "des Regler-Integrals."),
-            entry((short) 0x01DB, "Aktuelle Wärmeleistung, vom Heizungsregler gemeldet. An einer WPL 17 ICS classic "
-                    + "(neuere Generation) bestätigt (ha-stiebel-control), Einheit noch offen."),
-            entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil, vom Heizungsregler. An einer WPL 17 ICS classic "
-                    + "(neuere Generation) bestätigt (ha-stiebel-control)."),
-            entry((short) 0x0053, "Heizkreispumpe an (1) oder aus (0). An einer WPL 17 ICS classic bestätigt "
-                    + "(ha-stiebel-control)."),
-            entry((short) 0x01D2, "Pumpenstatus als Bitfeld: welche Pumpe läuft. An einer WPL 17 ICS classic bestätigt "
-                    + "(ha-stiebel-control), Bits noch nicht entschlüsselt."),
-            entry((short) 0x0059, "Status des Heizkreises als Bitfeld. An einer WPL 17 ICS classic bestätigt "
-                    + "(ha-stiebel-control), Bits noch nicht entschlüsselt."),
-            entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (Verdichter, Heizen, Warmwasser, Kühlen), beim "
-                    + "Manager 0x480 abgefragt: hier 0x8000 (nicht verfügbar), wird nicht mehr abgefragt. Beim Abgleich "
-                    + "schreibt der Manager 0 an die Wärmepumpe."),
-            entry((short) 0xFDB4, "Sommerbetrieb (Heizung aus, nur Warmwasser), beim Manager 0x480 abgefragt."),
-            entry((short) 0x0101, "Legionellenschutz aktiv. Der Manager 0x480 antwortet 0x8000 (nicht verfügbar), wird "
-                    + "nicht mehr abgefragt. Warmwasser macht hier die eigene WWK 300."),
+            // Verified on a WPL17 ICS classic (newer generation with CAN A/B) by ha-stiebel-control, tested here on
+            // 2026-11-16: constant or not available, no longer requested
+            entry((short) 0x0004, "Vorlauf-Solltemperatur (ha-stiebel-control, WPL 17 ICS classic). Hier immer "
+                    + "5,0 °C, auch beim Heizen mit 34 °C Vorlauf: ein fester Wert, nicht der Sollwert, wird nicht mehr "
+                    + "abgefragt."),
+            entry((short) 0x01DB, "Aktuelle Wärmeleistung (ha-stiebel-control, WPL 17 ICS classic). Hier immer 0." + KONSTANT),
+            entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil (ha-stiebel-control). Hier immer 0." + KONSTANT),
+            entry((short) 0x0053, "Heizkreispumpe (ha-stiebel-control). Hier immer 0." + KONSTANT),
+            entry((short) 0x01D2, "Pumpenstatus (ha-stiebel-control). Hier immer 4352 (0x1100)." + KONSTANT),
+            entry((short) 0x0059, "Status des Heizkreises (ha-stiebel-control). Hier immer 0." + KONSTANT),
+            entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (ha-stiebel-control). Der Manager 0x480 antwortet "
+                    + "0x8000 (nicht verfügbar). Beim Abgleich schreibt der Manager 0 an die Wärmepumpe."),
+            entry((short) 0xFDB4, "Sommerbetrieb (ha-stiebel-control). Der Manager 0x480 antwortet immer 1, auch beim "
+                    + "Heizen." + KONSTANT),
+            entry((short) 0x0101, "Legionellenschutz aktiv. Der Manager 0x480 antwortet 0x8000 (nicht verfügbar). "
+                    + "Warmwasser macht hier die eigene WWK 300."),
             entry((short) 0x4E8B, "Das Bedienteil schreibt 1 an den Manager, gesehen rund um einen Abgleich "
                     + "(16.11.2026). Bedeutung unbekannt."),
             // Rare block the manager requests from the heat pump after a sync, values from 2026-11-16 19:08 at 40 Hz

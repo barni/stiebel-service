@@ -83,13 +83,8 @@ public class Waermepumpe {
     };
     // Requested every 20 s from the manager, from the heat pump and from the external access
     private static final short[] MONITORING_MANAGER = {
-            BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK, VORLAUFSOLLTEMP, ERTRAG_AKT, HZK_PUMPE, PUMPENSTATUS,
-            HEIZKREIS_STATUS
+            BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK
     };
-    // Every minute, test whether they answer here (verified on a WPL17 ICS classic by ha-stiebel-control)
-    private static final short[] BETRIEBSWERTE_MANAGER = {ERTRAG_TAG_W};
-    // WP_STATUS and ANTILEGIONELLEN answered 0x8000 (not available) on 2026-11-16 and are no longer requested
-    private static final short[] STATUS_WP_MANAGER = {SOMMERBETRIEB};
     private static final short[] MONITORING_WAERMEPUMPE = {
             TEST_OBJEKT_113_STROM_INVERTER, TEST_OBJEKT_112_SPANNUNG_INVERTER, ANZEIGE_HOCHDRUCK, ANZEIGE_NIEDERDRUCK,
             AUSSENTEMP, HEISSGAS_TEMP, VERDICHTER_DREHZAHL, VERDICHTER_EINTRITTSTEMP, VERDAMPFERTEMP, OELSUMPFTEMP,
@@ -165,8 +160,6 @@ public class Waermepumpe {
         can.anfragen(HEIZMODUL, ZAEHLER_HEIZMODUL);
         can.anfragen(WAERMEPUMPE, BETRIEBSWERTE_WAERMEPUMPE);
         can.anfragen(HEIZMODUL, BETRIEBSWERTE_HEIZMODUL);
-        can.anfragen(MANAGER, BETRIEBSWERTE_MANAGER);
-        can.anfragen(WP_MANAGER, STATUS_WP_MANAGER);
         for (Rohwert rohwert : ROHWERTE) {
             can.anfragen(rohwert.knoten(), rohwert.index());
         }
@@ -439,21 +432,6 @@ public class Waermepumpe {
      */
     public ValueContainer<Double> getVorlaufSoll() throws Exception {
         return getScaledValue(HILFSKESSELSOLL, 10);
-    }
-
-    /**
-     * Flow setpoint the heating controller 0x180 calculates (VORLAUFSOLLTEMP, 0x0004), verified on a WPL17 ICS classic by
-     * ha-stiebel-control. Probably the setpoint the controller integral works against, test until confirmed.
-     */
-    public ValueContainer<Double> getVorlaufSollWpm() throws Exception {
-        return getDecimalValue(VORLAUFSOLLTEMP);
-    }
-
-    /**
-     * Current heat output of the heating controller 0x180 (ERTRAG_AKT, 0x01DB), unit not confirmed yet
-     */
-    public ValueContainer<Double> getWaermeleistungWpm() throws Exception {
-        return getDecimalValue(ERTRAG_AKT);
     }
 
     /**

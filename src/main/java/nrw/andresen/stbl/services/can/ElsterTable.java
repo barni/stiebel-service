@@ -65,17 +65,10 @@ public class ElsterTable {
     public static short FEIN_FDF5 = (short)0xfdf5;
     public static short PUMPE_PWM = (short)0xfe1b;
     public static short REGEL_INTEGRAL = (short)0x0917;
-    // Answered on a WPL17 ICS classic (newer generation with CAN A/B) by 0x180 or 0x480 according to ha-stiebel-control;
-    // this installation has only one CAN bus, requested here to test whether they answer (2026-11-16)
-    public static short VORLAUFSOLLTEMP = (short)0x0004;
-    public static short ERTRAG_AKT = (short)0x01db;
-    public static short ERTRAG_TAG_W = (short)0x01dc;
-    public static short HZK_PUMPE = (short)0x0053;
-    public static short PUMPENSTATUS = (short)0x01d2;
-    public static short HEIZKREIS_STATUS = (short)0x0059;
-    public static short WP_STATUS = (short)0xfdae;
-    public static short SOMMERBETRIEB = (short)0xfdb4;
-    public static short ANTILEGIONELLEN = (short)0x0101;
+    // Answered on a WPL17 ICS classic by 0x180 or 0x480 according to ha-stiebel-control, tested here on 2026-11-16:
+    // VORLAUFSOLLTEMP 0x0004 always 5.0, ERTRAG_AKT 0x01db, ERTRAG_TAG_W 0x01dc, HZK_PUMPE 0x0053 and HEIZKREIS_STATUS
+    // 0x0059 always 0, PUMPENSTATUS 0x01d2 always 4352, SOMMERBETRIEB 0xfdb4 always 1, also while heating;
+    // WP_STATUS 0xfdae and ANTILEGIONELLEN 0x0101 answer 0x8000. None of them is requested.
     // Found by the bus scan on 2026-11-16 at 0x500, 1/10 degC and 1/100 bar; the dew points are probably the base of
     // the defrost decision
     public static short TAUPUNKT_REFERENZ = (short)0x080a;
