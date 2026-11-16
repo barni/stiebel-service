@@ -59,6 +59,21 @@ public class CanBusTest {
         // The manager writes the pump PWM 72 to 0x700 and the controller integral -327 to the heat pump
         assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "E000FAFE1B0048")));
         assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A000FA0917FEB9")));
+        // and 0x02CA = 257 to the heat pump
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A000FA02CA0101")));
+        // Outdoor temperature 8.0 degC broadcast by the manager and its return 25.9 degC to the control unit,
+        // but not the answers of the heat pump to this service with the same indices, 2026-11-16
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x180, "A0790C00500000")));
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x180, "22001601030000")));
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x500, "D2010C004A0000")));
+        assertFalse(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x514, "D2011601090000")));
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x700, "9200FAFE0900D3")));
+    }
+
+    @Test
+    public void testMitlesenEindeutig() {
+        // Values read along are stored by index, each index only once
+        assertEquals(CanBus.MITLESEN.size(), CanBus.MITLESEN.stream().map(CanBus.Mitlesen::index).distinct().count());
         // Raw values: answer of the heat pump to the manager
         assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x500, "9200FA07A80018")));
     }

@@ -285,6 +285,10 @@ public class StatusService {
                         + "dem groben Vorlauf. Test, bis die Deutung bestätigt ist.")
                 .row("Rücklauf fein (Test)", "°C", 1, "RuecklaufFein", wp::getRuecklaufFein)
                 .info("Rücklauf in 0,1 K von 0x700 (0xFDF4), wie der feine Vorlauf mitgelesen.")
+                .row("Rücklauf WPM", "°C", 1, "RuecklaufWPM", wp::getRuecklaufWpm)
+                .info("Rücklauf am Fühler des Wärmepumpenmanagers (0x180, 0x0016), den er dem Bedienteil alle 10 s "
+                        + "meldet, auf dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Lag am 16.11.2026 im "
+                        + "Stillstand etwa 1 K unter dem Rücklauf der Wärmepumpe.")
                 .row("Spreizung fein (Test)", "K", 1, null, wp::getSpreizungFein)
                 .info("Feiner Vorlauf minus feiner Rücklauf. Lag beim Heizen am 15.11.2026 bei 4,9 bis 5,2 K, der "
                         + "Sollwert ist 5 K.")
@@ -328,6 +332,10 @@ public class StatusService {
                 .row("Außentemperatur", "°C", 1, "Aussentemp", wp::getAussentemp)
                 .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
                         + "Wärmepumpenmanagers etwas abweichen, beim Abtauen steigt sie kurz um einige Kelvin.")
+                .row("Außentemperatur WPM", "°C", 1, "AussentempWPM", wp::getAussentempWpm)
+                .info("Außentemperatur am Fühler des Wärmepumpenmanagers, nach der er die Heizkurve rechnet. Der "
+                        + "Manager (0x180) schickt sie alle 5 s an alle (0x000C), auf dem Bus mitgelesen, nur mit „Alle "
+                        + "Nachrichten empfangen“. Am 16.11.2026 8,0 °C, der Fühler der Außeneinheit zeigte 7,4 °C.")
                 .row("Hochdruck", "bar", 2, "Hochdruck", wp::getHochdruck)
                 .info("Absoluter Druck auf der Hochdruckseite des Kältekreises (0x500). Entspricht der "
                         + "Kondensationstemperatur, die etwa der Vorlauftemperatur folgt. Sensor bis 42 bar, "

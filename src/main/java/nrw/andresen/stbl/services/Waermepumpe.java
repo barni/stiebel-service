@@ -327,6 +327,22 @@ public class Waermepumpe {
         return getDecimalValue(ANZEIGE_NIEDERDRUCK);
     }
 
+    /**
+     * Outdoor temperature of the manager in 0.1 K, after which it computes the heating curve; 0x180 broadcasts it
+     * every 5 s. Read along, only with can.logall.
+     */
+    public ValueContainer<Double> getAussentempWpm() throws KeinMesswert {
+        return mitgelesenerWert(AUSSENTEMP, 10);
+    }
+
+    /**
+     * Return temperature at the manager in 0.1 K, 0x180 answers the control unit every 10 s. Read along, only with
+     * can.logall.
+     */
+    public ValueContainer<Double> getRuecklaufWpm() throws KeinMesswert {
+        return mitgelesenerWert(RUECKLAUFISTTEMP, 10);
+    }
+
     public ValueContainer<Double> getAussentemp() throws Exception {
         return getDecimalValue(AUSSENTEMP);
     }
@@ -359,7 +375,7 @@ public class Waermepumpe {
      * @throws KeinMesswert without a current value: expected without can.logall, no warning every 20 s
      */
     public ValueContainer<Double> mitgelesenerWert(short index, double divisor) throws KeinMesswert {
-        ElsterMessage msg = can.nachricht(index);
+        ElsterMessage msg = can.mitgelesen(index);
         if (!mitgelesen(msg == null ? null : msg.getTimestamp(), Instant.now())) {
             throw new KeinMesswert("NUR_MIT_ALLEN_NACHRICHTEN");
         }
