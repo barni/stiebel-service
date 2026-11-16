@@ -10,6 +10,7 @@ import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterMessage;
 import nrw.andresen.stbl.services.can.ElsterTable;
 import nrw.andresen.stbl.services.can.Fehlerliste;
+import nrw.andresen.stbl.services.can.IndexBeschreibung;
 import nrw.andresen.stbl.services.can.SynchronizedUSBtin;
 import nrw.andresen.stbl.services.can.ValueContainer;
 import org.slf4j.Logger;
@@ -491,7 +492,7 @@ public class CanBus {
             abfragen.add(new Abfrage(l.index(), TABELLE.findByIndex(l.index()).getName(),
                     m == null ? null : m.getValue(), null, m == null ? null : m.getTimestamp(), null, true));
         }
-        abfragen.sort(Comparator.comparing((Abfrage a) -> !a.offen(jetzt)).thenComparing(Abfrage::name));
+        abfragen.sort(Comparator.comparing((Abfrage a) -> !a.offen(jetzt)).thenComparing(a -> IndexBeschreibung.anzeigename(a.index(), a.name())));
         return abfragen;
     }
 
