@@ -129,6 +129,8 @@ public class CanBusSeiteTest {
         assertTrue(html.contains("<h1>CAN-Bus</h1>"));
         assertTrue(html.contains("href=\"konfiguration\""));
         assertTrue(html.contains("http-equiv=\"refresh\""));
+        // No reload while a tooltip is open
+        assertTrue(html.contains(".calc:hover, .calc:focus"));
         // The name carries a small i with what the value stands for
         assertTrue(html.contains("<td>0x000C</td><td><span class=\"calc\" data-tip=\"Außentemperatur in °C."));
         assertTrue(html.contains(">AUSSENTEMP <span class=\"info\" aria-hidden=\"true\">i</span></span></td>"));
