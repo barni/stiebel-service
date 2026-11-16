@@ -225,6 +225,18 @@ public class CanBusSeiteTest {
     }
 
     @Test
+    public void testAnzeigename() {
+        // A misleading Elster name is replaced on the page and kept in the tooltip
+        String zelle = CanBusSeite.mitBeschreibung((short) 0x02CA, "MATERIALNUMMER_HIGH");
+        assertTrue(zelle.contains(">Heizkreis-Isttemperatur <span"));
+        assertTrue(zelle.contains("Elster-Name: MATERIALNUMMER_HIGH."));
+        // A guessed meaning carries a question mark
+        assertTrue(CanBusSeite.mitBeschreibung((short) 0xFDF5, "ANTILEGIONELLEN_ZEITPUNKT").contains(">Vorlauf hinter Heizstab? <span"));
+        // Without an own name the Elster name stays
+        assertTrue(CanBusSeite.mitBeschreibung((short) 0x07A2, "STUETZSTELLE_HD2").contains(">STUETZSTELLE_HD2 <span"));
+    }
+
+    @Test
     public void testArtSystem() {
         // Exchange on 0xFFFE before the sync of manager and heat pump, 2026-11-16 10:41:58
         assertEquals("System", CanBusSeite.art(hex("9600FE01000000")));

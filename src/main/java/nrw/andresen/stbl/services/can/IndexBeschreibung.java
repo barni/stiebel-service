@@ -211,7 +211,39 @@ public final class IndexBeschreibung {
             entry((short) 0x0010, "Gerätekonfiguration, Rundruf des Managers beim Abgleich, 0."),
             entry((short) 0x005A, "Speicherstatus, die Wärmepumpe meldet ihn beim Abgleich (-127)."));
 
+    /**
+     * Names shown instead of the Elster name where the Elster name is misleading; a trailing "?" marks a meaning that
+     * is only guessed. The Elster name stays the key and is shown in the tooltip.
+     */
+    private static final Map<Short, String> ANZEIGENAME = Map.ofEntries(
+            entry((short) 0x02CA, "Heizkreis-Isttemperatur"),
+            entry((short) 0xFDF3, "Vorlauf fein"),
+            entry((short) 0xFDF4, "Rücklauf fein"),
+            entry((short) 0xFDF5, "Vorlauf hinter Heizstab?"),
+            entry((short) 0x0669, "Frequenz-Anforderung"),
+            entry((short) 0x0917, "Regler-Integral"),
+            entry((short) 0x06B1, "Spannung Inverter"),
+            entry((short) 0x06B2, "Strom Inverter"),
+            entry((short) 0x063B, "Verdichterdrehzahl"),
+            entry((short) 0x07A8, "Verdichter-Status"),
+            entry((short) 0xFE1B, "Pumpe PWM"),
+            entry((short) 0x005F, "Heizanforderung"),
+            entry((short) 0x0061, "Heizanforderung beim Abgleich"),
+            entry((short) 0x0A36, "Wassertemperatur Außeneinheit?"),
+            entry((short) 0xFE07, "Verdichterleistung?"),
+            entry((short) 0x068D, "Leistungsstufe?"),
+            entry((short) 0x0692, "Heizen (Anzeige)?"),
+            entry((short) 0x4E6A, "Zustand (Anzeige)?"),
+            entry((short) 0x4E7E, "Heizen (Anzeige)?"));
+
     private IndexBeschreibung() {
+    }
+
+    /**
+     * Name to show for the index: the own name where the Elster name is misleading, otherwise the Elster name
+     */
+    public static String anzeigename(short index, String elsterName) {
+        return ANZEIGENAME.getOrDefault(index, elsterName);
     }
 
     /**

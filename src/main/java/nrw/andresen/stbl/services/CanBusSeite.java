@@ -204,10 +204,17 @@ public final class CanBusSeite {
     }
 
     /**
-     * Escaped name with a small i whose tooltip tells what the index stands for, the name alone if nothing is known
+     * Escaped display name with a small i whose tooltip tells what the index stands for and, for an own name, the
+     * Elster name; the Elster name alone if nothing is known
      */
     static String mitBeschreibung(short index, String name) {
-        return mitHinweis(name, IndexBeschreibung.beschreibung(index));
+        String anzeige = IndexBeschreibung.anzeigename(index, name);
+        String beschreibung = IndexBeschreibung.beschreibung(index);
+        // An own name replaces the Elster name on the page, the tooltip keeps the Elster name for looking it up
+        if (!anzeige.equals(name)) {
+            beschreibung = (beschreibung == null ? "" : beschreibung + " ") + "Elster-Name: " + name + ".";
+        }
+        return mitHinweis(anzeige, beschreibung);
     }
 
     /**
