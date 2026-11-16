@@ -135,7 +135,35 @@ public final class IndexBeschreibung {
                     + "Bedeutung unbekannt."),
             entry((short) 0xFE4C, "Der Manager fragt 0x700 alle 5 s danach, immer 14. Bedeutung unbekannt."),
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
-            entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."));
+            entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
+            // Sync of manager and heat pump, seen once on 2026-11-16 10:41:58
+            entry((short) 0xFFFE, "Systemnachricht zwischen Manager und Wärmepumpe (Art 6 und 7), danach schreibt die "
+                    + "Wärmepumpe ihre Stammdaten an den Manager und der Manager schickt Datum und Uhrzeit."),
+            entry((short) 0x079F, "Stützstelle des Niederdruckfühlers, unteres Ende: 100 = 1,00 bar."),
+            entry((short) 0x07A0, "Stützstelle des Niederdruckfühlers, oberes Ende: 1700 = 17,00 bar. Messbereich also "
+                    + "1 bis 17 bar."),
+            entry((short) 0x07A1, "Stützstelle des Hochdruckfühlers, unteres Ende: 100 = 1,00 bar."),
+            entry((short) 0x07A2, "Stützstelle des Hochdruckfühlers, oberes Ende: 4300 = 43,00 bar. Messbereich also "
+                    + "1 bis 43 bar."),
+            entry((short) 0x000B, "Gerätekennung. Die Wärmepumpe meldet 582, der Manager schreibt -128."),
+            entry((short) 0x07F2, "Betriebsart der Wärmepumpe, beim Abgleich 3."),
+            entry((short) 0x0061, "Heißt „Abtauung aktiv“, ist es aber nicht: geht etwa 20 s vor dem Verdichterstart "
+                    + "von 0 auf 512 (Test 2026-09-23)."),
+            entry((short) 0x02C2, "Anzahl der Startversuche des Verdichters, beim Abgleich 0."),
+            entry((short) 0x0001, "Fehlermeldung der Wärmepumpe, 0 = keine."),
+            entry((short) 0x01F2, "Fehlerart der Wärmepumpe, 0 = keine."),
+            entry((short) 0x080E, "Schwerer Fehler (fatal error) der Wärmepumpe, 0 = keiner."),
+            entry((short) 0x0828, "Fehler im Parametersatz der Wärmepumpe, 0 = keiner."),
+            entry((short) 0x0122, "Datum, Tag. Der Manager schickt Datum und Uhrzeit beim Abgleich als Rundruf."),
+            entry((short) 0x0123, "Datum, Monat."),
+            entry((short) 0x0124, "Datum, Jahr zweistellig."),
+            entry((short) 0x0125, "Uhrzeit, Stunde."),
+            entry((short) 0x0359, "Hardwarenummer, die Wärmepumpe antwortet 0x8000 (nicht verfügbar)."),
+            entry((short) 0xFDAA, "Buskontrolle, schreibt der Heizungsregler (0x180) beim Abgleich an die Wärmepumpe."),
+            entry((short) 0xFDAE, "Status der Wärmepumpe, schreibt der Manager beim Abgleich, 0."),
+            entry((short) 0x0A20, "Sammel-Relaisstatus, Rundruf des Managers beim Abgleich, 0."),
+            entry((short) 0x0010, "Gerätekonfiguration, Rundruf des Managers beim Abgleich, 0."),
+            entry((short) 0x005A, "Speicherstatus, die Wärmepumpe meldet ihn beim Abgleich (-127)."));
 
     private IndexBeschreibung() {
     }
