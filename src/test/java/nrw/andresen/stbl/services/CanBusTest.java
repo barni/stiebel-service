@@ -59,6 +59,8 @@ public class CanBusTest {
         // The manager writes the pump PWM 72 to 0x700 and the controller integral -327 to the heat pump
         assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "E000FAFE1B0048")));
         assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A000FA0917FEB9")));
+        // and 0x02CA = 257 to the heat pump
+        assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x480, "A000FA02CA0101")));
         // Raw values: answer of the heat pump to the manager
         assertTrue(CanBus.mitlesen(new nrw.andresen.stbl.services.can.ElsterMessage(0x500, "9200FA07A80018")));
     }

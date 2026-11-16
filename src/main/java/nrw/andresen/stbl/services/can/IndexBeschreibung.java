@@ -125,8 +125,9 @@ public final class IndexBeschreibung {
             entry((short) 0x005E, "Teilvorrang Warmwasser, Rundruf des Managers, immer 0: Warmwasser macht hier die "
                     + "eigene WWK 300."),
             entry((short) 0x002C, "Mischerlaufzeit, der Manager schreibt sie an die Wärmepumpe, immer 0."),
-            entry((short) 0x02CA, "Der Manager schreibt ihn alle 10 s an die Wärmepumpe, zählt langsam (254 bis 279). "
-                    + "Keine Materialnummer, Bedeutung unbekannt."),
+            entry((short) 0x02CA, "Der Manager schreibt ihn alle 10 s an die Wärmepumpe, direkt vor dem "
+                    + "Regler-Integral. Ändert sich langsam (254 bis 279, im Stillstand am 16.11.2026 256 bis 259). "
+                    + "Keine Materialnummer, Bedeutung unbekannt, wird als WP_Roh_02CA mitgelesen."),
             entry((short) 0x0199, "Softwarenummer des Geräts. Beim Abgleich schreibt der Manager seine eigene (331) "
                     + "an die Wärmepumpe, die Wärmepumpe meldet 70."),
             entry((short) 0x019A, "Softwareversion des Geräts. Manager 11, Wärmepumpe 2."),
