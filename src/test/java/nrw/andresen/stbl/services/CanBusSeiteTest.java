@@ -254,9 +254,11 @@ public class CanBusSeiteTest {
     public void testScanSeite() {
         IndexScan.Status status = new IndexScan.Status(
                 false, null, null, 0, 0, 0, 0);
-        String html = CanBusSeite.scan(status, List.of(), Set.of(), false, JETZT);
+        String html = CanBusSeite.scan(status, List.of(), Set.of(), false, "_csrf", "abc", JETZT);
         assertTrue(html.contains("noch nicht gestartet"));
         assertTrue(html.contains("<form method=\"post\" action=\"scan\">"));
+        // The token Spring Security checks for every POST
+        assertTrue(html.contains("<input type=\"hidden\" name=\"_csrf\" value=\"abc\">"));
         // A found value with its display name, 0 hidden unless asked for
         List<IndexScan.Ergebnis> ergebnisse = List.of(
                 new IndexScan.Ergebnis(0x480, (short) 0x02CA, "MATERIALNUMMER_HIGH",
@@ -264,7 +266,7 @@ public class CanBusSeiteTest {
                 new IndexScan.Ergebnis(0x180, (short) 0x7777, "UNKOWN_ELSTERINDEX_7777",
                         "0", 0, JETZT));
         status = new IndexScan.Status(true, JETZT, null, 10, 100, 2, 3);
-        html = CanBusSeite.scan(status, ergebnisse, Set.of((short) 0x0176), false, JETZT);
+        html = CanBusSeite.scan(status, ergebnisse, Set.of((short) 0x0176), false, null, null, JETZT);
         assertTrue(html.contains("10 von 100 Anfragen (10 %)"));
         assertTrue(html.contains("Heizkreis-Isttemperatur"));
         assertTrue(html.contains("0x480 Manager"));
@@ -272,7 +274,7 @@ public class CanBusSeiteTest {
         // While it runs the page reloads and offers no start
         assertTrue(html.contains("http-equiv=\"refresh\""));
         assertFalse(html.contains("<form"));
-        html = CanBusSeite.scan(status, ergebnisse, Set.of(), true, JETZT);
+        html = CanBusSeite.scan(status, ergebnisse, Set.of(), true, null, null, JETZT);
         assertTrue(html.contains("Antworten mit Wert (2)"));
         assertTrue(html.contains(">neu<"));
     }
