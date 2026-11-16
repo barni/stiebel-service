@@ -136,11 +136,6 @@ public class StatusService {
                         + "bei A7/W35 2,6–8,5 kW und bei A−7/W35 3,0–7,8 kW; braucht das Haus weniger als das "
                         + "Minimum, taktet sie.")
                 .formula(Waermepumpe.formelWaermeleistung())
-                .row("Wärmeleistung WPM (Test)", "", 0, "WaermeleistungWPM", wp::getWaermeleistungWpm)
-                .info("Aktuelle Wärmeleistung, wie sie der Heizungsregler (0x180) meldet (ERTRAG_AKT, 0x01DB), alle "
-                        + "20 s abgefragt. An einer WPL 17 ICS classic (neuere Generation) bestätigt "
-                        + "(ha-stiebel-control), Einheit noch "
-                        + "offen: mit der berechneten Wärmeleistung vergleichen.")
                 .ersatz("–")
                 .kpi("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
                 .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
@@ -336,6 +331,10 @@ public class StatusService {
                         + "Minimum, taktet sie.")
                 .formula(Waermepumpe.formelWaermeleistung())
                 .ersatz("–")
+                .row("Wärmeleistung WPM (Test)", "", 0, "WaermeleistungWPM", wp::getWaermeleistungWpm)
+                .info("Aktuelle Wärmeleistung, wie sie der Heizungsregler (0x180) meldet (ERTRAG_AKT, 0x01DB), alle "
+                        + "20 s abgefragt. An einer WPL 17 ICS classic (neuere Generation) bestätigt "
+                        + "(ha-stiebel-control), Einheit noch offen: mit der berechneten Wärmeleistung vergleichen.")
                 .row("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
                 .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
                         + "während der Verdichter läuft. Datenblatt WPL 17: A7/W35 4,76, A2/W35 3,97, A−7/W35 2,92, "
