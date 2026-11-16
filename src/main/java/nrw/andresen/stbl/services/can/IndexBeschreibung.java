@@ -107,14 +107,15 @@ public final class IndexBeschreibung {
                     + "ha-stiebel-control), Name falsch."),
             entry((short) 0xFE1B, "PWM-Signal der Umwälzpumpe, das der Manager an 0x700 schreibt (gedeutet, Name "
                     + "unbekannt): 100 im Stillstand. Beim Heizen 70 bis 72 bei 9,0 l/min, 66 bis 67 bei 11,1 l/min, "
-                    + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
+                    + "57 bis 59 bei 13,5 l/min, 55 bis 56 bei 14,8 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
-                    + "(gedeutet). Steigt, solange der feine Vorlauf über etwa 34 °C liegt, fällt darunter, umso schneller, "
-                    + "je größer die Abweichung. Bei -1000 Start: es springt auf 0 und fällt weiter, 40 bis "
+                    + "(gedeutet). Steigt, solange der feine Vorlauf über dem Sollwert liegt, fällt darunter, umso schneller, "
+                    + "je größer die Abweichung. Der Sollwert folgt der Heizkurve, etwa Hilfskessel-Soll plus 7 K: 34,2 °C "
+                    + "bei 7 bis 8 °C draußen, 34,4 °C bei 6 °C (16.11.2026). Bei -1000 Start: es springt auf 0 und fällt weiter, 40 bis "
                     + "60 s später läuft der Verdichter an, kurz mit 40 Hz, dann ab etwa 26 Hz mit der "
                     + "Frequenz-Anforderung. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
                     + "noch, bis der Vorlauf unter den Sollwert fällt (16.11.2026)."),
-            entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 23, etwa 0,8 × Verdichterdrehzahl. "
+            entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 29, etwa 0,7 bis 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
             entry((short) 0x07A8, "Status-Wort des Verdichters (VERDICHTER, in ha-stiebel-control für die WPL13E "
                     + "0x0008 Stillstand, 0x0221/0x0228 Betrieb). Hier 8 im Stillstand, 24 beim Heizen, Bits noch nicht "
@@ -149,14 +150,34 @@ public final class IndexBeschreibung {
             entry((short) 0x4E7E, "Der Manager schreibt ihn jede Minute an das Bedienteil: 1 beim Heizen, 0 im "
                     + "Stillstand, vermutlich für die Anzeige."),
             entry((short) 0x4E30, "Der Manager schreibt ihn jede Minute an die Wärmepumpe, immer 0."),
-            entry((short) 0x068D, "Die Wärmepumpe schreibt ihn an den Manager: 0 im Stillstand, beim Heizen 5 bis 8, "
-                    + "höher bei höherer Drehzahl (5 bei 21 Hz, 6 bei 24 Hz, 7 bei 30 Hz, 8 bei 34 Hz). Vermutlich eine "
+            entry((short) 0x068D, "Die Wärmepumpe schreibt ihn an den Manager: 0 im Stillstand, beim Heizen 5 bis 10, "
+                    + "höher bei höherer Drehzahl (5 bei 21 Hz, 6 bei 24 Hz, 7 bei 30 Hz, 8 bei 34 Hz, 10 bei 40 Hz). Vermutlich eine "
                     + "Leistungsstufe, unbestätigt."),
             entry((short) 0xFE09, "Der Manager fragt 0x700 alle 5 s danach, 210 bis 211 (vielleicht 21,0 °C). "
                     + "Bedeutung unbekannt, wird als WP_Roh_FE09 mitgelesen."),
             entry((short) 0xFE4C, "Der Manager fragt 0x700 alle 5 s danach, immer 14. Bedeutung unbekannt."),
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
             entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
+            entry((short) 0x4E8B, "Das Bedienteil schreibt 1 an den Manager, gesehen rund um einen Abgleich "
+                    + "(16.11.2026). Bedeutung unbekannt."),
+            // Rare block the manager requests from the heat pump after a sync, values from 2026-11-16 19:08 at 40 Hz
+            entry((short) 0xC24C, "Seltener Block, den der Manager nach einem Abgleich bei der Wärmepumpe abfragt: 35 "
+                    + "(gleich 0x4ED7). Bedeutung unbekannt."),
+            entry((short) 0xC24D, "Seltener Block nach einem Abgleich: 75, gleich der Lüfterleistung in % zu der Zeit, "
+                    + "vielleicht Zufall. Bedeutung unbekannt."),
+            entry((short) 0xC252, "Seltener Block nach einem Abgleich: 0. Bedeutung unbekannt."),
+            entry((short) 0xC255, "Seltener Block nach einem Abgleich: 3. Bedeutung unbekannt."),
+            entry((short) 0xC303, "Seltener Block nach einem Abgleich: 0. Bedeutung unbekannt."),
+            entry((short) 0x4ED7, "Seltener Block nach einem Abgleich: 35 (gleich 0xC24C). Bedeutung unbekannt."),
+            entry((short) 0x4ED8, "Seltener Block nach einem Abgleich: 170. Bedeutung unbekannt."),
+            entry((short) 0x4ED9, "Seltener Block nach einem Abgleich: 0. Bedeutung unbekannt."),
+            entry((short) 0xC2C0, "Seltener Block nach einem Abgleich: 13428, sieht nach einem Zähler aus. Bedeutung "
+                    + "unbekannt."),
+            entry((short) 0xC2C1, "Seltener Block nach einem Abgleich: 51. Bedeutung unbekannt."),
+            entry((short) 0x06FF, "Der Manager fragt ihn beim Abgleich bei der Wärmepumpe ab: 3601. Bedeutung "
+                    + "unbekannt, Name TEST_OBJEKT_190 passt nicht."),
+            entry((short) 0x0961, "Der Manager fragt ihn beim Abgleich bei der Wärmepumpe ab: 1097. Bedeutung "
+                    + "unbekannt."),
             // Sync of manager and heat pump, seen once on 2026-11-16 10:41:58
             entry((short) 0xFFFE, "Systemnachricht (Art 6 und 7), danach Abgleich: die Wärmepumpe schreibt ihre "
                     + "Stammdaten an den Manager, der Manager schreibt seine Softwarenummer und fragt Laufzeiten und "

@@ -301,7 +301,8 @@ public class StatusService {
                         + "Umwälzpumpe: 100 im Stillstand, beim Heizen 64 bis 72. Je kleiner, desto mehr Durchfluss.")
                 .row("Regler-Integral (Test)", "", 0, "RegelIntegral", wp::getRegelIntegral)
                 .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
-                        + "Steigt, solange der Vorlauf über etwa 34 °C liegt, und fällt darunter, umso schneller, je weiter "
+                        + "Steigt, solange der Vorlauf über dem Sollwert liegt (etwa 34 °C, mit der Heizkurve "
+                        + "wandernd), und fällt darunter, umso schneller, je weiter "
                         + "er davon entfernt ist. Bei -1000 springt das Integral auf 0, 40 bis 60 s später startet "
                         + "der Verdichter, kurz mit 40 Hz. Fällt es danach weiter, steigt die Frequenz-Anforderung und "
                         + "der Verdichter fährt von etwa 26 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +1000 "
