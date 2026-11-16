@@ -354,7 +354,10 @@ public class Ueberwachung {
         }
         try {
             double quote = can.minute(CanStatistik.Minute::antwortquote).getValue();
-            melden(antwortquote, quote < antwortquoteMin, "Antwortquote " + (int) quote + " %", jetzt);
+            // During the bus scan some devices leave unknown indices unanswered, that is no fault of the bus
+            if (!can.getIndexScan().laeuft()) {
+                melden(antwortquote, quote < antwortquoteMin, "Antwortquote " + (int) quote + " %", jetzt);
+            }
         } catch (Exception e) {
             // no complete minute yet
         }

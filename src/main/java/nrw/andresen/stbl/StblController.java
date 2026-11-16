@@ -207,6 +207,29 @@ public class StblController {
     }
 
     /**
+     * Page of the scan of all Elster indices: state, start button and the answers with a value
+     */
+    @GetMapping(value = "/canbus/scan", produces = "text/html;charset=UTF-8")
+    public String scan(@RequestParam(defaultValue = "nein") String nullen) {
+        return CanBusSeite.scan(canBus.getIndexScan().status(), canBus.getIndexScan().ergebnisse(),
+                canBus.getAngefragt(), "ja".equals(nullen), Instant.now());
+    }
+
+    /**
+     * Starts the scan of all Elster indices, read only, about 25 minutes; back to the scan page
+     */
+    @PostMapping("/canbus/scan")
+    public ResponseEntity<Void> scanStarten() {
+        canBus.starteScan();
+        return ResponseEntity.status(HttpStatus.SEE_OTHER).header(HttpHeaders.LOCATION, "scan").build();
+    }
+
+    @GetMapping(value = "/canbus/scan.csv", produces = "text/csv;charset=UTF-8")
+    public String scanCsv() {
+        return canBus.getIndexScan().csv();
+    }
+
+    /**
      * Start time of the service; the page shown during a restart waits until it changes
      */
     @GetMapping(value = "/konfiguration/gestartet", produces = "text/plain;charset=UTF-8")
