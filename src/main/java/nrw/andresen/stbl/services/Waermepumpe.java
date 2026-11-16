@@ -406,6 +406,15 @@ public class Waermepumpe {
     }
 
     /**
+     * Compressor frequency in Hz with two decimals, the heat pump answers the manager every 10 s (0x0669 in
+     * 0.01 Hz). Matched the compressor speed at 21, 27 and 33 Hz; at standstill it kept about 24 Hz, so it is only
+     * meaningful while the compressor runs.
+     */
+    public ValueContainer<Double> getVerdichterFrequenzFein() throws KeinMesswert {
+        return mitgelesenerWert(VERDICHTER_FREQUENZ_FEIN, 100);
+    }
+
+    /**
      * Controller integral the manager writes to the heat pump every 10 s (0x0917), down to -1000 while the flow
      * is above its setpoint
      */

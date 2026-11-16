@@ -359,6 +359,10 @@ public class StatusService {
                 .row("Drehzahl", "Hz", 0, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl)
                 .info("Aktuelle Drehzahl des Inverter-Verdichters in der Außeneinheit (0x500). 0 bedeutet, der "
                         + "Verdichter steht.")
+                .row("Frequenz fein (Test)", "Hz", 2, "VerdichterFrequenzFein", wp::getVerdichterFrequenzFein)
+                .info("Verdichterfrequenz in 0,01 Hz, die Wärmepumpe meldet sie dem Manager alle 10 s (0x0669), auf "
+                        + "dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Passte bei 21, 27 und 33 Hz zur "
+                        + "Drehzahl. Im Stillstand bleibt etwa 24 Hz stehen, dann ist der Wert ohne Bedeutung.")
                 .row("Solldrehzahl", "Hz", 0, "VerdichterSollDrehzahlHz", wp::getVerdichterSollDrehzahl)
                 .info("Drehzahl, die die Regelung vom Verdichter fordert (0x514).")
                 .row("Spannung", "V", 1, "SpannungInverter", wp::getSpannungInverter)

@@ -36,7 +36,7 @@ import static nrw.andresen.stbl.services.can.ElsterTable.FEIN_RUECKLAUF;
 import static nrw.andresen.stbl.services.can.ElsterTable.FEIN_VORLAUF;
 import static nrw.andresen.stbl.services.can.ElsterTable.PUMPE_PWM;
 import static nrw.andresen.stbl.services.can.ElsterTable.REGEL_INTEGRAL;
-import static nrw.andresen.stbl.services.can.ElsterTable.ROH_0669;
+import static nrw.andresen.stbl.services.can.ElsterTable.VERDICHTER_FREQUENZ_FEIN;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_07A8;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_0A36;
 import static nrw.andresen.stbl.services.can.ElsterTable.ROH_FE07;
@@ -94,7 +94,7 @@ public class CanBus {
             new Mitlesen(0x700, 0x480, ROH_FE07, true),
             new Mitlesen(0x500, 0x480, ROH_07A8, true),
             new Mitlesen(0x500, 0x480, ROH_0A36, true),
-            new Mitlesen(0x500, 0x480, ROH_0669, true));
+            new Mitlesen(0x500, 0x480, VERDICHTER_FREQUENZ_FEIN, true));
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile Instant letzteAntwort;
     // Time of the last alert about a USB restart and the restarts since then, see checkUSBisAlive
