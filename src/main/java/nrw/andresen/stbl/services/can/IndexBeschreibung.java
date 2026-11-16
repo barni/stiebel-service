@@ -106,10 +106,11 @@ public final class IndexBeschreibung {
                     + "unbekannt): 100 im Stillstand. Beim Heizen 70 bis 72 bei 9,0 l/min, 66 bis 67 bei 11,1 l/min, "
                     + "57 bis 59 bei 13,5 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
-                    + "(gedeutet). Steigt, solange der Vorlauf über etwa 33 °C liegt, fällt darunter, umso schneller, je "
-                    + "größer die Abweichung. Bei etwa -950 bis -1000 Start, dabei springt es auf 0 und fällt weiter, "
-                    + "der Verdichter fährt mit der Frequenz-Anforderung von etwa 24 Hz hoch. Bei etwa +900 bis +1000 "
-                    + "Stopp (16.11.2026)."),
+                    + "(gedeutet). Steigt, solange der feine Vorlauf über etwa 34 °C liegt, fällt darunter, umso schneller, "
+                    + "je größer die Abweichung (etwa 40 je Minute und Kelvin). Bei etwa -950 bis -1000 Start, dabei "
+                    + "springt es auf 0 und fällt weiter, der Verdichter fährt mit der Frequenz-Anforderung von etwa "
+                    + "24 Hz hoch. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
+                    + "noch, bis der Vorlauf unter den Sollwert fällt (16.11.2026)."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 23, etwa 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
             entry((short) 0x07A8, "Wärmepumpe an Manager: 8 im Stillstand, 24 beim Heizen. Vermutlich Statusbits, noch "
