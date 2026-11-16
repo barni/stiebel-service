@@ -336,8 +336,9 @@ public class Waermepumpe {
     }
 
     /**
-     * Flow setpoint the heating controller 0x180 writes to the heat pump every 10 s (HILFSKESSELSOLL), seen on the
-     * bus on 2026-11-15
+     * Auxiliary boiler setpoint the heating controller 0x180 writes to the heat pump every 10 s (HILFSKESSELSOLL).
+     * It follows the heating curve but is not the flow setpoint the heat pump controls to: that was about 33 degC on
+     * 2026-11-16 while this was 26.5 degC. Kept under its first name VorlaufSoll in InfluxDB.
      */
     public ValueContainer<Double> getVorlaufSoll() throws Exception {
         return getScaledValue(HILFSKESSELSOLL, 10);
@@ -406,17 +407,18 @@ public class Waermepumpe {
     }
 
     /**
-     * Compressor frequency in Hz with two decimals, the heat pump answers the manager every 10 s (0x0669 in
-     * 0.01 Hz). Matched the compressor speed at 21, 27 and 33 Hz; at standstill it kept about 24 Hz, so it is only
-     * meaningful while the compressor runs.
+     * Frequency demanded from the compressor in Hz with two decimals, the heat pump answers the manager every 10 s
+     * (0x0669 in 0.01 Hz). It follows the controller integral, also at standstill: about 34 Hz at -1000, 12 Hz at
+     * +900. Above about 20 Hz the compressor runs at it, below it stays at its minimum of 20 Hz (2026-11-16).
      */
-    public ValueContainer<Double> getVerdichterFrequenzFein() throws KeinMesswert {
-        return mitgelesenerWert(VERDICHTER_FREQUENZ_FEIN, 100);
+    public ValueContainer<Double> getFrequenzAnforderung() throws KeinMesswert {
+        return mitgelesenerWert(FREQUENZ_ANFORDERUNG, 100);
     }
 
     /**
-     * Controller integral the manager writes to the heat pump every 10 s (0x0917), down to -1000 while the flow
-     * is above its setpoint
+     * Controller integral the manager writes to the heat pump every 10 s (0x0917). It rises while the flow is above
+     * about 33 degC and falls below. Around -1000 the compressor starts at full power, from about 0 it runs at its
+     * lowest speed and around +900 to +1000 it stops (2026-11-16, 8 degC outside).
      */
     public ValueContainer<Double> getRegelIntegral() throws KeinMesswert {
         return mitgelesenerWert(REGEL_INTEGRAL, 1);
