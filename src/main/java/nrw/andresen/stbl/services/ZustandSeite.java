@@ -51,8 +51,8 @@ public final class ZustandSeite {
                 .append("Wechselt eine Prüfung auf „beobachten“, kommt eine Mail, bei „auffällig“ auch eine ")
                 .append("Push-Nachricht; geprüft wird alle 6 Stunden, eine Besserung wird nicht gemeldet. ")
                 .append("Eine laufende Saison ist noch ")
-                .append("unvollständig, ihre Werte ändern sich bis zum Sommer; im Herbst liegen Spreizung und ")
-                .append("Druckschwankung meist niedriger als im Mittel des Winters.</p>")
+                .append("unvollständig, ihre Werte ändern sich bis zum Sommer. Die Druckschwankung braucht ")
+                .append("mindestens ").append(Zustand.MIN_MONATE_DRUCK).append(" Wintermonate mit genug Tagen.</p>")
                 .append("</article><article class=\"card breit\"><h2>Je Heizsaison</h2>")
                 .append(tabelle(List.of("Saison", "Heiztage", "Arbeitszahl", "AZ 0–5 °C (Tage)", "AZ 5–10 °C (Tage)",
                         "Starts/Tag 0–5 °C", "h/Start 0–5 °C", "Abtauungen/Tag 0–5 °C", "Fehlstarts je 1000 mild",
@@ -63,9 +63,11 @@ public final class ZustandSeite {
                 .append("Ein Start zählt nach mindestens 3 Minuten Stillstand. Fehlstarts je 1000 Starts an milden ")
                 .append("Tagen (0 bis 15 °C) aus der Auswertung der Fehlstarts. „–“: zu wenige Tage oder keine Daten. ")
                 .append("Starts und Laufzeit hängen von den Einstellungen ab; im Herbst 2026 wurden Wärmebedarf, ")
-                .append("Mindestlaufzeit und Betriebsart geändert. Verdampfer, Verflüssiger, Spreizung und ")
-                .append("Druckschwankung: Mediane der 10-Minuten-Mittel von November bis März im ruhigen Lauf, ")
-                .append("Verdampfungs- und Kondensationstemperatur aus Nieder- und Hochdruck für R410A.</p>")
+                .append("Mindestlaufzeit und Betriebsart geändert. Verdampfer, Verflüssiger und Spreizung: Mediane ")
+                .append("der 10-Minuten-Mittel von November bis März im ruhigen Lauf, Verdampfungs- und ")
+                .append("Kondensationstemperatur aus Nieder- und Hochdruck für R410A. Druckschwankung: je Wintermonat ")
+                .append("die Steigung der Tagesmittel des Drucks über die der Wassertemperatur, umgerechnet auf 1,8 bar ")
+                .append("und 30 °C, Median der Monate.</p>")
                 .append("</article><article class=\"card breit\"><h2>Nachfüllungen</h2>")
                 .append(ergebnis.nachfuellungen().isEmpty() ? "<p class=\"note\">Keine Nachfüllung erkannt.</p>"
                         : tabelle(List.of("Datum", "Anstieg bar", "Verlust seit der davor bar/Jahr"),

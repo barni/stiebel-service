@@ -52,10 +52,20 @@ public class Zustand {
     private static final Duration FENSTER = Duration.ofMinutes(10);
     // At least this many 10 minute windows or days for a median
     static final int MIN_FENSTER = 30;
-    static final int MIN_TAGE_DRUCK = 5;
+    // Pressure swing: per winter month the daily means of the pressure against the daily means of the water
+    // temperature while running; within a day the floor heating water changes much less than flow and return and
+    // the pump pressure mixes in (r about 0.6), across the days of a month r is 0.8 to 0.98 (checked 2021 to 2026)
+    static final int MIN_TAGE_MONAT = 15;
+    static final double MIN_SPANNE_MONAT_K = 3;
+    static final int MIN_MONATE_DRUCK = 2;
+    // Normalized to 1.8 bar and 30 °C water: the swing grows with the square of the absolute pressure and with the
+    // thermal expansion of water
+    static final double DRUCK_NORM_BAR = 1.8;
+    static final double LUFTDRUCK_BAR = 1.013;
+    private static final double[][] AUSDEHNUNG_WASSER = {{20, 2.07e-4}, {25, 2.57e-4}, {30, 3.03e-4},
+            {35, 3.45e-4}, {40, 3.85e-4}};
     // A day counts for the pressure swing with at least 6 h running and a span of the water temperature of 3 K
     private static final int MIN_FENSTER_TAG = 36;
-    private static final double MIN_SPANNE_K = 3;
     // Refill: the hourly mean rises at least 0.12 bar and the next 24 h lie at least 0.1 bar above the 24 h before;
     // the heating raises it by at most 0.15 bar in an hour, but not for a whole day (checked 2021 to 2026: exactly
     // the four refills 2022-04-05, 2024-02-15, 2025-04-28, 2026-10-13)
@@ -194,14 +204,32 @@ public class Zustand {
             boolean unvollstaendig = false;
             Map<String, Double> fehlstartRate = new TreeMap<>();
             fehlstarts.getSaisons().forEach(s -> fehlstartRate.put(s.name(), s.jeTausendMild()));
+            // The refills first: the months with a refill are left out of the pressure swing
+            List<Nachfuellung> nachfuellungen = List.of();
+            boolean nachfuellungenDa = true;
+            try {
+                nachfuellungen = nachfuellungen(vergleich.mittelwerte("WP_Heizungsdruck", "1h", DRUCK_AB,
+                        Instant.now()));
+            } catch (Exception e) {
+                logger.warn("Refills of the heating circuit could not be read, tried again later: " + e.getMessage());
+                unvollstaendig = true;
+                nachfuellungenDa = false;
+            }
+            java.util.Set<java.time.YearMonth> nachfuellMonate = new java.util.HashSet<>();
+            nachfuellungen.forEach(n -> nachfuellMonate.add(java.time.YearMonth.from(n.zeit().atZone(ZONE))));
             for (LocalDate von = saisonStart(start); von.isBefore(heute); von = von.plusYears(1)) {
                 LocalDate bis = von.plusYears(1);
                 String name = name(von);
                 boolean laufend = bis.isAfter(heute);
                 Saison saison = laufend ? null : fertig.get(name);
                 if (saison == null) {
+                    if (!nachfuellungenDa) {
+                        // Without the refills a season would count months with a refill, tried again later
+                        continue;
+                    }
                     try {
-                        saison = saison(name, laufend, von, laufend ? heute : bis, fehlstartRate.get(name));
+                        saison = saison(name, laufend, von, laufend ? heute : bis, fehlstartRate.get(name),
+                                nachfuellMonate);
                     } catch (Exception e) {
                         logger.warn("Season " + name + " could not be calculated, tried again later: "
                                 + e.getMessage());
@@ -213,14 +241,6 @@ public class Zustand {
                     }
                 }
                 saisons.add(saison);
-            }
-            List<Nachfuellung> nachfuellungen = List.of();
-            try {
-                nachfuellungen = nachfuellungen(vergleich.mittelwerte("WP_Heizungsdruck", "1h", DRUCK_AB,
-                        Instant.now()));
-            } catch (Exception e) {
-                logger.warn("Refills of the heating circuit could not be read, tried again later: " + e.getMessage());
-                unvollstaendig = true;
             }
             ergebnis = new Ergebnis(List.copyOf(saisons), pruefungen(saisons, nachfuellungen), unvollstaendig,
                     Instant.now(), nachfuellungen);
@@ -329,7 +349,8 @@ public class Zustand {
         return ergebnis;
     }
 
-    private Saison saison(String name, boolean laufend, LocalDate von, LocalDate bis, Double fehlstartsJe1000) {
+    private Saison saison(String name, boolean laufend, LocalDate von, LocalDate bis, Double fehlstartsJe1000,
+                          java.util.Set<java.time.YearMonth> nachfuellMonate) {
         List<WaermebedarfVergleich.Tag> tage = vergleich.tage(von.atStartOfDay(ZONE).toInstant(),
                 bis.atStartOfDay(ZONE).toInstant());
         Instant winterVon = von.withMonth(11).withDayOfMonth(1).atStartOfDay(ZONE).toInstant();
@@ -345,17 +366,20 @@ public class Zustand {
                 vergleich.mittelwerte("WP_VorlaufIstTemp", "10m", winterVon, winterBis),
                 vergleich.mittelwerte("WP_RuecklaufIstTemp", "10m", winterVon, winterBis),
                 vergleich.aussentemperaturMittel("10m", winterVon, winterBis),
-                vergleich.mittelwerte("WP_Heizungsdruck", "10m", winterVon, winterBis));
+                vergleich.mittelwerte("WP_Heizungsdruck", "10m", winterVon, winterBis), nachfuellMonate);
         return new Saison(saison.name(), saison.laufend(), saison.heiztage(), saison.arbeitszahl(), saison.kalt(),
                 saison.mild(), saison.fehlstartsJe1000(), saison.druckWinter(), betrieb);
     }
 
     /**
      * Values of the steady run from the 10 minute means of one winter
+     *
+     * @param nachfuellMonate months with a refill, left out of the pressure swing
      */
     static Betrieb betrieb(Map<Instant, Double> leistung, Map<Instant, Double> niederdruck,
                            Map<Instant, Double> hochdruck, Map<Instant, Double> vorlauf, Map<Instant, Double> ruecklauf,
-                           Map<Instant, Double> aussen, Map<Instant, Double> druck) {
+                           Map<Instant, Double> aussen, Map<Instant, Double> druck,
+                           java.util.Set<java.time.YearMonth> nachfuellMonate) {
         List<Double> verdampfer = new ArrayList<>();
         List<Double> verfluessiger = new ArrayList<>();
         List<Double> spreizung = new ArrayList<>();
@@ -387,16 +411,53 @@ public class Zustand {
                 verdampfer.add(a - tv);
             }
         }
-        List<Double> schwankung = new ArrayList<>();
-        for (List<double[]> tag : tage.values()) {
-            double min = tag.stream().mapToDouble(x -> x[0]).min().orElse(0);
-            double max = tag.stream().mapToDouble(x -> x[0]).max().orElse(0);
-            if (tag.size() >= MIN_FENSTER_TAG && max - min >= MIN_SPANNE_K) {
-                schwankung.add(steigung(tag) * 10);
+        // Daily means of water temperature and pressure while running, grouped by month
+        Map<java.time.YearMonth, List<double[]>> monate = new TreeMap<>();
+        for (Map.Entry<LocalDate, List<double[]>> tag : tage.entrySet()) {
+            if (tag.getValue().size() < MIN_FENSTER_TAG) {
+                continue;
             }
+            monate.computeIfAbsent(java.time.YearMonth.from(tag.getKey()), m -> new ArrayList<>())
+                    .add(new double[]{tag.getValue().stream().mapToDouble(x -> x[0]).average().orElse(0),
+                            tag.getValue().stream().mapToDouble(x -> x[1]).average().orElse(0)});
+        }
+        List<Double> schwankung = new ArrayList<>();
+        for (Map.Entry<java.time.YearMonth, List<double[]>> monat : monate.entrySet()) {
+            List<double[]> m = monat.getValue();
+            double min = m.stream().mapToDouble(x -> x[0]).min().orElse(0);
+            double max = m.stream().mapToDouble(x -> x[0]).max().orElse(0);
+            if (nachfuellMonate.contains(monat.getKey()) || m.size() < MIN_TAGE_MONAT
+                    || max - min < MIN_SPANNE_MONAT_K) {
+                continue;
+            }
+            double wasser = m.stream().mapToDouble(x -> x[0]).average().orElse(0);
+            double bar = m.stream().mapToDouble(x -> x[1]).average().orElse(0);
+            schwankung.add(steigung(m) * 10 / normierung(bar, wasser));
         }
         return new Betrieb(median(verdampfer, MIN_FENSTER), median(verfluessiger, MIN_FENSTER),
-                median(spreizung, MIN_FENSTER), median(schwankung, MIN_TAGE_DRUCK));
+                median(spreizung, MIN_FENSTER), median(schwankung, MIN_MONATE_DRUCK));
+    }
+
+    /**
+     * Factor of the pressure swing at this pressure and water temperature against 1.8 bar and 30 °C: the swing of a
+     * system with an expansion vessel grows with the square of the absolute pressure and with the expansion of water
+     */
+    static double normierung(double bar, double wasser) {
+        double druck = Math.pow((bar + LUFTDRUCK_BAR) / (DRUCK_NORM_BAR + LUFTDRUCK_BAR), 2);
+        return druck * ausdehnung(wasser) / ausdehnung(30);
+    }
+
+    static double ausdehnung(double wasser) {
+        double[][] a = AUSDEHNUNG_WASSER;
+        if (wasser <= a[0][0]) {
+            return a[0][1];
+        }
+        for (int i = 1; i < a.length; i++) {
+            if (wasser <= a[i][0]) {
+                return a[i - 1][1] + (wasser - a[i - 1][0]) * (a[i][1] - a[i - 1][1]) / (a[i][0] - a[i - 1][0]);
+            }
+        }
+        return a[a.length - 1][1];
     }
 
     /**
@@ -554,9 +615,10 @@ public class Zustand {
                 "Vorlauf minus Rücklauf im ruhigen Lauf. Steigt sie, fließt weniger Wasser: Schmutzfilter, Pumpe, "
                         + "Luft im System oder zugedrehte Kreise."));
         p.add(pruefung(true, "Druckschwankung je 10 K", saisons, s -> s.betrieb().druckschwankung(), "bar", 3, true,
-                1.25, 1.50, "Wie stark der Heizungsdruck mit der Wassertemperatur steigt, Median der Tage von November "
-                        + "bis März. Steigt sie, verliert das Ausdehnungsgefäß Vordruck: dann den Vordruck prüfen "
-                        + "lassen. Hängt auch von der Betriebsweise ab."));
+                1.25, 1.50, "Wie stark der Heizungsdruck mit der Wassertemperatur steigt: je Wintermonat die "
+                        + "Tagesmittel des Drucks gegen die der Wassertemperatur, umgerechnet auf 1,8 bar und 30 °C, "
+                        + "Median der Monate; Monate mit Nachfüllung oder unter 3 K Spanne zählen nicht. Steigt sie, "
+                        + "verliert das Ausdehnungsgefäß Vordruck: dann den Vordruck prüfen lassen."));
         p.add(druckverlust(nachfuellungen));
         return p;
     }

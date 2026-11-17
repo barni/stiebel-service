@@ -99,7 +99,8 @@ before you rely on it.
   in winter. From the 10 minute means of the steady run from November to March: outdoor air minus evaporation
   temperature at 0 to 5 °C (refrigerant, dirty evaporator), condensation temperature minus flow (deposits in the
   condenser), spread (water flow) and the change of the heating pressure per 10 K water temperature (gas charge of
-  the expansion vessel); evaporation and condensation temperature from the pressures for R410A. Refills of the
+  the expansion vessel; per winter month the daily means of pressure against water temperature, normalized to
+  1.8 bar and 30 °C, months with a refill left out); evaporation and condensation temperature from the pressures for R410A. Refills of the
   heating circuit are found in the hourly pressure, the loss per year between two refills is rated too. The newest
   season with enough days is compared with the mean of the three seasons before and each value rated as
   unauffällig, beobachten or auffällig. The physical values (evaporator, condenser, spread, pressure swing, loss of
