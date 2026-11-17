@@ -127,10 +127,11 @@ public class Waermepumpe {
             new Rohwert(MANAGER, (short) 0x06ac), new Rohwert(WP_MANAGER, (short) 0x0a37));
     // The heat pump defrosts when the compensated dew point falls this far below the reference (2026-11-17)
     static final double ABTAU_SCHWELLE_K = 3.1;
-    // The reference is learned again 10 minutes after every start and every defrost; at standstill and around start
-    // and stop the compensated value jumps, so the margin is only meaningful from then on while the compressor runs
+    // The reference is the highest compensated dew point since the last defrost, taken from 10 minutes after a start
+    // on; at standstill and around start and stop the compensated value jumps, so the margin is only meaningful from
+    // then on while the compressor runs
     static final Duration ABTAU_RESERVE_AB = Duration.ofMinutes(11);
-    // Value of the reference dew point while it is learned again after a defrost
+    // Value of the reference dew point after a defrost until it takes the first compensated value
     private static final double TAUPUNKT_WIRD_GELERNT = -39;
 
     // Time of the first received compressor speed above 0, null while the compressor stands still
