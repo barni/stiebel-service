@@ -44,7 +44,11 @@ public final class ZustandSeite {
                 .append(pruefungen(ergebnis.pruefungen()))
                 .append("<p class=\"note\">Verglichen wird die neueste Saison mit genug Tagen (mindestens ")
                 .append(Zustand.MIN_TAGE).append(" im Temperaturbereich) mit dem Mittel der bis zu ")
-                .append(Zustand.VERGLEICH_SAISONS).append(" Saisons davor. Eine laufende Saison ist noch ")
+                .append(Zustand.VERGLEICH_SAISONS).append(" Saisons davor. Die Werte mit „Bezug“ werden zusätzlich ")
+                .append("mit dem Mittel der ersten ").append(Zustand.BEZUG_SAISONS).append(" Saisons verglichen, ")
+                .append("das nicht mitwandert: So fällt auch eine langsame Verschlechterung über Jahre auf, die ")
+                .append("gegen die letzten Saisons immer nur klein aussieht; es gilt die schlechtere Bewertung. ")
+                .append("Eine laufende Saison ist noch ")
                 .append("unvollständig, ihre Werte ändern sich bis zum Sommer; im Herbst liegen Spreizung und ")
                 .append("Druckschwankung meist niedriger als im Mittel des Winters.</p>")
                 .append("</article><article class=\"card breit\"><h2>Je Heizsaison</h2>")
@@ -114,7 +118,7 @@ public final class ZustandSeite {
 
     private static String pruefungen(List<Zustand.Pruefung> pruefungen) {
         StringBuilder html = new StringBuilder("<div class=\"tbl\"><table><thead><tr><th>Wert</th><th>Saison</th>"
-                + "<th>Wert</th><th>Mittel davor</th><th>Status</th></tr></thead><tbody>");
+                + "<th>Wert</th><th>Mittel davor</th><th>Bezug</th><th>Status</th></tr></thead><tbody>");
         for (Zustand.Pruefung p : pruefungen) {
             String einheit = p.einheit().isEmpty() ? "" : " " + p.einheit();
             html.append("<tr><td><span class=\"pname\">").append(text(p.name())).append("</span><span class=\"phint\">")
@@ -122,6 +126,8 @@ public final class ZustandSeite {
                             : p.saison())).append("</td><td>").append(zahl(p.wert(), p.stellen()))
                     .append(p.wert() == null ? "" : text(einheit)).append("</td><td>")
                     .append(zahl(p.vorher(), p.stellen())).append(p.vorher() == null ? "" : text(einheit))
+                    .append("</td><td>").append(zahl(p.bezug(), p.stellen()))
+                    .append(p.bezug() == null ? "" : text(einheit))
                     .append("</td><td><span class=\"status ").append(klasse(p.status())).append("\">")
                     .append(text(p.status())).append("</span></td></tr>");
         }
