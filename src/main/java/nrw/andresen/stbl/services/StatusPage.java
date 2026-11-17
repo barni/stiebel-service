@@ -853,7 +853,7 @@ public class StatusPage {
             * { box-sizing: border-box; }
             body { margin: 0; background: var(--bg); color: var(--text);
               font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-            main { max-width: 1120px; margin: 0 auto; padding: 28px 16px 40px; }
+            main { max-width: 1600px; margin: 0 auto; padding: 28px 16px 40px; }
             header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-end;
               justify-content: space-between; margin-bottom: 20px; }
             h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
