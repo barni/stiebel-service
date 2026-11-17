@@ -1,5 +1,7 @@
 package nrw.andresen.stbl.services;
 
+import nrw.andresen.stbl.Application;
+
 import com.influxdb.client.write.Point;
 import nrw.andresen.stbl.services.can.CanStatistik;
 import nrw.andresen.stbl.services.can.ElsterMessage;
@@ -59,7 +61,7 @@ public class StblService {
     /**
      * Check every 20 seconds
      */
-    @Scheduled(fixedRate = 20000)
+    @Scheduled(fixedRate = 20000, scheduler = Application.CAN_SCHEDULER)
     public synchronized void check20() {
         try {
             wp.anfragen20();
@@ -77,7 +79,7 @@ public class StblService {
     /**
      * Check every 60 seconds, 10 s after a run of the 20 s cycle
      */
-    @Scheduled(initialDelay = VERSATZ_60_MS, fixedRate = 60000)
+    @Scheduled(initialDelay = VERSATZ_60_MS, fixedRate = 60000, scheduler = Application.CAN_SCHEDULER)
     public synchronized void check60() {
         can.minuteAbschliessen();
         try {
@@ -95,7 +97,7 @@ public class StblService {
     /**
      * Requests the settings every hour
      */
-    @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 3600000)
+    @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 3600000, scheduler = Application.CAN_SCHEDULER)
     public synchronized void check3600() {
         try {
             wp.anfragen3600();
@@ -108,7 +110,7 @@ public class StblService {
      * Stores the settings half a minute after their request. Stored together with the next request they appeared
      * an hour late in InfluxDB and a restart of the service lost one value.
      */
-    @Scheduled(initialDelay = VERSATZ_MS + SPEICHERN_3600_MS, fixedRate = 3600000)
+    @Scheduled(initialDelay = VERSATZ_MS + SPEICHERN_3600_MS, fixedRate = 3600000, scheduler = Application.CAN_SCHEDULER)
     public synchronized void speichern3600() {
         storeValues3600();
     }
@@ -118,7 +120,7 @@ public class StblService {
      * logged and sent by mail. The first complete read only remembers the list. Each complete list is stored in
      * InfluxDB, an entry already stored only replaces its point.
      */
-    @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 600000)
+    @Scheduled(initialDelay = VERSATZ_MS, fixedRate = 600000, scheduler = Application.CAN_SCHEDULER)
     public synchronized void checkFehlerliste() {
         if (can.fehlerlisteVollstaendig()) {
             try {

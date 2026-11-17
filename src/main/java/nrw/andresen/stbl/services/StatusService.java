@@ -361,15 +361,19 @@ public class StatusService {
                 .info("Temperatur am Austritt des Verdampfers in der Außeneinheit (0x500). Steigt beim Abtauen stark "
                         + "an.")
                 .row("Taupunkt Referenz", "°C", 1, "TaupunktReferenz", wp::getTaupunktReferenz)
-                .info("Taupunkt, den die Wärmepumpe nach jeder Abtauung mit eisfreiem Verdampfer neu lernt (0x500, "
-                        + "0x080A): 10 Minuten lang −40 °C, dann zum Beispiel −8,7 °C.")
+                .info("Taupunkt, den die Wärmepumpe 10 Minuten nach jedem Start und jeder Abtauung mit eisfreiem "
+                        + "Verdampfer neu lernt (0x500, 0x080A), zum Beispiel −8,7 °C. Nach einer Abtauung steht er "
+                        + "bis dahin auf −40 °C.")
                 .row("Taupunkt kompensiert", "°C", 1, "TaupunktKompensiert", wp::getTaupunktKompensiert)
                 .info("Aktueller Taupunkt (0x500, 0x080B). Sinkt, während Eis am Verdampfer wächst.")
                 .row("Reserve bis Abtauung", "K", 1, "AbtauReserve", wp::getAbtauReserve)
                 .info("Wie weit der kompensierte Taupunkt noch sinken darf, bis die Wärmepumpe abtaut. Alle fünf "
-                        + "Abtauungen in der Nacht zum 17.11.2026 starteten bei etwa 3,1 K unter der Referenz.")
+                        + "Abtauungen in der Nacht zum 17.11.2026 starteten bei etwa 3,1 K unter der Referenz. Die "
+                        + "Referenz lernt die Wärmepumpe 10 Minuten nach jedem Start und jeder Abtauung neu; im "
+                        + "Stillstand und beim Starten und Stoppen springt der kompensierte Wert, deshalb erst ab "
+                        + "11 Minuten Lauf.")
                 .formula("Taupunkt kompensiert − Taupunkt Referenz + 3,1 K")
-                .ersatz("wird nach der Abtauung neu gelernt")
+                .ersatz("nur bei laufendem Verdichter, ab 11 min nach dem Start")
                 .row("Überhitzung", "K", 1, "UeberhitzungIst", wp::getIstUeberhitzung)
                 .info("Wie viel wärmer das Kältemittel am Verdampferaustritt ist als seine Verdampfungstemperatur "
                         + "(0x514). Darauf regelt das Expansionsventil.")

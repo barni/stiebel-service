@@ -23,6 +23,10 @@ public class Application {
     // The evaluations (comparison, failed starts, daily overview) query InfluxDB for up to 1.5 minutes; with the
     // default of one thread the requests every 20 s and the USB watchdog would wait for them
     private static final int SCHEDULER_THREADS = 4;
+    // The CAN requests, the fault list and the USB watchdog have their own threads: about 6.5 minutes after every
+    // start the evaluations used all 4 threads and the requests stopped for a minute (2026-11-16/17)
+    public static final String CAN_SCHEDULER = "canScheduler";
+    private static final int CAN_SCHEDULER_THREADS = 2;
 
     private static final Logger logger = LoggerFactory.getLogger(Application.class);
     private static volatile ConfigurableApplicationContext context;
@@ -82,6 +86,14 @@ public class Application {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(SCHEDULER_THREADS);
         scheduler.setThreadNamePrefix("scheduling-");
+        return scheduler;
+    }
+
+    @Bean(CAN_SCHEDULER)
+    public ThreadPoolTaskScheduler canScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(CAN_SCHEDULER_THREADS);
+        scheduler.setThreadNamePrefix("can-");
         return scheduler;
     }
 }

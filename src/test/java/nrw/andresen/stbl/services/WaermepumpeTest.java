@@ -44,6 +44,16 @@ public class WaermepumpeTest {
     }
 
     @Test
+    public void testAbtauReserveGueltig() {
+        Instant jetzt = Instant.parse("2026-11-17T18:00:00Z");
+        // Standstill
+        assertFalse(Waermepumpe.abtauReserveGueltig(null, jetzt));
+        // Started 10 minutes ago, the reference is learned just now
+        assertFalse(Waermepumpe.abtauReserveGueltig(jetzt.minus(Duration.ofMinutes(10)), jetzt));
+        assertTrue(Waermepumpe.abtauReserveGueltig(jetzt.minus(Duration.ofMinutes(11)), jetzt));
+    }
+
+    @Test
     public void testRohwerte() {
         assertEquals(8, Waermepumpe.ROHWERTE.size());
         // Node and index unique, names as stored in InfluxDB

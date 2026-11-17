@@ -148,9 +148,9 @@ public final class IndexBeschreibung {
                     + "die Wärmepumpe und die Wärmepumpe meldet 70, also wohl eine andere Zählung."),
             entry((short) 0x019A, "Softwareversion des Geräts: Manager 11, Außeneinheit 2, beim Abgleich ebenso."),
             // Found by the bus scan on 2026-11-16
-            entry((short) 0x080A, "Taupunkt Referenz in 0,1 °C (0x500). Nach jeder Abtauung 10 Minuten -40 °C, dann "
-                    + "mit eisfreiem Verdampfer neu gelernt (-7,7 bis -11,8 °C am 17.11.2026). Gespeichert als "
-                    + "WP_TaupunktReferenz."),
+            entry((short) 0x080A, "Taupunkt Referenz in 0,1 °C (0x500). 10 Minuten nach jedem Verdichterstart und "
+                    + "jeder Abtauung mit eisfreiem Verdampfer neu gelernt (-7,7 bis -11,8 °C am 17.11.2026), nach "
+                    + "einer Abtauung bis dahin -40 °C. Gespeichert als WP_TaupunktReferenz."),
             entry((short) 0x080B, "Taupunkt kompensiert in 0,1 °C (0x500), sinkt mit wachsendem Eis. Alle fünf "
                     + "Abtauungen am 17.11.2026 starteten, als er 3,1 K unter der Referenz lag. Gespeichert als "
                     + "WP_TaupunktKompensiert, die Reserve bis zur Abtauung als WP_AbtauReserve."),

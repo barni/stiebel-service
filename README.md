@@ -43,9 +43,10 @@ before you rely on it.
   result is kept until the service restarts.
 - **Finds of the bus scan** of 2026-11-16, checked over a day: reference and compensated dew point and the
   condensation temperature from 0x500 every 20 s (`WP_TaupunktReferenz`, `WP_TaupunktKompensiert`,
-  `WP_Kondensationstemp`). The reference is learned again 10 minutes after every defrost, the compensated dew point
-  falls while ice grows and the heat pump defrosts when it is about 3.1 K below the reference; the remaining margin
-  is shown on the status page and stored as `WP_AbtauReserve`. Eight values of unknown meaning are requested every
+  `WP_Kondensationstemp`). The reference is learned again 10 minutes after every start and every defrost, the
+  compensated dew point falls while ice grows and the heat pump defrosts when it is about 3.1 K below the reference;
+  the remaining margin is shown on the status page and stored as `WP_AbtauReserve`, only while the compressor runs
+  for at least 11 minutes. Eight values of unknown meaning are requested every
   minute and stored raw as `WP_Roh_<node>_<index>`, e.g. `WP_Roh_500_0668`. The software number and version of the
   manager and the outdoor unit are read every hour.
 - **Fault list** of the heat pump manager (DIAGNOSE → FEHLERLISTE): the 20 entries with time and fault code are read
