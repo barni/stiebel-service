@@ -139,11 +139,23 @@ public class Zustand {
      * @param status "unauffällig", "beobachten", "auffällig" or "zu wenige Daten"
      */
     public record Pruefung(String name, String saison, Double wert, Double vorher, String einheit, int stellen,
-                           String status, String hinweis, Double bezug) {
+                           String status, String hinweis, Double bezug, String regel) {
+
+        public Pruefung(String name, String saison, Double wert, Double vorher, String einheit, int stellen,
+                        String status, String hinweis, Double bezug) {
+            this(name, saison, wert, vorher, einheit, stellen, status, hinweis, bezug, null);
+        }
 
         public Pruefung(String name, String saison, Double wert, Double vorher, String einheit, int stellen,
                         String status, String hinweis) {
-            this(name, saison, wert, vorher, einheit, stellen, status, hinweis, null);
+            this(name, saison, wert, vorher, einheit, stellen, status, hinweis, null, null);
+        }
+
+        /**
+         * The same check with the rule when it is rated beobachten or auffällig
+         */
+        Pruefung mitRegel(String regel) {
+            return new Pruefung(name, saison, wert, vorher, einheit, stellen, status, hinweis, bezug, regel);
         }
     }
 
@@ -303,6 +315,7 @@ public class Zustand {
                     .append(p.saison()).append(" ").append(ZustandSeite.zahl(p.wert(), p.stellen())).append(einheit)
                     .append(", Mittel davor ").append(ZustandSeite.zahl(p.vorher(), p.stellen())).append(einheit)
                     .append(p.bezug() == null ? "" : ", Bezug " + ZustandSeite.zahl(p.bezug(), p.stellen()) + einheit)
+                    .append(p.regel() == null ? "" : "\nGrenze: " + p.regel())
                     .append("\n").append(p.hinweis()).append("\n");
         }
         return text.append("\nEine Besserung wird nicht gemeldet, der aktuelle Stand steht auf der Seite.")
@@ -550,13 +563,16 @@ public class Zustand {
      */
     private static Pruefung info(Pruefung p) {
         return new Pruefung(p.name(), p.saison(), p.wert(), p.vorher(), p.einheit(), p.stellen(),
-                p.status().equals("zu wenige Daten") ? p.status() : "nur Info", p.hinweis(), p.bezug());
+                p.status().equals("zu wenige Daten") ? p.status() : "nur Info", p.hinweis(), p.bezug(),
+                "keine Meldung, hängt von den Einstellungen ab");
     }
 
     /**
      * Loss of heating pressure per year from the refills: the newest against the mean of the ones before
      */
     static Pruefung druckverlust(List<Nachfuellung> nachfuellungen) {
+        String regel = "beobachten ab +25 %, auffällig ab +50 % gegen das Mittel davor oder den Bezug, auffällig "
+                + "auch über 0,5 bar im Jahr";
         String hinweis = "Aus den Nachfüllungen: Menge geteilt durch die Zeit seit der Nachfüllung davor. Etwa "
                 + "0,2 bar im Jahr sind hier normal. Steigt der Verlust, ist irgendwo eine Undichtigkeit oder das "
                 + "Ausdehnungsgefäß lässt nach. Ein neuer Wert entsteht erst mit der nächsten Nachfüllung.";
@@ -564,7 +580,7 @@ public class Zustand {
         if (mitWert.size() < 2) {
             return new Pruefung("Druckverlust je Jahr", mitWert.isEmpty() ? null : datum(mitWert.getLast().zeit()),
                     mitWert.isEmpty() ? null : mitWert.getLast().barProJahr(), null, "bar", 2, "zu wenige Daten",
-                    hinweis);
+                    hinweis, null, regel);
         }
         Nachfuellung neu = mitWert.getLast();
         List<Nachfuellung> davor = mitWert.subList(Math.max(0, mitWert.size() - 1 - VERGLEICH_SAISONS),
@@ -578,7 +594,7 @@ public class Zustand {
             status = schlechter(status, verlustStatus(neu.barProJahr(), bezug));
         }
         return new Pruefung("Druckverlust je Jahr", datum(neu.zeit()), neu.barProJahr(), vorher, "bar", 2, status,
-                hinweis, bezug);
+                hinweis, bezug, regel);
     }
 
     private static String verlustStatus(double jetzt, double vorher) {
@@ -609,12 +625,23 @@ public class Zustand {
     static Pruefung pruefung(boolean langzeit, String name, List<Saison> saisons, Function<Saison, Double> wert,
                              String einheit, int stellen, boolean hoeherSchlechter, double beobachten,
                              double auffaellig, String hinweis) {
+        String vorzeichen = hoeherSchlechter ? "+" : "−";
+        String regel = "beobachten ab " + vorzeichen + prozent(beobachten) + ", auffällig ab " + vorzeichen
+                + prozent(auffaellig) + gegen(langzeit);
         return vergleich(langzeit, name, saisons, wert, einheit, stellen, hinweis, (jetzt, vorher) -> {
             double faktor = vorher == 0 ? 1 : jetzt / vorher;
             return hoeherSchlechter
                     ? faktor >= auffaellig ? "auffällig" : faktor >= beobachten ? "beobachten" : "unauffällig"
                     : faktor <= auffaellig ? "auffällig" : faktor <= beobachten ? "beobachten" : "unauffällig";
-        });
+        }).mitRegel(regel);
+    }
+
+    private static String prozent(double faktor) {
+        return Math.round(Math.abs(faktor - 1) * 100) + " %";
+    }
+
+    private static String gegen(boolean langzeit) {
+        return " gegen das Mittel davor" + (langzeit ? " oder den Bezug" : "");
     }
 
     /**
@@ -624,9 +651,11 @@ public class Zustand {
      */
     static Pruefung differenz(boolean langzeit, String name, List<Saison> saisons, Function<Saison, Double> wert,
                               String einheit, int stellen, double beobachten, double auffaellig, String hinweis) {
+        String regel = "beobachten ab +" + ZustandSeite.zahl(beobachten, 1) + " " + einheit + ", auffällig ab +"
+                + ZustandSeite.zahl(auffaellig, 1) + " " + einheit + gegen(langzeit);
         return vergleich(langzeit, name, saisons, wert, einheit, stellen, hinweis, (jetzt, vorher) ->
                 jetzt - vorher >= auffaellig ? "auffällig" : jetzt - vorher >= beobachten ? "beobachten"
-                        : "unauffällig");
+                        : "unauffällig").mitRegel(regel);
     }
 
     /**
@@ -667,15 +696,17 @@ public class Zustand {
         List<Saison> mitWert = saisons.stream().filter(s -> s.druckWinter() != null).toList();
         String hinweis = "Mittel der Tagesmittel von November bis März. Verliert die Anlage mehr als etwa 0,2 bar "
                 + "im Jahr, ist irgendwo eine Undichtigkeit; nach dem Nachfüllen steigt der Wert wieder.";
+        String regel = "beobachten unter 1,5 bar oder 0,3 bar weniger als im Winter davor, auffällig unter 1,4 bar";
         if (mitWert.isEmpty()) {
-            return new Pruefung("Heizungsdruck im Winter", null, null, null, "bar", 2, "zu wenige Daten", hinweis);
+            return new Pruefung("Heizungsdruck im Winter", null, null, null, "bar", 2, "zu wenige Daten", hinweis,
+                    null, regel);
         }
         Saison neu = mitWert.getLast();
         Double vorher = mitWert.size() < 2 ? null : mitWert.get(mitWert.size() - 2).druckWinter();
         String status = neu.druckWinter() < 1.4 ? "auffällig" : neu.druckWinter() < 1.5
                 || (vorher != null && vorher - neu.druckWinter() > 0.3) ? "beobachten" : "unauffällig";
         return new Pruefung("Heizungsdruck im Winter", neu.name() + (neu.laufend() ? " (laufend)" : ""),
-                neu.druckWinter(), vorher, "bar", 2, status, hinweis);
+                neu.druckWinter(), vorher, "bar", 2, status, hinweis, null, regel);
     }
 
     /**

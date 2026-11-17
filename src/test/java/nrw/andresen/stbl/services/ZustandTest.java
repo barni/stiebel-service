@@ -157,7 +157,27 @@ public class ZustandTest {
         assertNull(Zustand.pruefungen(saisons.subList(0, 2)).get(6).bezug());
         // The efficiency depends on the settings and has no reference
         assertNull(Zustand.pruefungen(saisons).get(0).bezug());
-        assertTrue(Zustand.meldung(List.of(verdampfer)).contains("Mittel davor 8,6 K, Bezug 8,2 K"));
+        assertTrue(Zustand.meldung(List.of(verdampfer)).contains("Mittel davor 8,6 K, Bezug 8,2 K\nGrenze: "
+                + "beobachten ab +1,0 K, auffällig ab +2,0 K gegen das Mittel davor oder den Bezug"));
+    }
+
+    @Test
+    public void testRegeln() {
+        List<Zustand.Saison> saisons = List.of(mitBetrieb("2024/25", 8.0, 4.9, 0.10),
+                mitBetrieb("2025/26", 8.0, 4.9, 0.10));
+        List<Zustand.Pruefung> p = Zustand.pruefungen(saisons);
+        // Every check says when it reports
+        p.forEach(x -> assertTrue(x.regel() != null, x.name()));
+        assertEquals("beobachten ab −5 %, auffällig ab −10 % gegen das Mittel davor", p.get(0).regel());
+        assertEquals("beobachten ab +15 %, auffällig ab +30 % gegen das Mittel davor", p.get(2).regel());
+        assertEquals("keine Meldung, hängt von den Einstellungen ab", p.get(3).regel());
+        assertEquals("beobachten ab +0,5 K, auffällig ab +1,0 K gegen das Mittel davor oder den Bezug",
+                p.get(8).regel());
+        assertEquals("beobachten ab +25 %, auffällig ab +50 % gegen das Mittel davor oder den Bezug",
+                p.get(9).regel());
+        String html = ZustandSeite.render(new Zustand.Ergebnis(saisons, p, false, Instant.EPOCH), null);
+        assertTrue(html.contains("<span class=\"pregel\">Meldung: beobachten unter 1,5 bar"));
+        assertTrue(html.contains("bei „auffällig“ auch eine Push-Nachricht"));
     }
 
     @Test
