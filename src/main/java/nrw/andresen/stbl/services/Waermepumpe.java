@@ -83,18 +83,12 @@ public class Waermepumpe {
     };
     // Requested every 20 s from the manager, from the heat pump and from the external access
     private static final short[] MONITORING_MANAGER = {
-            BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK, VORLAUFSOLLTEMP, ERTRAG_AKT, HZK_PUMPE, PUMPENSTATUS,
-            HEIZKREIS_STATUS
+            BETRIEBS_STATUS, ANZEIGE_HEIZUNGSDRUCK
     };
-    // Every minute, test whether they answer here (verified on a WPL17 ICS classic by ha-stiebel-control)
-    private static final short[] BETRIEBSWERTE_MANAGER = {ERTRAG_TAG_W};
-    // WP_STATUS and ANTILEGIONELLEN answered 0x8000 (not available) on 2026-11-16 and are no longer requested
-    private static final short[] STATUS_WP_MANAGER = {SOMMERBETRIEB};
     private static final short[] MONITORING_WAERMEPUMPE = {
             TEST_OBJEKT_113_STROM_INVERTER, TEST_OBJEKT_112_SPANNUNG_INVERTER, ANZEIGE_HOCHDRUCK, ANZEIGE_NIEDERDRUCK,
             AUSSENTEMP, HEISSGAS_TEMP, VERDICHTER_DREHZAHL, VERDICHTER_EINTRITTSTEMP, VERDAMPFERTEMP, OELSUMPFTEMP,
-            HILFSKESSELSOLL, TAUPUNKT_REFERENZ, TAUPUNKT_KOMPENSIERT, DRUCK_VERDAMPFER_GEFILTERT,
-            VERDAMPFERTEMP_VOR_KOMPENSATION, VERDAMPFERTEMP_NACH_KOMPENSATION
+            HILFSKESSELSOLL, TAUPUNKT_REFERENZ, TAUPUNKT_KOMPENSIERT, KONDENSATIONSTEMP
     };
     // The EXV every 20 s, the defrost with the fully open EXV lasts only about 1-2 minutes
     private static final short[] MONITORING_HEIZMODUL = {WPVORLAUFIST, RUECKLAUFISTTEMP, OEFFNUNGSGRAD_EXV};
@@ -122,23 +116,19 @@ public class Waermepumpe {
         }
     }
 
-    // Answered with a value by the bus scan on 2026-11-16, unknown counters (TEST_OBJEKT), the sensor inputs of the
-    // heat pump control (EINGANG, 0 left out) and values that look like temperatures in 0.1 K at the manager.
-    // 0x0705 and 0x06a0-0x06a2 are answered by 0x180 and 0x500 with different values, so the node is part of the key.
-    public static final List<Rohwert> ROHWERTE = rohwerte();
-
-    private static List<Rohwert> rohwerte() {
-        List<Rohwert> liste = new java.util.ArrayList<>();
-        for (int index : new int[]{0x0668, 0x06c2, 0x06c3, 0x06c4, 0x06c5, 0x06fb, 0x0705, 0x0706, 0x0707, 0x0727,
-                0x0728, 0x0729, 0x0737, 0x0738, 0x0a29, 0x0a2a, 0x0a2b, 0x0a2c, 0x0a2e, 0x0a2f, 0x0a32, 0x0a33}) {
-            liste.add(new Rohwert(WAERMEPUMPE, (short) index));
-        }
-        for (int index : new int[]{0x0673, 0x06a0, 0x06a1, 0x06a2, 0x06ac}) {
-            liste.add(new Rohwert(MANAGER, (short) index));
-        }
-        liste.add(new Rohwert(WP_MANAGER, (short) 0x0a37));
-        return List.copyOf(liste);
-    }
+    // Found by the bus scan on 2026-11-16 and still open after a day (2026-11-17): 0x0668 is linear to the outside
+    // temperature of the manager (0 at 20 degC), 0x06c2-0x06c5 follow the compressor, 0x06a0 follows the fine flow
+    // and 0x06ac the fine return at the manager, 0x0a37 at 0x480 is about 19. 0x06a0 is answered by 0x180 and 0x500
+    // with different values, so the node is part of the key.
+    public static final List<Rohwert> ROHWERTE = List.of(
+            new Rohwert(WAERMEPUMPE, (short) 0x0668), new Rohwert(WAERMEPUMPE, (short) 0x06c2),
+            new Rohwert(WAERMEPUMPE, (short) 0x06c3), new Rohwert(WAERMEPUMPE, (short) 0x06c4),
+            new Rohwert(WAERMEPUMPE, (short) 0x06c5), new Rohwert(MANAGER, (short) 0x06a0),
+            new Rohwert(MANAGER, (short) 0x06ac), new Rohwert(WP_MANAGER, (short) 0x0a37));
+    // The heat pump defrosts when the compensated dew point falls this far below the reference (2026-11-17)
+    static final double ABTAU_SCHWELLE_K = 3.1;
+    // Value of the reference dew point while it is learned again after a defrost
+    private static final double TAUPUNKT_WIRD_GELERNT = -39;
 
     // Time of the first received compressor speed above 0, null while the compressor stands still
     private volatile Instant verdichterLaeuftSeit;
@@ -165,8 +155,6 @@ public class Waermepumpe {
         can.anfragen(HEIZMODUL, ZAEHLER_HEIZMODUL);
         can.anfragen(WAERMEPUMPE, BETRIEBSWERTE_WAERMEPUMPE);
         can.anfragen(HEIZMODUL, BETRIEBSWERTE_HEIZMODUL);
-        can.anfragen(MANAGER, BETRIEBSWERTE_MANAGER);
-        can.anfragen(WP_MANAGER, STATUS_WP_MANAGER);
         for (Rohwert rohwert : ROHWERTE) {
             can.anfragen(rohwert.knoten(), rohwert.index());
         }
@@ -442,21 +430,6 @@ public class Waermepumpe {
     }
 
     /**
-     * Flow setpoint the heating controller 0x180 calculates (VORLAUFSOLLTEMP, 0x0004), verified on a WPL17 ICS classic by
-     * ha-stiebel-control. Probably the setpoint the controller integral works against, test until confirmed.
-     */
-    public ValueContainer<Double> getVorlaufSollWpm() throws Exception {
-        return getDecimalValue(VORLAUFSOLLTEMP);
-    }
-
-    /**
-     * Current heat output of the heating controller 0x180 (ERTRAG_AKT, 0x01DB), unit not confirmed yet
-     */
-    public ValueContainer<Double> getWaermeleistungWpm() throws Exception {
-        return getDecimalValue(ERTRAG_AKT);
-    }
-
-    /**
      * Demand the manager writes to the heat pump every 10 s (SPEICHERBEDARF): 0 at standstill, 512 while heating on
      * 2026-11-15, the meaning of other values is unknown. The heat pump does not answer a request for it, so it is
      * read along on the bus, only with can.logall.
@@ -563,16 +536,31 @@ public class Waermepumpe {
         return getScaledValue(TAUPUNKT_KOMPENSIERT, 10);
     }
 
-    public ValueContainer<Double> getDruckVerdampfer() throws Exception {
-        return getScaledValue(DRUCK_VERDAMPFER_GEFILTERT, 100);
+    public ValueContainer<Double> getKondensationstemp() throws Exception {
+        return getScaledValue(KONDENSATIONSTEMP, 10);
     }
 
-    public ValueContainer<Double> getVerdampferVorKompensation() throws Exception {
-        return getScaledValue(VERDAMPFERTEMP_VOR_KOMPENSATION, 10);
+    /**
+     * How many K the compensated dew point may still fall before the heat pump defrosts; fails while the reference is
+     * learned again after a defrost
+     */
+    public ValueContainer<Double> getAbtauReserve() throws Exception {
+        ValueContainer<Double> referenz = getTaupunktReferenz();
+        ValueContainer<Double> kompensiert = getTaupunktKompensiert();
+        Double reserve = abtauReserve(referenz.getValue(), kompensiert.getValue());
+        if (reserve == null) {
+            throw new Exception("REFERENCE_LEARNED");
+        }
+        Instant zeit = referenz.getTimestamp().isBefore(kompensiert.getTimestamp()) ? referenz.getTimestamp()
+                : kompensiert.getTimestamp();
+        return new ValueContainer<>(reserve, zeit);
     }
 
-    public ValueContainer<Double> getVerdampferNachKompensation() throws Exception {
-        return getScaledValue(VERDAMPFERTEMP_NACH_KOMPENSATION, 10);
+    static Double abtauReserve(double referenz, double kompensiert) {
+        if (referenz <= TAUPUNKT_WIRD_GELERNT) {
+            return null;
+        }
+        return Math.round((kompensiert - referenz + ABTAU_SCHWELLE_K) * 10) / 10.0;
     }
 
     public ValueContainer<Double> getVerdichterDrehzahl() throws Exception {

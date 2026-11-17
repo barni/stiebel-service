@@ -10,6 +10,10 @@ import static java.util.Map.entry;
  */
 public final class IndexBeschreibung {
 
+    // For the values from ha-stiebel-control that did not change on this installation
+    private static final String KONSTANT = " Auf dieser Anlage am 16.11.2026 über Stunden mit Heizen und Stillstand "
+            + "unverändert, misst hier also nichts und wird nicht mehr abgefragt.";
+
     private static final Map<Short, String> BESCHREIBUNG = Map.ofEntries(
             // Heating circuit
             entry((short) 0x000C, "Außentemperatur in °C. Von der Wärmepumpe (0x500): Fühler der Außeneinheit, beim "
@@ -144,17 +148,38 @@ public final class IndexBeschreibung {
                     + "die Wärmepumpe und die Wärmepumpe meldet 70, also wohl eine andere Zählung."),
             entry((short) 0x019A, "Softwareversion des Geräts: Manager 11, Außeneinheit 2, beim Abgleich ebenso."),
             // Found by the bus scan on 2026-11-16
-            entry((short) 0x080A, "Taupunkttemperatur Referenz in 0,1 °C (0x500), beim Bus-Scan -11,8 °C bei etwa "
-                    + "8 °C außen. Vermutlich Grundlage der Entscheidung zum Abtauen, unbestätigt. Gespeichert als "
+            entry((short) 0x080A, "Taupunkt Referenz in 0,1 °C (0x500). Nach jeder Abtauung 10 Minuten -40 °C, dann "
+                    + "mit eisfreiem Verdampfer neu gelernt (-7,7 bis -11,8 °C am 17.11.2026). Gespeichert als "
                     + "WP_TaupunktReferenz."),
-            entry((short) 0x080B, "Taupunkttemperatur kompensiert in 0,1 °C (0x500), beim Bus-Scan -13,5 °C. "
-                    + "Gespeichert als WP_TaupunktKompensiert."),
-            entry((short) 0x080D, "Gefilterter Verdampferdruck in 0,01 bar (0x500), beim Bus-Scan 7,48 bar. "
-                    + "Gespeichert als WP_DruckVerdampfer."),
-            entry((short) 0x0820, "Verdampfertemperatur vor der Kompensation in 0,1 °C (0x500), beim Bus-Scan 4,9 °C. "
-                    + "Gespeichert als WP_VerdampferVorKompensation."),
-            entry((short) 0x0821, "Verdampfertemperatur nach der Kompensation in 0,1 °C (0x500), beim Bus-Scan 4,4 °C. "
-                    + "Gespeichert als WP_VerdampferNachKompensation."),
+            entry((short) 0x080B, "Taupunkt kompensiert in 0,1 °C (0x500), sinkt mit wachsendem Eis. Alle fünf "
+                    + "Abtauungen am 17.11.2026 starteten, als er 3,1 K unter der Referenz lag. Gespeichert als "
+                    + "WP_TaupunktKompensiert, die Reserve bis zur Abtauung als WP_AbtauReserve."),
+            entry((short) 0x080D, "Gefilterter Verdampferdruck in 0,01 bar (0x500). Folgt dem Niederdruck, bleibt "
+                    + "aber bei Abtauung und Stillstand stehen. Am 16./17.11.2026 gespeichert, dann nicht mehr abgefragt."),
+            entry((short) 0x0820, "Verdampfertemperatur vor der Kompensation in 0,1 °C (0x500), gleich 0x07A9. Nicht "
+                    + "mehr abgefragt."),
+            entry((short) 0x0821, "Verdampfertemperatur nach der Kompensation in 0,1 °C (0x500), gleich 0x07A9. Nicht "
+                    + "mehr abgefragt."),
+            entry((short) 0x0728, "Kondensationstemperatur in 0,1 °C (0x500, gedeutet): 0,8 °C bei 8,2 bar bis 42,6 °C "
+                    + "bei 25,4 bar Hochdruck, wie bei R410A. Gespeichert als WP_Kondensationstemp."),
+            entry((short) 0x0729, "Hochdruck in 0,01 bar (0x500), gleich EINGANG6. Nicht abgefragt."),
+            entry((short) 0x0673, "Beim Kessel (0x180): Volumenstrom × 100 in l/min, in denselben Stufen wie 0x02E2, "
+                    + "also nicht feiner. Nicht abgefragt."),
+            entry((short) 0x0A29, "Fühlereingang der Außeneinheit (0x500): Verdampfer in 0,1 °C, wie 0x07A9."),
+            entry((short) 0x0A2A, "Fühlereingang der Außeneinheit (0x500): Sauggas in 0,1 °C, wie 0x063F."),
+            entry((short) 0x0A2B, "Fühlereingang der Außeneinheit (0x500): Außentemperatur in 0,1 °C, wie 0x000C."),
+            entry((short) 0x0A2C, "Fühlereingang der Außeneinheit (0x500): Heißgas in 0,1 °C, wie 0x0265."),
+            entry((short) 0x0A2E, "Fühlereingang der Außeneinheit (0x500): Hochdruck in 0,01 bar, wie 0x07A6."),
+            entry((short) 0x0A2F, "Fühlereingang der Außeneinheit (0x500): Niederdruck in 0,01 bar, wie 0x07A7."),
+            entry((short) 0x0A32, "Fühlereingang der Außeneinheit (0x500): Rücklauf in 0,1 °C, aber in den groben "
+                    + "Stufen von 0x0016."),
+            entry((short) 0x0A33, "Fühlereingang der Außeneinheit (0x500): Vorlauf in 0,1 °C, aber in den groben "
+                    + "Stufen von 0x01D6."),
+            entry((short) 0x0668, "An der Außeneinheit (0x500) exakt linear zur Außentemperatur des Managers: 0 bei "
+                    + "20 °C, etwa 327 je K kälter (5000 bei 4,7 °C). Vielleicht eine errechnete Heizlast, offen. "
+                    + "Gespeichert als WP_Roh_500_0668."),
+            entry((short) 0x06C5, "An der Außeneinheit (0x500): 4260 beim Heizen, 2500 bei Abtauung und Stillstand. "
+                    + "Bedeutung offen, gespeichert als WP_Roh_500_06C5."),
             entry((short) 0x0822, "Vorlauf der Außeneinheit in 0,1 °C (0x500), aber nur in den groben Stufen von "
                     + "0x01D6 (16.11.2026: 332 bei 33,2 °C). Deshalb nicht abgefragt, fein ist nur 0xFDF3."),
             entry((short) 0x0823, "Rücklauf der Außeneinheit in 0,1 °C (0x500), aber nur in den groben Stufen von "
@@ -190,27 +215,22 @@ public final class IndexBeschreibung {
             entry((short) 0xFE4C, "Der Manager fragt 0x700 alle 5 s danach, immer 14. Bedeutung unbekannt."),
             entry((short) 0xFE1D, "Der Manager schreibt 0 an 0x700, 0x700 antwortet 2. Bedeutung unbekannt."),
             entry((short) 0xFE1E, "Der Manager schreibt 0 an 0x700. Bedeutung unbekannt."),
-            // Verified on a WPL17 ICS classic (newer generation with CAN A/B) by ha-stiebel-control, requested here
-            // since 2026-11-16 as a test
-            entry((short) 0x0004, "Vorlauf-Solltemperatur, die der Heizungsregler berechnet. An einer WPL 17 ICS "
-                    + "classic (neuere Generation) bestätigt (ha-stiebel-control), hier Test. Vermutlich der Sollwert "
-                    + "des Regler-Integrals."),
-            entry((short) 0x01DB, "Aktuelle Wärmeleistung, vom Heizungsregler gemeldet. An einer WPL 17 ICS classic "
-                    + "(neuere Generation) bestätigt (ha-stiebel-control), Einheit noch offen."),
-            entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil, vom Heizungsregler. An einer WPL 17 ICS classic "
-                    + "(neuere Generation) bestätigt (ha-stiebel-control)."),
-            entry((short) 0x0053, "Heizkreispumpe an (1) oder aus (0). An einer WPL 17 ICS classic bestätigt "
-                    + "(ha-stiebel-control)."),
-            entry((short) 0x01D2, "Pumpenstatus als Bitfeld: welche Pumpe läuft. An einer WPL 17 ICS classic bestätigt "
-                    + "(ha-stiebel-control), Bits noch nicht entschlüsselt."),
-            entry((short) 0x0059, "Status des Heizkreises als Bitfeld. An einer WPL 17 ICS classic bestätigt "
-                    + "(ha-stiebel-control), Bits noch nicht entschlüsselt."),
-            entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (Verdichter, Heizen, Warmwasser, Kühlen), beim "
-                    + "Manager 0x480 abgefragt: hier 0x8000 (nicht verfügbar), wird nicht mehr abgefragt. Beim Abgleich "
-                    + "schreibt der Manager 0 an die Wärmepumpe."),
-            entry((short) 0xFDB4, "Sommerbetrieb (Heizung aus, nur Warmwasser), beim Manager 0x480 abgefragt."),
-            entry((short) 0x0101, "Legionellenschutz aktiv. Der Manager 0x480 antwortet 0x8000 (nicht verfügbar), wird "
-                    + "nicht mehr abgefragt. Warmwasser macht hier die eigene WWK 300."),
+            // Verified on a WPL17 ICS classic (newer generation with CAN A/B) by ha-stiebel-control, tested here on
+            // 2026-11-16: constant or not available, no longer requested
+            entry((short) 0x0004, "Vorlauf-Solltemperatur (ha-stiebel-control, WPL 17 ICS classic). Hier immer "
+                    + "5,0 °C, auch beim Heizen mit 34 °C Vorlauf: ein fester Wert, nicht der Sollwert, wird nicht mehr "
+                    + "abgefragt."),
+            entry((short) 0x01DB, "Aktuelle Wärmeleistung (ha-stiebel-control, WPL 17 ICS classic). Hier immer 0." + KONSTANT),
+            entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil (ha-stiebel-control). Hier immer 0." + KONSTANT),
+            entry((short) 0x0053, "Heizkreispumpe (ha-stiebel-control). Hier immer 0." + KONSTANT),
+            entry((short) 0x01D2, "Pumpenstatus (ha-stiebel-control). Hier immer 4352 (0x1100)." + KONSTANT),
+            entry((short) 0x0059, "Status des Heizkreises (ha-stiebel-control). Hier immer 0." + KONSTANT),
+            entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (ha-stiebel-control). Der Manager 0x480 antwortet "
+                    + "0x8000 (nicht verfügbar). Beim Abgleich schreibt der Manager 0 an die Wärmepumpe."),
+            entry((short) 0xFDB4, "Sommerbetrieb (ha-stiebel-control). Der Manager 0x480 antwortet immer 1, auch beim "
+                    + "Heizen." + KONSTANT),
+            entry((short) 0x0101, "Legionellenschutz aktiv. Der Manager 0x480 antwortet 0x8000 (nicht verfügbar). "
+                    + "Warmwasser macht hier die eigene WWK 300."),
             entry((short) 0x4E8B, "Das Bedienteil schreibt 1 an den Manager, gesehen rund um einen Abgleich "
                     + "(16.11.2026). Bedeutung unbekannt."),
             // Rare block the manager requests from the heat pump after a sync, values from 2026-11-16 19:08 at 40 Hz
@@ -287,26 +307,25 @@ public final class IndexBeschreibung {
             entry((short) 0x0692, "Heizen (Anzeige)?"),
             entry((short) 0x4E6A, "Zustand (Anzeige)?"),
             entry((short) 0x4E7E, "Heizen (Anzeige)?"),
-            entry((short) 0x0A29, "Fühlereingang 1"),
-            entry((short) 0x0A2A, "Fühlereingang 2"),
-            entry((short) 0x0A2B, "Fühlereingang 3"),
-            entry((short) 0x0A2C, "Fühlereingang 4"),
-            entry((short) 0x0A2E, "Fühlereingang 6"),
-            entry((short) 0x0A2F, "Fühlereingang 7"),
-            entry((short) 0x0A32, "Fühlereingang 10"),
-            entry((short) 0x0A33, "Fühlereingang 11"),
+            entry((short) 0x0A29, "Eingang Verdampfer"),
+            entry((short) 0x0A2A, "Eingang Sauggas"),
+            entry((short) 0x0A2B, "Eingang Außentemperatur"),
+            entry((short) 0x0A2C, "Eingang Heißgas"),
+            entry((short) 0x0A2E, "Eingang Hochdruck"),
+            entry((short) 0x0A2F, "Eingang Niederdruck"),
+            entry((short) 0x0A32, "Eingang Rücklauf"),
+            entry((short) 0x0A33, "Eingang Vorlauf"),
             entry((short) 0x0A37, "Fühlereingang 15"),
+            entry((short) 0x0728, "Kondensationstemperatur"),
+            entry((short) 0x080A, "Taupunkt Referenz"),
+            entry((short) 0x080B, "Taupunkt kompensiert"),
             entry((short) 0x1480, "Heizprogramm Mo–Fr"),
             entry((short) 0x1490, "Heizprogramm Sa–So"),
             entry((short) 0x01BF, "Sommer/Winter-Umschaltung"));
 
-    // Answered with a value by the bus scan on 2026-11-16, meaning unknown, requested every minute and stored raw
+    // Found by the bus scan on 2026-11-16, meaning still open, requested every minute and stored raw
     private static final java.util.Set<Short> SCAN_ROHWERTE = java.util.Set.of(
-            (short) 0x0668, (short) 0x06C2, (short) 0x06C3, (short) 0x06C4, (short) 0x06C5, (short) 0x06FB,
-            (short) 0x0705, (short) 0x0706, (short) 0x0707, (short) 0x0727, (short) 0x0728, (short) 0x0729,
-            (short) 0x0737, (short) 0x0738, (short) 0x0A29, (short) 0x0A2A, (short) 0x0A2B, (short) 0x0A2C,
-            (short) 0x0A2E, (short) 0x0A2F, (short) 0x0A32, (short) 0x0A33, (short) 0x0673, (short) 0x06A0,
-            (short) 0x06A1, (short) 0x06A2, (short) 0x06AC, (short) 0x0A37);
+            (short) 0x06C2, (short) 0x06C3, (short) 0x06C4, (short) 0x06A0, (short) 0x06AC, (short) 0x0A37);
 
     private IndexBeschreibung() {
     }

@@ -65,24 +65,23 @@ public class ElsterTable {
     public static short FEIN_FDF5 = (short)0xfdf5;
     public static short PUMPE_PWM = (short)0xfe1b;
     public static short REGEL_INTEGRAL = (short)0x0917;
-    // Answered on a WPL17 ICS classic (newer generation with CAN A/B) by 0x180 or 0x480 according to ha-stiebel-control;
-    // this installation has only one CAN bus, requested here to test whether they answer (2026-11-16)
-    public static short VORLAUFSOLLTEMP = (short)0x0004;
-    public static short ERTRAG_AKT = (short)0x01db;
-    public static short ERTRAG_TAG_W = (short)0x01dc;
-    public static short HZK_PUMPE = (short)0x0053;
-    public static short PUMPENSTATUS = (short)0x01d2;
-    public static short HEIZKREIS_STATUS = (short)0x0059;
-    public static short WP_STATUS = (short)0xfdae;
-    public static short SOMMERBETRIEB = (short)0xfdb4;
-    public static short ANTILEGIONELLEN = (short)0x0101;
-    // Found by the bus scan on 2026-11-16 at 0x500, 1/10 degC and 1/100 bar; the dew points are probably the base of
-    // the defrost decision
+    // Answered on a WPL17 ICS classic by 0x180 or 0x480 according to ha-stiebel-control, tested here on 2026-11-16:
+    // VORLAUFSOLLTEMP 0x0004 always 5.0, ERTRAG_AKT 0x01db, ERTRAG_TAG_W 0x01dc, HZK_PUMPE 0x0053 and HEIZKREIS_STATUS
+    // 0x0059 always 0, PUMPENSTATUS 0x01d2 always 4352, SOMMERBETRIEB 0xfdb4 always 1, also while heating;
+    // WP_STATUS 0xfdae and ANTILEGIONELLEN 0x0101 answer 0x8000. None of them is requested.
+    // Found by the bus scan on 2026-11-16 at 0x500, 1/10 degC. The reference dew point is set to -40 for 10 minutes
+    // after every defrost and then learned with the ice free evaporator; the compensated one falls while ice grows.
+    // All 5 defrosts in the night to 2026-11-17 started when it was 3.1 K (3.0 to 3.4) below the reference.
     public static short TAUPUNKT_REFERENZ = (short)0x080a;
     public static short TAUPUNKT_KOMPENSIERT = (short)0x080b;
-    public static short DRUCK_VERDAMPFER_GEFILTERT = (short)0x080d;
-    public static short VERDAMPFERTEMP_VOR_KOMPENSATION = (short)0x0820;
-    public static short VERDAMPFERTEMP_NACH_KOMPENSATION = (short)0x0821;
+    // Condensation temperature in 1/10 degC (TEST_OBJEKT_231), 0.8 degC at 8.2 bar to 42.6 degC at 25.4 bar high
+    // pressure as for R410A (2026-11-17)
+    public static short KONDENSATIONSTEMP = (short)0x0728;
+    // Not requested after a day of comparison (2026-11-17): DRUCK_VERDAMPFER_GEFILTERT 0x080d follows the low pressure
+    // and stands still during defrost and standstill; VERDAMPFERTEMP_VOR/NACH_KOMPENSATION 0x0820/0x0821 equal 0x07a9;
+    // EINGANG1/2/3/4/6/7/10/11 0x0a29-0x0a33 at 0x500 are evaporator, suction gas, outside, hot gas, high pressure,
+    // low pressure (1/100 bar), coarse return and coarse flow; 0x0729 is the high pressure again; 0x0673 at 0x180 is
+    // the flow rate times 100 in the same steps; 0x06fb, 0x0705-0x0707, 0x0727, 0x0737, 0x0738 do not change.
     // Settings found by the bus scan, read at 0x514: summer/winter switch and frost protection outside temperature,
     // maximum heating temperature in 1/10 degC; heating program 1 as start and end in quarters of an hour
     public static short SW_AUSSENTEMP = (short)0x01bf;

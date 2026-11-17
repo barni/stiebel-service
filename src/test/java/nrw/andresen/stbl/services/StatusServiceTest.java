@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -41,7 +42,8 @@ public class StatusServiceTest {
     @Test
     public void testSeiteBaut() {
         String html = status.getStatus();
-        assertTrue(html.contains("Vorlauf-Soll WPM (Test)"));
-        assertTrue(html.contains("Wärmeleistung WPM (Test)"));
+        assertTrue(html.contains("Reserve bis Abtauung"));
+        assertTrue(html.contains("Software der Geräte"));
+        assertFalse(html.contains("Vorlauf-Soll WPM"));
     }
 }

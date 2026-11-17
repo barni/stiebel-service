@@ -34,11 +34,21 @@ public class WaermepumpeTest {
     }
 
     @Test
+    public void testAbtauReserve() {
+        // Defrost at 2026-11-17 01:22: reference -11.8, compensated -14.9
+        assertEquals(0.0, Waermepumpe.abtauReserve(-11.8, -14.9), 0.001);
+        // An hour before: compensated -13.8
+        assertEquals(1.1, Waermepumpe.abtauReserve(-11.8, -13.8), 0.001);
+        // Reference learned again after the defrost
+        assertNull(Waermepumpe.abtauReserve(-40, -9.7));
+    }
+
+    @Test
     public void testRohwerte() {
-        assertEquals(28, Waermepumpe.ROHWERTE.size());
+        assertEquals(8, Waermepumpe.ROHWERTE.size());
         // Node and index unique, names as stored in InfluxDB
         assertEquals(Waermepumpe.ROHWERTE.size(), Waermepumpe.ROHWERTE.stream().distinct().count());
-        assertTrue(Waermepumpe.ROHWERTE.contains(new Waermepumpe.Rohwert(0x500, (short) 0x0705)));
+        assertTrue(Waermepumpe.ROHWERTE.contains(new Waermepumpe.Rohwert(0x500, (short) 0x0668)));
         assertEquals("Roh_180_06A0", new Waermepumpe.Rohwert(0x180, (short) 0x06a0).name());
         assertEquals("Roh_480_0A37", new Waermepumpe.Rohwert(0x480, (short) 0x0a37).name());
     }

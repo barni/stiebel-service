@@ -204,13 +204,6 @@ public class StblService {
             addPoint(points, "Roh_FE09", () -> wp.mitgelesenerWert(ROH_FE09, 1), MAX_AGE_20);
             addPoint(points, "AussentempWPM", wp::getAussentempWpm, MAX_AGE_20);
             addPoint(points, "RuecklaufWPM", wp::getRuecklaufWpm, MAX_AGE_20);
-            addPoint(points, "VorlaufSollWPM", wp::getVorlaufSollWpm, MAX_AGE_20);
-            addPoint(points, "WaermeleistungWPM", wp::getWaermeleistungWpm, MAX_AGE_20);
-            addPoint(points, "WaermeertragTagWWPM", () -> wp.getDecimalValue(ERTRAG_TAG_W), MAX_AGE_60);
-            addPoint(points, "HzkPumpe", () -> wp.getDecimalValue(HZK_PUMPE), MAX_AGE_20);
-            addPoint(points, "Roh_Pumpenstatus", () -> wp.getDecimalValue(PUMPENSTATUS), MAX_AGE_20);
-            addPoint(points, "Roh_HeizkreisStatus", () -> wp.getDecimalValue(HEIZKREIS_STATUS), MAX_AGE_20);
-            addPoint(points, "Sommerbetrieb", () -> wp.getDecimalValue(SOMMERBETRIEB), MAX_AGE_60);
             addPoint(points, "FrequenzAnforderung", wp::getFrequenzAnforderung, MAX_AGE_20);
             addPoint(points, "VerdichterDrehzahlHz", wp::getVerdichterDrehzahl, MAX_AGE_20);
             addPoint(points, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp, MAX_AGE_20);
@@ -218,9 +211,8 @@ public class StblService {
             addPoint(points, "OelsumpfTemp", wp::getOelsumpfTemp, MAX_AGE_20);
             addPoint(points, "TaupunktReferenz", wp::getTaupunktReferenz, MAX_AGE_20);
             addPoint(points, "TaupunktKompensiert", wp::getTaupunktKompensiert, MAX_AGE_20);
-            addPoint(points, "DruckVerdampfer", wp::getDruckVerdampfer, MAX_AGE_20);
-            addPoint(points, "VerdampferVorKompensation", wp::getVerdampferVorKompensation, MAX_AGE_20);
-            addPoint(points, "VerdampferNachKompensation", wp::getVerdampferNachKompensation, MAX_AGE_20);
+            addPoint(points, "Kondensationstemp", wp::getKondensationstemp, MAX_AGE_20);
+            addPoint(points, "AbtauReserve", wp::getAbtauReserve, MAX_AGE_20);
             addPoint(points, "Abtauung", wp::getAbtauung, MAX_AGE_60);
             influxController.storePoints(points);
 
