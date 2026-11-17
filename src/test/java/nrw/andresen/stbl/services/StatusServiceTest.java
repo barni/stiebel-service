@@ -42,7 +42,7 @@ public class StatusServiceTest {
     @Test
     public void testSeiteBaut() {
         String html = status.getStatus();
-        assertTrue(html.contains("Verdampferdruck gefiltert (Test)"));
+        assertTrue(html.contains("Reserve bis Abtauung"));
         assertTrue(html.contains("Software der Geräte"));
         assertFalse(html.contains("Vorlauf-Soll WPM"));
     }

@@ -41,12 +41,13 @@ before you rely on it.
   answer with a value (display name, device, value, raw value, whether the index is described), values 0 on request,
   and `/canbus/scan.csv` returns all of them. The warning for a low answer rate is off while the scan runs. The
   result is kept until the service restarts.
-- **Finds of the bus scan** of 2026-11-16: dew point reference and compensated, filtered evaporator pressure and
-  the evaporator temperature before and after compensation from 0x500 every 20 s (`WP_TaupunktReferenz`,
-  `WP_TaupunktKompensiert`, `WP_DruckVerdampfer`, `WP_VerdampferVorKompensation`, `WP_VerdampferNachKompensation`,
-  marked as test on the status page). 28 values of unknown meaning (test objects, sensor inputs) are requested every
-  minute and stored raw as `WP_Roh_<node>_<index>`, e.g. `WP_Roh_500_0668`, to see later which ones change with
-  the operation. The software number and version of the manager and the outdoor unit are read every hour.
+- **Finds of the bus scan** of 2026-11-16, checked over a day: reference and compensated dew point and the
+  condensation temperature from 0x500 every 20 s (`WP_TaupunktReferenz`, `WP_TaupunktKompensiert`,
+  `WP_Kondensationstemp`). The reference is learned again 10 minutes after every defrost, the compensated dew point
+  falls while ice grows and the heat pump defrosts when it is about 3.1 K below the reference; the remaining margin
+  is shown on the status page and stored as `WP_AbtauReserve`. Eight values of unknown meaning are requested every
+  minute and stored raw as `WP_Roh_<node>_<index>`, e.g. `WP_Roh_500_0668`. The software number and version of the
+  manager and the outdoor unit are read every hour.
 - **Fault list** of the heat pump manager (DIAGNOSE → FEHLERLISTE): the 20 entries with time and fault code are read
   every 10 minutes from `FEHLERFELD_0..139` (0x0B00–0x0B8B at node 0x180, 7 values per entry: minute, hour, day,
   month, year, 0, code). Shown on the status page with text for known codes (e.g. 8116 `INV H ROTORVEKTOR`) and as

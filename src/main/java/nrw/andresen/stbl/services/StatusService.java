@@ -345,13 +345,14 @@ public class StatusService {
                 .info("Absoluter Druck auf der Hochdruckseite des Kältekreises (0x500). Entspricht der "
                         + "Kondensationstemperatur, die etwa der Vorlauftemperatur folgt. Sensor bis 42 bar, "
                         + "Hochdruckwächter schaltet bei 45 bar ab.")
+                .row("Kondensationstemperatur", "°C", 1, "Kondensationstemp", wp::getKondensationstemp)
+                .info("Temperatur, bei der das Kältemittel im Verflüssiger kondensiert (0x500, 0x0728), aus dem "
+                        + "Hochdruck. Liegt beim Heizen knapp unter dem Vorlauf; je kleiner der Abstand, desto "
+                        + "effizienter.")
                 .row("Niederdruck", "bar", 2, "Niederdruck", wp::getNiederdruck)
                 .info("Absoluter Druck auf der Saugseite des Kältekreises (0x500). Entspricht der "
                         + "Verdampfungstemperatur, im Betrieb einige Kelvin unter der Außentemperatur. Sensor bis "
                         + "16 bar.")
-                .row("Verdampferdruck gefiltert (Test)", "bar", 2, "DruckVerdampfer", wp::getDruckVerdampfer)
-                .info("Gefilterter Druck im Verdampfer (0x500, 0x080D), beim Bus-Scan am 16.11.2026 gefunden. Test, "
-                        + "bis der Vergleich mit dem Niederdruck zeigt, ob er etwas Neues sagt.")
                 .row("Heißgas", "°C", 1, "HeissgasTemp", wp::getHeissgasTemp)
                 .info("Temperatur des Kältemittels direkt hinter dem Verdichter (0x500).")
                 .row("Verdichter-Eintritt", "°C", 1, "VerdichterEintrittstemp", wp::getVerdichterEintrittstemp)
@@ -359,17 +360,16 @@ public class StatusService {
                 .row("Verdampfer", "°C", 1, "VerdampferTemp", wp::getVerdampferTemp)
                 .info("Temperatur am Austritt des Verdampfers in der Außeneinheit (0x500). Steigt beim Abtauen stark "
                         + "an.")
-                .row("Verdampfer vor Kompensation (Test)", "°C", 1, "VerdampferVorKompensation",
-                        wp::getVerdampferVorKompensation)
-                .info("Verdampfertemperatur vor der Kompensation (0x500, 0x0820), beim Bus-Scan gefunden. Test.")
-                .row("Verdampfer nach Kompensation (Test)", "°C", 1, "VerdampferNachKompensation",
-                        wp::getVerdampferNachKompensation)
-                .info("Verdampfertemperatur nach der Kompensation (0x500, 0x0821), beim Bus-Scan gefunden. Test.")
-                .row("Taupunkt Referenz (Test)", "°C", 1, "TaupunktReferenz", wp::getTaupunktReferenz)
-                .info("Taupunkttemperatur als Referenz (0x500, 0x080A), beim Bus-Scan gefunden: −11,8 °C bei etwa "
-                        + "8 °C außen. Vermutlich Grundlage der Entscheidung zum Abtauen, unbestätigt.")
-                .row("Taupunkt kompensiert (Test)", "°C", 1, "TaupunktKompensiert", wp::getTaupunktKompensiert)
-                .info("Kompensierte Taupunkttemperatur (0x500, 0x080B), beim Bus-Scan gefunden: −13,5 °C. Test.")
+                .row("Taupunkt Referenz", "°C", 1, "TaupunktReferenz", wp::getTaupunktReferenz)
+                .info("Taupunkt, den die Wärmepumpe nach jeder Abtauung mit eisfreiem Verdampfer neu lernt (0x500, "
+                        + "0x080A): 10 Minuten lang −40 °C, dann zum Beispiel −8,7 °C.")
+                .row("Taupunkt kompensiert", "°C", 1, "TaupunktKompensiert", wp::getTaupunktKompensiert)
+                .info("Aktueller Taupunkt (0x500, 0x080B). Sinkt, während Eis am Verdampfer wächst.")
+                .row("Reserve bis Abtauung", "K", 1, "AbtauReserve", wp::getAbtauReserve)
+                .info("Wie weit der kompensierte Taupunkt noch sinken darf, bis die Wärmepumpe abtaut. Alle fünf "
+                        + "Abtauungen in der Nacht zum 17.11.2026 starteten bei etwa 3,1 K unter der Referenz.")
+                .formula("Taupunkt kompensiert − Taupunkt Referenz + 3,1 K")
+                .ersatz("wird nach der Abtauung neu gelernt")
                 .row("Überhitzung", "K", 1, "UeberhitzungIst", wp::getIstUeberhitzung)
                 .info("Wie viel wärmer das Kältemittel am Verdampferaustritt ist als seine Verdampfungstemperatur "
                         + "(0x514). Darauf regelt das Expansionsventil.")

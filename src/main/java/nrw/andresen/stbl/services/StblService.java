@@ -211,9 +211,8 @@ public class StblService {
             addPoint(points, "OelsumpfTemp", wp::getOelsumpfTemp, MAX_AGE_20);
             addPoint(points, "TaupunktReferenz", wp::getTaupunktReferenz, MAX_AGE_20);
             addPoint(points, "TaupunktKompensiert", wp::getTaupunktKompensiert, MAX_AGE_20);
-            addPoint(points, "DruckVerdampfer", wp::getDruckVerdampfer, MAX_AGE_20);
-            addPoint(points, "VerdampferVorKompensation", wp::getVerdampferVorKompensation, MAX_AGE_20);
-            addPoint(points, "VerdampferNachKompensation", wp::getVerdampferNachKompensation, MAX_AGE_20);
+            addPoint(points, "Kondensationstemp", wp::getKondensationstemp, MAX_AGE_20);
+            addPoint(points, "AbtauReserve", wp::getAbtauReserve, MAX_AGE_20);
             addPoint(points, "Abtauung", wp::getAbtauung, MAX_AGE_60);
             influxController.storePoints(points);
 
