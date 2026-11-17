@@ -223,7 +223,10 @@ public final class IndexBeschreibung {
             entry((short) 0x01DB, "Aktuelle Wärmeleistung (ha-stiebel-control, WPL 17 ICS classic). Hier immer 0." + KONSTANT),
             entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil (ha-stiebel-control). Hier immer 0." + KONSTANT),
             entry((short) 0x0053, "Heizkreispumpe (ha-stiebel-control). Hier immer 0." + KONSTANT),
-            entry((short) 0x01D2, "Pumpenstatus (ha-stiebel-control). Hier immer 4352 (0x1100)." + KONSTANT),
+            entry((short) 0x01D2, "Pumpenstatus als Bitfeld (ha-stiebel-control): 4352 (0x1100), solange die "
+                    + "Umwälzpumpe läuft, 4096 (0x1000) im Stillstand (17.11.2026), Bit 0x0100 ist also die Pumpe. "
+                    + "Das zeigt auch der Volumenstrom, deshalb nicht abgefragt (bis 17.11.2026 als "
+                    + "WP_Roh_Pumpenstatus gespeichert)."),
             entry((short) 0x0059, "Status des Heizkreises (ha-stiebel-control). Hier immer 0." + KONSTANT),
             entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (ha-stiebel-control). Der Manager 0x480 antwortet "
                     + "0x8000 (nicht verfügbar). Beim Abgleich schreibt der Manager 0 an die Wärmepumpe."),

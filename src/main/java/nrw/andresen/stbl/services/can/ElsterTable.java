@@ -67,8 +67,9 @@ public class ElsterTable {
     public static short REGEL_INTEGRAL = (short)0x0917;
     // Answered on a WPL17 ICS classic by 0x180 or 0x480 according to ha-stiebel-control, tested here on 2026-11-16:
     // VORLAUFSOLLTEMP 0x0004 always 5.0, ERTRAG_AKT 0x01db, ERTRAG_TAG_W 0x01dc, HZK_PUMPE 0x0053 and HEIZKREIS_STATUS
-    // 0x0059 always 0, PUMPENSTATUS 0x01d2 always 4352, SOMMERBETRIEB 0xfdb4 always 1, also while heating;
-    // WP_STATUS 0xfdae and ANTILEGIONELLEN 0x0101 answer 0x8000. None of them is requested.
+    // 0x0059 always 0, SOMMERBETRIEB 0xfdb4 always 1, also while heating; WP_STATUS 0xfdae and ANTILEGIONELLEN 0x0101
+    // answer 0x8000. PUMPENSTATUS 0x01d2 is 4352 (0x1100) while the pump runs and 4096 (0x1000) at standstill (seen on
+    // 2026-11-17), so bit 0x0100 is the pump; the flow rate shows the same. None of them is requested.
     // Found by the bus scan on 2026-11-16 at 0x500, 1/10 degC. The reference dew point is set to -40 for 10 minutes
     // after every defrost and then learned with the ice free evaporator; the compensated one falls while ice grows.
     // All 5 defrosts in the night to 2026-11-17 started when it was 3.1 K (3.0 to 3.4) below the reference.
