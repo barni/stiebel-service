@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -140,6 +141,48 @@ public class WaermebedarfVergleich {
      */
     Map<LocalDate, Double> tagesmittel(String measurement, Instant von, Instant bis) {
         return tageswerte(von, bis, influx.getBucket(), measurement, null, "mean()", "");
+    }
+
+    /**
+     * Means of a value of the heat pump in windows of e.g. "10m" or "1h", by the end of the window
+     */
+    Map<Instant, Double> mittelwerte(String measurement, String fenster, Instant von, Instant bis) {
+        return fensterwerte(von, bis, influx.getBucket(), measurement, null, fenster);
+    }
+
+    /**
+     * Means of the outdoor temperature from the configured source in windows of e.g. "10m"
+     */
+    Map<Instant, Double> aussentemperaturMittel(String fenster, Instant von, Instant bis) {
+        String bucket = influx.getBucket();
+        return temperaturEntity.isEmpty() ? fensterwerte(von, bis, bucket, "WP_Aussentemp", null, fenster)
+                : fensterwerte(von, bis, temperaturBucket.isEmpty() ? bucket : temperaturBucket, "°C",
+                temperaturEntity, fenster);
+    }
+
+    private Map<Instant, Double> fensterwerte(Instant von, Instant bis, String bucket, String measurement,
+                                              String entity, String fenster) {
+        Map<Instant, Double> werte = new TreeMap<>();
+        // In parts of 30 days, 10 minute means of a whole winter take longer than the InfluxDB client waits
+        for (Instant teil = von; teil.isBefore(bis); teil = teil.plus(Duration.ofDays(30))) {
+            Instant teilBis = teil.plus(Duration.ofDays(30));
+            werte.putAll(influx.werte(fluxFenster(teil, teilBis.isAfter(bis) ? bis : teilBis, bucket, measurement,
+                    entity, fenster)));
+        }
+        return werte;
+    }
+
+    static String fluxFenster(Instant von, Instant bis, String bucket, String measurement, String entity,
+                              String fenster) {
+        if (!fenster.matches("[0-9]{1,3}[mh]")) {
+            throw new IllegalArgumentException("Ungültiges Fenster: " + fenster);
+        }
+        pruefeNamen(bucket, measurement, entity);
+        return "from(bucket: \"" + bucket + "\") |> range(start: " + von + ", stop: " + bis + ")"
+                + " |> filter(fn: (r) => r._measurement == \"" + measurement + "\" and r._field == \"value\""
+                + (entity == null ? "" : " and r.entity_id == \"" + entity + "\"") + ")"
+                + " |> aggregateWindow(every: " + fenster + ", fn: mean, createEmpty: false)"
+                + " |> keep(columns: [\"_time\", \"_value\"])";
     }
 
     public LocalDate getStart() {
@@ -350,13 +393,17 @@ public class WaermebedarfVergleich {
         return tage;
     }
 
-    static String flux(Instant von, Instant bis, String bucket, String measurement, String entity,
-                       String funktion, String filter) {
+    private static void pruefeNamen(String bucket, String measurement, String entity) {
         for (String name : new String[]{bucket, measurement, entity == null ? "x" : entity}) {
             if (!NAME.matcher(name).matches()) {
                 throw new IllegalArgumentException("Ungültiger Name: " + name);
             }
         }
+    }
+
+    static String flux(Instant von, Instant bis, String bucket, String measurement, String entity,
+                       String funktion, String filter) {
+        pruefeNamen(bucket, measurement, entity);
         return "import \"timezone\"\n"
                 + "option location = timezone.location(name: \"" + ZONE.getId() + "\")\n"
                 + "from(bucket: \"" + bucket + "\") |> range(start: " + von + ", stop: " + bis + ")"
