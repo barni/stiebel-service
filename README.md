@@ -102,7 +102,9 @@ before you rely on it.
   the expansion vessel); evaporation and condensation temperature from the pressures for R410A. Refills of the
   heating circuit are found in the hourly pressure, the loss per year between two refills is rated too. The newest
   season with enough days is compared with the mean of the three seasons before and each value rated as
-  unauffällig, beobachten or auffällig; the hours per start depend on the settings and are shown without a rating.
+  unauffällig, beobachten or auffällig. The physical values (evaporator, condenser, spread, pressure swing, loss of
+  pressure) are also compared with the fixed mean of the first two seasons, so a slow drift over years is found too;
+  the worse rating counts; the hours per start depend on the settings and are shown without a rating.
   Seasons that are over are read once, the current one every 6 hours. When a check gets worse a mail is sent, for
   auffällig also by Pushover; the ratings are stored as `WP_Zustand_<check>`, so a restart does not report them
   again, and getting better is not reported. The weekly report names the overall result.

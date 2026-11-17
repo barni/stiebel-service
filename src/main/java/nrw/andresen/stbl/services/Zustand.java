@@ -42,6 +42,9 @@ public class Zustand {
     // The newest season is compared with the mean of at most this many seasons before, so that settings of long
     // ago (e.g. the change of 2023) do not count
     static final int VERGLEICH_SAISONS = 3;
+    // The physical values are also compared with a fixed reference, the mean of the first seasons with a value: a
+    // steady drift of d per year shows only as about 2 d against the three seasons before, never more
+    static final int BEZUG_SAISONS = 2;
     // Steady run: the inverter takes at least this much in the 10 minute window and in the one before
     private static final double LAUF_STETIG_W = 500;
     // Running for the pressure swing: the water flows through the whole circuit
@@ -136,7 +139,12 @@ public class Zustand {
      * @param status "unauffällig", "beobachten", "auffällig" or "zu wenige Daten"
      */
     public record Pruefung(String name, String saison, Double wert, Double vorher, String einheit, int stellen,
-                           String status, String hinweis) {
+                           String status, String hinweis, Double bezug) {
+
+        public Pruefung(String name, String saison, Double wert, Double vorher, String einheit, int stellen,
+                        String status, String hinweis) {
+            this(name, saison, wert, vorher, einheit, stellen, status, hinweis, null);
+        }
     }
 
     /**
@@ -294,6 +302,7 @@ public class Zustand {
             text.append("\n").append(p.name()).append(": ").append(p.status()).append("\n")
                     .append(p.saison()).append(" ").append(ZustandSeite.zahl(p.wert(), p.stellen())).append(einheit)
                     .append(", Mittel davor ").append(ZustandSeite.zahl(p.vorher(), p.stellen())).append(einheit)
+                    .append(p.bezug() == null ? "" : ", Bezug " + ZustandSeite.zahl(p.bezug(), p.stellen()) + einheit)
                     .append("\n").append(p.hinweis()).append("\n");
         }
         return text.append("\nEine Besserung wird nicht gemeldet, der aktuelle Stand steht auf der Seite.")
@@ -518,18 +527,18 @@ public class Zustand {
                 "Der Verdichter läuft nicht im ersten Anlauf an (INV H ROTORVEKTOR), gezählt an Tagen mit 0 bis "
                         + "15 °C. Nimmt das deutlich zu, Verdichter und Inverter vom Kundendienst prüfen lassen."));
         p.add(druck(saisons));
-        p.add(differenz("Abstand am Verdampfer bei 0 bis 5 °C", saisons, s -> s.betrieb().verdampferAbstand(), "K",
+        p.add(differenz(true, "Abstand am Verdampfer bei 0 bis 5 °C", saisons, s -> s.betrieb().verdampferAbstand(), "K",
                 1, 1.0, 2.0, "Außenluft minus Verdampfungstemperatur (aus dem Niederdruck) im ruhigen Lauf. Steigt "
                         + "er, nimmt der Verdampfer schlechter Wärme auf: Kältemittel fehlt, die Lamellen sind "
                         + "verschmutzt oder ein Fühler driftet. Hängt kaum von den Einstellungen ab."));
-        p.add(differenz("Abstand am Verflüssiger", saisons, s -> s.betrieb().verfluessigerAbstand(), "K", 2, 1.0,
+        p.add(differenz(true, "Abstand am Verflüssiger", saisons, s -> s.betrieb().verfluessigerAbstand(), "K", 2, 1.0,
                 2.0, "Kondensationstemperatur (aus dem Hochdruck) minus Vorlauf im ruhigen Lauf. Steigt er, "
                         + "gibt der Plattenwärmetauscher die Wärme schlechter ab, zum Beispiel durch Ablagerungen."));
-        p.add(differenz("Spreizung im Lauf", saisons, s -> s.betrieb().spreizung(), "K", 2, 0.5, 1.0,
+        p.add(differenz(true, "Spreizung im Lauf", saisons, s -> s.betrieb().spreizung(), "K", 2, 0.5, 1.0,
                 "Vorlauf minus Rücklauf im ruhigen Lauf. Steigt sie, fließt weniger Wasser: Schmutzfilter, Pumpe, "
                         + "Luft im System oder zugedrehte Kreise."));
-        p.add(pruefung("Druckschwankung je 10 K", saisons, s -> s.betrieb().druckschwankung(), "bar", 3, true, 1.25,
-                1.50, "Wie stark der Heizungsdruck mit der Wassertemperatur steigt, Median der Tage von November "
+        p.add(pruefung(true, "Druckschwankung je 10 K", saisons, s -> s.betrieb().druckschwankung(), "bar", 3, true,
+                1.25, 1.50, "Wie stark der Heizungsdruck mit der Wassertemperatur steigt, Median der Tage von November "
                         + "bis März. Steigt sie, verliert das Ausdehnungsgefäß Vordruck: dann den Vordruck prüfen "
                         + "lassen. Hängt auch von der Betriebsweise ab."));
         p.add(druckverlust(nachfuellungen));
@@ -541,7 +550,7 @@ public class Zustand {
      */
     private static Pruefung info(Pruefung p) {
         return new Pruefung(p.name(), p.saison(), p.wert(), p.vorher(), p.einheit(), p.stellen(),
-                p.status().equals("zu wenige Daten") ? p.status() : "nur Info", p.hinweis());
+                p.status().equals("zu wenige Daten") ? p.status() : "nur Info", p.hinweis(), p.bezug());
     }
 
     /**
@@ -561,11 +570,20 @@ public class Zustand {
         List<Nachfuellung> davor = mitWert.subList(Math.max(0, mitWert.size() - 1 - VERGLEICH_SAISONS),
                 mitWert.size() - 1);
         double vorher = davor.stream().mapToDouble(Nachfuellung::barProJahr).average().orElse(0);
-        double faktor = vorher == 0 ? 1 : neu.barProJahr() / vorher;
-        String status = faktor >= 1.5 || neu.barProJahr() > 0.5 ? "auffällig" : faktor >= 1.25 ? "beobachten"
-                : "unauffällig";
+        String status = verlustStatus(neu.barProJahr(), vorher);
+        Double bezug = null;
+        if (mitWert.size() > BEZUG_SAISONS) {
+            bezug = mitWert.subList(0, BEZUG_SAISONS).stream().mapToDouble(Nachfuellung::barProJahr).average()
+                    .orElse(0);
+            status = schlechter(status, verlustStatus(neu.barProJahr(), bezug));
+        }
         return new Pruefung("Druckverlust je Jahr", datum(neu.zeit()), neu.barProJahr(), vorher, "bar", 2, status,
-                hinweis);
+                hinweis, bezug);
+    }
+
+    private static String verlustStatus(double jetzt, double vorher) {
+        double faktor = vorher == 0 ? 1 : jetzt / vorher;
+        return faktor >= 1.5 || jetzt > 0.5 ? "auffällig" : faktor >= 1.25 ? "beobachten" : "unauffällig";
     }
 
     static String datum(Instant zeit) {
@@ -581,7 +599,17 @@ public class Zustand {
     static Pruefung pruefung(String name, List<Saison> saisons, Function<Saison, Double> wert, String einheit,
                              int stellen, boolean hoeherSchlechter, double beobachten, double auffaellig,
                              String hinweis) {
-        return vergleich(name, saisons, wert, einheit, stellen, hinweis, (jetzt, vorher) -> {
+        return pruefung(false, name, saisons, wert, einheit, stellen, hoeherSchlechter, beobachten, auffaellig,
+                hinweis);
+    }
+
+    /**
+     * @param langzeit also against the fixed reference of the first seasons, the worse rating counts
+     */
+    static Pruefung pruefung(boolean langzeit, String name, List<Saison> saisons, Function<Saison, Double> wert,
+                             String einheit, int stellen, boolean hoeherSchlechter, double beobachten,
+                             double auffaellig, String hinweis) {
+        return vergleich(langzeit, name, saisons, wert, einheit, stellen, hinweis, (jetzt, vorher) -> {
             double faktor = vorher == 0 ? 1 : jetzt / vorher;
             return hoeherSchlechter
                     ? faktor >= auffaellig ? "auffällig" : faktor >= beobachten ? "beobachten" : "unauffällig"
@@ -594,18 +622,19 @@ public class Zustand {
      *
      * @param beobachten, auffaellig differences, e.g. 1 and 2 K
      */
-    static Pruefung differenz(String name, List<Saison> saisons, Function<Saison, Double> wert, String einheit,
-                              int stellen, double beobachten, double auffaellig, String hinweis) {
-        return vergleich(name, saisons, wert, einheit, stellen, hinweis, (jetzt, vorher) ->
+    static Pruefung differenz(boolean langzeit, String name, List<Saison> saisons, Function<Saison, Double> wert,
+                              String einheit, int stellen, double beobachten, double auffaellig, String hinweis) {
+        return vergleich(langzeit, name, saisons, wert, einheit, stellen, hinweis, (jetzt, vorher) ->
                 jetzt - vorher >= auffaellig ? "auffällig" : jetzt - vorher >= beobachten ? "beobachten"
                         : "unauffällig");
     }
 
     /**
-     * Newest season with a value against the mean of at most VERGLEICH_SAISONS seasons before with a value
+     * Newest season with a value against the mean of at most VERGLEICH_SAISONS seasons before with a value; with
+     * langzeit also against the mean of the first BEZUG_SAISONS seasons, if the newest is not one of them
      */
-    private static Pruefung vergleich(String name, List<Saison> saisons, Function<Saison, Double> wert,
-                                      String einheit, int stellen, String hinweis,
+    private static Pruefung vergleich(boolean langzeit, String name, List<Saison> saisons,
+                                      Function<Saison, Double> wert, String einheit, int stellen, String hinweis,
                                       java.util.function.BiFunction<Double, Double, String> bewertung) {
         List<Saison> mitWert = saisons.stream().filter(s -> wert.apply(s) != null).toList();
         if (mitWert.size() < 2) {
@@ -617,8 +646,18 @@ public class Zustand {
         double jetzt = wert.apply(neu);
         double vorher = mitWert.subList(Math.max(0, mitWert.size() - 1 - VERGLEICH_SAISONS), mitWert.size() - 1)
                 .stream().mapToDouble(wert::apply).average().orElse(0);
+        String status = bewertung.apply(jetzt, vorher);
+        Double bezug = null;
+        if (langzeit && mitWert.size() > BEZUG_SAISONS) {
+            bezug = mitWert.subList(0, BEZUG_SAISONS).stream().mapToDouble(wert::apply).average().orElse(0);
+            status = schlechter(status, bewertung.apply(jetzt, bezug));
+        }
         return new Pruefung(name, neu.name() + (neu.laufend() ? " (laufend)" : ""), jetzt, vorher, einheit,
-                stellen, bewertung.apply(jetzt, vorher), hinweis);
+                stellen, status, hinweis, bezug);
+    }
+
+    static String schlechter(String a, String b) {
+        return stufe(b) > stufe(a) ? b : a;
     }
 
     /**

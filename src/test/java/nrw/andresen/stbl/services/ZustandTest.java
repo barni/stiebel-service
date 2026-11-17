@@ -144,6 +144,23 @@ public class ZustandTest {
     }
 
     @Test
+    public void testLangsameVeraenderung() {
+        // 0.3 K worse every winter: only 0.6 K above the three seasons before, but 1.05 K above the first two
+        List<Zustand.Saison> saisons = List.of(mitBetrieb("2022/23", 8.0, 4.9, 0.10),
+                mitBetrieb("2023/24", 8.3, 4.9, 0.10), mitBetrieb("2024/25", 8.6, 4.9, 0.10),
+                mitBetrieb("2025/26", 8.9, 4.9, 0.10), mitBetrieb("2026/27", 9.2, 4.9, 0.10));
+        Zustand.Pruefung verdampfer = Zustand.pruefungen(saisons).get(6);
+        assertEquals(8.6, verdampfer.vorher(), 1e-9);
+        assertEquals(8.15, verdampfer.bezug(), 1e-9);
+        assertEquals("beobachten", verdampfer.status());
+        // Without enough seasons there is no fixed reference
+        assertNull(Zustand.pruefungen(saisons.subList(0, 2)).get(6).bezug());
+        // The efficiency depends on the settings and has no reference
+        assertNull(Zustand.pruefungen(saisons).get(0).bezug());
+        assertTrue(Zustand.meldung(List.of(verdampfer)).contains("Mittel davor 8,6 K, Bezug 8,2 K"));
+    }
+
+    @Test
     public void testSaettigung() {
         assertEquals(0.0, Zustand.saettigung(7.99), 1e-9);
         // 20.5 bar high pressure: about 33 °C condensation
@@ -211,6 +228,7 @@ public class ZustandTest {
         assertEquals("auffällig", schlecht.status());
         assertEquals("13.10.2026", schlecht.saison());
         assertEquals(0.195, schlecht.vorher(), 1e-9);
+        assertEquals(0.195, schlecht.bezug(), 1e-9);
     }
 
     @Test
@@ -243,6 +261,7 @@ public class ZustandTest {
                 + "Arbeitszahl bei 5 bis 10 °C"));
         assertTrue(rot.contains("Eine Saison fehlt noch"));
         assertTrue(html.contains("Keine Nachfüllung erkannt."));
+        assertTrue(html.contains("<th>Mittel davor</th><th>Bezug</th>"));
         String mitNachfuellung = ZustandSeite.render(new Zustand.Ergebnis(saisons, Zustand.pruefungen(saisons), false,
                 Instant.EPOCH, List.of(new Zustand.Nachfuellung(Instant.parse("2026-10-13T13:00:00Z"), 0.23, 0.16))),
                 null);
