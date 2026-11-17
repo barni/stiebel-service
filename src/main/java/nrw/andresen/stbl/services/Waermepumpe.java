@@ -549,13 +549,13 @@ public class Waermepumpe {
      */
     public ValueContainer<Double> getAbtauReserve() throws Exception {
         if (!abtauReserveGueltig(verdichterLaeuftSeit, Instant.now())) {
-            throw new Exception("COMPRESSOR_NOT_RUNNING_LONG_ENOUGH");
+            throw new KeinMesswert("COMPRESSOR_NOT_RUNNING_LONG_ENOUGH");
         }
         ValueContainer<Double> referenz = getTaupunktReferenz();
         ValueContainer<Double> kompensiert = getTaupunktKompensiert();
         Double reserve = abtauReserve(referenz.getValue(), kompensiert.getValue());
         if (reserve == null) {
-            throw new Exception("REFERENCE_LEARNED");
+            throw new KeinMesswert("REFERENCE_LEARNED");
         }
         Instant zeit = referenz.getTimestamp().isBefore(kompensiert.getTimestamp()) ? referenz.getTimestamp()
                 : kompensiert.getTimestamp();
