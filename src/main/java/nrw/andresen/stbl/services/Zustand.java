@@ -546,7 +546,10 @@ public class Zustand {
                         + "verschmutzt oder ein Fühler driftet. Hängt kaum von den Einstellungen ab."));
         p.add(differenz(true, "Abstand am Verflüssiger", saisons, s -> s.betrieb().verfluessigerAbstand(), "K", 2, 1.0,
                 2.0, "Kondensationstemperatur (aus dem Hochdruck) minus Vorlauf im ruhigen Lauf. Steigt er, "
-                        + "gibt der Plattenwärmetauscher die Wärme schlechter ab, zum Beispiel durch Ablagerungen."));
+                        + "gibt der Plattenwärmetauscher die Wärme schlechter ab, zum Beispiel durch Ablagerungen. "
+                        + "Hier leicht negativ (−0,1 bis −0,3 K): das Heißgas wärmt das Wasser am Austritt über die "
+                        + "Kondensationstemperatur, dazu kommen Fühlertoleranzen. Steigen heißt größer werden, also "
+                        + "in Richtung null und darüber; nur die Änderung zählt."));
         p.add(differenz(true, "Spreizung im Lauf", saisons, s -> s.betrieb().spreizung(), "K", 2, 0.5, 1.0,
                 "Vorlauf minus Rücklauf im ruhigen Lauf. Steigt sie, fließt weniger Wasser: Schmutzfilter, Pumpe, "
                         + "Luft im System oder zugedrehte Kreise."));
