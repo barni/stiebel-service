@@ -70,8 +70,10 @@ public class ElsterTable {
     // 0x0059 always 0, SOMMERBETRIEB 0xfdb4 always 1, also while heating; WP_STATUS 0xfdae and ANTILEGIONELLEN 0x0101
     // answer 0x8000. PUMPENSTATUS 0x01d2 is 4352 (0x1100) while the pump runs and 4096 (0x1000) at standstill (seen on
     // 2026-11-17), so bit 0x0100 is the pump; the flow rate shows the same. None of them is requested.
-    // Found by the bus scan on 2026-11-16 at 0x500, 1/10 degC. The reference dew point is learned 10 minutes after
-    // every start and every defrost (after a defrost it is -40 until then); the compensated one falls while ice grows.
+    // Found by the bus scan on 2026-11-16 at 0x500, 1/10 degC. The reference dew point keeps the highest compensated
+    // value since the last defrost, taken from 10 minutes after a start on: it is -40 after a defrost, then takes the
+    // compensated value exactly and only follows it upwards (seen 2026-11-17); the compensated one falls while ice
+    // grows.
     // All 5 defrosts in the night to 2026-11-17 started when it was 3.1 K (3.0 to 3.4) below the reference.
     public static short TAUPUNKT_REFERENZ = (short)0x080a;
     public static short TAUPUNKT_KOMPENSIERT = (short)0x080b;

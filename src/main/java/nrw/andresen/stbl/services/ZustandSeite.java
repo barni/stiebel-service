@@ -48,6 +48,8 @@ public final class ZustandSeite {
                 .append("mit dem Mittel der ersten ").append(Zustand.BEZUG_SAISONS).append(" Saisons verglichen, ")
                 .append("das nicht mitwandert: So fällt auch eine langsame Verschlechterung über Jahre auf, die ")
                 .append("gegen die letzten Saisons immer nur klein aussieht; es gilt die schlechtere Bewertung. ")
+                .append("Wechselt eine Prüfung auf „beobachten“, kommt eine Mail, bei „auffällig“ auch eine ")
+                .append("Push-Nachricht; geprüft wird alle 6 Stunden, eine Besserung wird nicht gemeldet. ")
                 .append("Eine laufende Saison ist noch ")
                 .append("unvollständig, ihre Werte ändern sich bis zum Sommer; im Herbst liegen Spreizung und ")
                 .append("Druckschwankung meist niedriger als im Mittel des Winters.</p>")
@@ -122,7 +124,9 @@ public final class ZustandSeite {
         for (Zustand.Pruefung p : pruefungen) {
             String einheit = p.einheit().isEmpty() ? "" : " " + p.einheit();
             html.append("<tr><td><span class=\"pname\">").append(text(p.name())).append("</span><span class=\"phint\">")
-                    .append(text(p.hinweis())).append("</span></td><td>").append(text(p.saison() == null ? "–"
+                    .append(text(p.hinweis())).append("</span>")
+                    .append(p.regel() == null ? "" : "<span class=\"pregel\">Meldung: " + text(p.regel()) + "</span>")
+                    .append("</td><td>").append(text(p.saison() == null ? "–"
                             : p.saison())).append("</td><td>").append(zahl(p.wert(), p.stellen()))
                     .append(p.wert() == null ? "" : text(einheit)).append("</td><td>")
                     .append(zahl(p.vorher(), p.stellen())).append(p.vorher() == null ? "" : text(einheit))
@@ -207,6 +211,7 @@ public final class ZustandSeite {
             .tbl table { font-size: 14px; }
             .pname { display: block; font-weight: 600; }
             .phint { display: block; color: var(--muted); font-size: 12px; max-width: 46ch; white-space: normal; }
+            .pregel { display: block; font-size: 12px; max-width: 46ch; white-space: normal; margin-top: 2px; }
             .status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 13px;
               background: var(--off-bg); color: var(--muted); white-space: nowrap; }
             .status.rot { background: var(--warn-bg); color: var(--warn); }

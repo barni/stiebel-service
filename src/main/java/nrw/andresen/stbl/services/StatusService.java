@@ -365,17 +365,19 @@ public class StatusService {
                 .info("Temperatur am Austritt des Verdampfers in der Außeneinheit (0x500). Steigt beim Abtauen stark "
                         + "an.")
                 .row("Taupunkt Referenz", "°C", 1, "TaupunktReferenz", wp::getTaupunktReferenz)
-                .info("Taupunkt, den die Wärmepumpe 10 Minuten nach jedem Start und jeder Abtauung mit eisfreiem "
-                        + "Verdampfer neu lernt (0x500, 0x080A), zum Beispiel −8,7 °C. Nach einer Abtauung steht er "
-                        + "bis dahin auf −40 °C.")
+                .info("Kein Messwert, sondern der höchste kompensierte Taupunkt seit der letzten Abtauung, also wie "
+                        + "sauber der Verdampfer am besten war (0x500, 0x080A), zum Beispiel −8,7 °C. Nach einer "
+                        + "Abtauung steht er auf −40 °C, ab 10 Minuten nach dem Start übernimmt er den kompensierten "
+                        + "Wert und folgt ihm danach nur nach oben.")
                 .row("Taupunkt kompensiert", "°C", 1, "TaupunktKompensiert", wp::getTaupunktKompensiert)
-                .info("Aktueller Taupunkt (0x500, 0x080B). Sinkt, während Eis am Verdampfer wächst.")
+                .info("Rechengröße der Wärmepumpe (0x500, 0x080B), keine Temperatur an einer Stelle: im Kern, wie "
+                        + "viel kälter als die Außenluft das Kältemittel verdampfen muss, bereinigt um die Drehzahl. "
+                        + "Sinkt, während Eis am Verdampfer wächst, nur der Abstand zur Referenz zählt.")
                 .row("Reserve bis Abtauung (berechnet)", "K", 1, "AbtauReserve", wp::getAbtauReserve)
                 .info("Wie weit der kompensierte Taupunkt noch sinken darf, bis die Wärmepumpe abtaut. Alle fünf "
-                        + "Abtauungen in der Nacht zum 17.11.2026 starteten bei etwa 3,1 K unter der Referenz. Die "
-                        + "Referenz lernt die Wärmepumpe 10 Minuten nach jedem Start und jeder Abtauung neu; im "
-                        + "Stillstand und beim Starten und Stoppen springt der kompensierte Wert, deshalb erst ab "
-                        + "11 Minuten Lauf.")
+                        + "Abtauungen in der Nacht zum 17.11.2026 starteten bei etwa 3,1 K unter der Referenz. Im "
+                        + "Stillstand und beim Starten und Stoppen springt der kompensierte Wert, die Referenz folgt "
+                        + "ihm erst ab 10 Minuten nach dem Start, deshalb erst ab 11 Minuten Lauf.")
                 .formula("Taupunkt kompensiert − Taupunkt Referenz + 3,1 K")
                 .ersatz("nur bei laufendem Verdichter, ab 11 min nach dem Start")
                 .row("Überhitzung", "K", 1, "UeberhitzungIst", wp::getIstUeberhitzung)
