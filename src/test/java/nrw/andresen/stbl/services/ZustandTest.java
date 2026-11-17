@@ -129,6 +129,21 @@ public class ZustandTest {
     }
 
     @Test
+    public void testMeldung() {
+        assertEquals("ArbeitszahlBei0Bis5C", Zustand.schluessel("Arbeitszahl bei 0 bis 5 °C"));
+        assertEquals("AbstandAmVerfluessiger", Zustand.schluessel("Abstand am Verflüssiger"));
+        assertEquals(2, Zustand.stufe("auffällig"));
+        assertEquals(1, Zustand.stufe("beobachten"));
+        assertEquals(0, Zustand.stufe("unauffällig"));
+        assertEquals(-1, Zustand.stufe("nur Info"));
+        assertEquals(-1, Zustand.stufe("zu wenige Daten"));
+        String text = Zustand.meldung(List.of(new Zustand.Pruefung("Druckschwankung je 10 K", "2026/27 (laufend)",
+                0.172, 0.127, "bar", 3, "beobachten", "Vordruck prüfen lassen.")));
+        assertTrue(text.contains("Druckschwankung je 10 K: beobachten\n2026/27 (laufend) 0,172 bar, Mittel davor "
+                + "0,127 bar\nVordruck prüfen lassen."));
+    }
+
+    @Test
     public void testSaettigung() {
         assertEquals(0.0, Zustand.saettigung(7.99), 1e-9);
         // 20.5 bar high pressure: about 33 °C condensation

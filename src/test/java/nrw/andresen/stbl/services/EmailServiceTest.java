@@ -56,6 +56,18 @@ public class EmailServiceTest {
     }
 
     /**
+     * A mail without Pushover is sent in the background too
+     */
+    @Test
+    public void testMailOhnePush() throws Exception {
+        JavaMailSender sender = mock(JavaMailSender.class);
+        EmailService service = service(sender);
+        service.sendMail("Betreff", "Text");
+        service.beenden();
+        verify(sender, times(1)).send(any(SimpleMailMessage.class));
+    }
+
+    /**
      * More waiting alerts than the queue holds are dropped, the caller is neither stopped nor does it see an error
      */
     @Test

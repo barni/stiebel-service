@@ -72,6 +72,10 @@ public class Zustand {
     private WaermebedarfVergleich vergleich;
     @Autowired
     private Fehlstarts fehlstarts;
+    @Autowired
+    private EmailService mail;
+    // Last rating per check (0 unauffällig, 1 beobachten, 2 auffällig), also stored as WP_Zustand_<check>
+    private final Map<String, Integer> stufen = new ConcurrentHashMap<>();
     private final LocalDate start;
     // Seasons that are over do not change and are read only once
     private final Map<String, Saison> fertig = new ConcurrentHashMap<>();
@@ -200,9 +204,100 @@ public class Zustand {
             }
             ergebnis = new Ergebnis(List.copyOf(saisons), pruefungen(saisons, nachfuellungen), unvollstaendig,
                     Instant.now(), nachfuellungen);
+            // With a season missing the newest season could be another one, so nothing is reported
+            if (!unvollstaendig) {
+                melden(ergebnis.pruefungen(), ergebnis.berechnet());
+            }
         } catch (Exception e) {
             logger.warn("Condition over the seasons could not be calculated: " + e.getMessage());
         }
+    }
+
+    /**
+     * Sends a mail when a check got worse than at the last calculation: with Pushover for "auffällig", only by mail
+     * for "beobachten". The ratings are stored, so a restart of the service does not report them again; before the
+     * first stored rating a check counts as unauffällig. Getting better is not reported.
+     */
+    private void melden(List<Pruefung> pruefungen, Instant jetzt) {
+        List<Pruefung> schlechter = new ArrayList<>();
+        List<com.influxdb.client.write.Point> punkte = new ArrayList<>();
+        for (Pruefung p : pruefungen) {
+            int stufe = stufe(p.status());
+            if (stufe < 0) {
+                continue;
+            }
+            String name = "Zustand_" + schluessel(p.name());
+            Integer vorher = stufen.get(name);
+            if (vorher == null) {
+                try {
+                    Double gespeichert = influx.letzterWert(name);
+                    vorher = gespeichert == null ? 0 : gespeichert.intValue();
+                } catch (Exception e) {
+                    // No reference, compared at the next calculation
+                    continue;
+                }
+            }
+            if (stufe > vorher) {
+                schlechter.add(p);
+            }
+            stufen.put(name, stufe);
+            punkte.add(influx.createPoint(name, new nrw.andresen.stbl.services.can.ValueContainer<>((double) stufe,
+                    jetzt)));
+        }
+        influx.storePoints(punkte);
+        if (schlechter.isEmpty()) {
+            return;
+        }
+        boolean auffaellig = schlechter.stream().anyMatch(p -> p.status().equals("auffällig"));
+        String betreff = "Wärmepumpe: Zustand " + (auffaellig ? "auffällig" : "beobachten");
+        logger.warn("Condition got worse: " + schlechter.stream().map(Pruefung::name).toList());
+        if (auffaellig) {
+            mail.sendAlert(betreff, meldung(schlechter));
+        } else {
+            mail.sendMail(betreff, meldung(schlechter));
+        }
+    }
+
+    /**
+     * 0 unauffällig, 1 beobachten, 2 auffällig, -1 for checks without a rating
+     */
+    static int stufe(String status) {
+        return switch (status) {
+            case "unauffällig" -> 0;
+            case "beobachten" -> 1;
+            case "auffällig" -> 2;
+            default -> -1;
+        };
+    }
+
+    /**
+     * Name of the check as part of a measurement, e.g. "ArbeitszahlBei0Bis5C"
+     */
+    static String schluessel(String name) {
+        StringBuilder s = new StringBuilder();
+        for (String teil : name.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+                .split("[^A-Za-z0-9]+")) {
+            if (!teil.isEmpty()) {
+                s.append(Character.toUpperCase(teil.charAt(0))).append(teil.substring(1));
+            }
+        }
+        return s.toString();
+    }
+
+    /**
+     * Text of the mail for the checks that got worse
+     */
+    static String meldung(List<Pruefung> schlechter) {
+        StringBuilder text = new StringBuilder("Auf der Seite Zustand und Alterung hat sich verschlechtert:\n");
+        for (Pruefung p : schlechter) {
+            String einheit = p.einheit().isEmpty() ? "" : " " + p.einheit();
+            text.append("\n").append(p.name()).append(": ").append(p.status()).append("\n")
+                    .append(p.saison()).append(" ").append(ZustandSeite.zahl(p.wert(), p.stellen())).append(einheit)
+                    .append(", Mittel davor ").append(ZustandSeite.zahl(p.vorher(), p.stellen())).append(einheit)
+                    .append("\n").append(p.hinweis()).append("\n");
+        }
+        return text.append("\nEine Besserung wird nicht gemeldet, der aktuelle Stand steht auf der Seite.")
+                .toString();
     }
 
     /**

@@ -49,6 +49,8 @@ public class Wochenbericht {
     private CanBus can;
     @Autowired
     private EmailService mail;
+    @Autowired
+    private Zustand zustand;
     private final boolean mailSenden;
     private volatile Bericht bericht;
     // The last report was calculated with the comparison of the days
@@ -91,7 +93,12 @@ public class Wochenbericht {
      * @param ueblich    null if one of the days has no outdoor temperature or no similar days
      * @param neueFehler entries of the fault list dated within the week
      */
-    public record Bericht(Woche woche, Woche vorwoche, Ueblich ueblich, int neueFehler, Instant berechnet) {
+    public record Bericht(Woche woche, Woche vorwoche, Ueblich ueblich, int neueFehler, Instant berechnet,
+                          String zustand) {
+
+        public Bericht(Woche woche, Woche vorwoche, Ueblich ueblich, int neueFehler, Instant berechnet) {
+            this(woche, vorwoche, ueblich, neueFehler, berechnet, null);
+        }
     }
 
     public Wochenbericht(@Value("${bericht.woche.mail:true}") boolean mailSenden) {
@@ -167,8 +174,10 @@ public class Wochenbericht {
         // Only days before the week count as usual, the week is not compared with itself
         List<WaermebedarfVergleich.Tag> frueher = vergleich.getTage().stream()
                 .filter(t -> t.datum().isBefore(von)).toList();
+        Zustand.Ergebnis e = zustand.getErgebnis();
         return new Bericht(woche, woche(tage.subList(0, TAGE), druck, vorlauf), ueblich(woche.tage(), frueher),
-                neueFehler(can.getFehlerliste().eintraege(), von, heute), Instant.now());
+                neueFehler(can.getFehlerliste().eintraege(), von, heute), Instant.now(),
+                e == null ? null : ZustandSeite.satz(e.pruefungen()));
     }
 
     private Map<LocalDate, Double> tageswerte(Instant von, Instant bis, String measurement, String funktion) {
@@ -309,6 +318,7 @@ public class Wochenbericht {
      */
     public static String text(Bericht b) {
         StringBuilder text = new StringBuilder("Letzte 7 Tage: " + zeitraum(b.woche()) + "\n\n" + satz(b) + "\n\n"
+                + (b.zustand() == null ? "" : "Zustand und Alterung: " + b.zustand() + "\n\n")
                 + "Letzte 7 Tage (7 Tage davor, " + zeitraum(b.vorwoche())
                 + " / üblich bei gleicher Außentemperatur):\n");
         for (List<String> zeile : zeilen(b)) {
@@ -337,6 +347,8 @@ public class Wochenbericht {
                 .append("<p style=\"margin:2px 0 16px;color:#69726e\">Letzte 7 Tage: ").append(mailText(zeitraum(b.woche())))
                 .append("</p><p style=\"margin:0 0 20px;padding:10px 14px;border:1px solid #e4e7e2;border-radius:10px;"
                         + "font-weight:600\">").append(mailText(satz(b))).append("</p>")
+                .append(b.zustand() == null ? "" : "<p style=\"margin:-12px 0 20px;color:#69726e\">Zustand und "
+                        + "Alterung: " + mailText(b.zustand()) + "</p>")
                 .append(ueberschrift("Vergleich"))
                 .append(mailTabelle(List.of("", "Letzte 7 Tage\n" + zeitraumKurz(b.woche()),
                         "7 Tage davor\n" + zeitraumKurz(b.vorwoche()), "Üblich"), zeilen(b)))

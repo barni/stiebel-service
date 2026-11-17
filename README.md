@@ -103,7 +103,9 @@ before you rely on it.
   heating circuit are found in the hourly pressure, the loss per year between two refills is rated too. The newest
   season with enough days is compared with the mean of the three seasons before and each value rated as
   unauffällig, beobachten or auffällig; the hours per start depend on the settings and are shown without a rating.
-  Seasons that are over are read once, the current one every 6 hours.
+  Seasons that are over are read once, the current one every 6 hours. When a check gets worse a mail is sent, for
+  auffällig also by Pushover; the ratings are stored as `WP_Zustand_<check>`, so a restart does not report them
+  again, and getting better is not reported. The weekly report names the overall result.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
   warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above
   `warnung.heizungsdruck.max` (default 2.5 bar), heating element on,

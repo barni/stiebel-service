@@ -41,6 +41,16 @@ public class WochenberichtTest {
     }
 
     @Test
+    public void testZustandImText() {
+        Wochenbericht.Bericht b = bericht(null, 0);
+        Wochenbericht.Bericht mitZustand = new Wochenbericht.Bericht(b.woche(), b.vorwoche(), null, 0, b.berechnet(),
+                "Beobachten: Druckschwankung je 10 K.");
+        assertTrue(Wochenbericht.text(mitZustand).contains("Zustand und Alterung: Beobachten: Druckschwankung je 10 K."));
+        assertTrue(Wochenbericht.html(mitZustand).contains("Zustand und Alterung: Beobachten: Druckschwankung je 10 K."));
+        assertTrue(!Wochenbericht.text(b).contains("Zustand und Alterung"));
+    }
+
+    @Test
     public void testWoche() {
         Wochenbericht.Woche woche = bericht(null, 0).woche();
         assertEquals(SONNTAG, woche.von());

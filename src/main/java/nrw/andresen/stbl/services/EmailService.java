@@ -60,10 +60,25 @@ public class EmailService {
     }
 
     /**
+     * Sends a mail without Pushover in the background, for things that are not urgent. Never throws.
+     */
+    public void sendMail(String subject, String text) {
+        try {
+            versand.execute(() -> mailSenden(subject, text));
+        } catch (RejectedExecutionException e) {
+            logger.warn("Too many alerts are waiting or the service ends, not sending: " + subject);
+        }
+    }
+
+    /**
      * Sends the alert and waits for the result, see getLetzterFehler. Never throws.
      */
     public void sendAlertSofort(String subject, String text) {
         pushover.senden(subject, text);
+        mailSenden(subject, text);
+    }
+
+    private void mailSenden(String subject, String text) {
         JavaMailSender sender = emailSender.getIfAvailable();
         if (to.isBlank() || sender == null) {
             logger.info("No mail configured, not sending: " + subject);
