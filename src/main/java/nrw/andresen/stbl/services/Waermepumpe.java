@@ -127,6 +127,9 @@ public class Waermepumpe {
             new Rohwert(MANAGER, (short) 0x06ac), new Rohwert(WP_MANAGER, (short) 0x0a37));
     // The heat pump defrosts when the compensated dew point falls this far below the reference (2026-11-17)
     static final double ABTAU_SCHWELLE_K = 3.1;
+    // The reference is learned again 10 minutes after every start and every defrost; at standstill and around start
+    // and stop the compensated value jumps, so the margin is only meaningful from then on while the compressor runs
+    static final Duration ABTAU_RESERVE_AB = Duration.ofMinutes(11);
     // Value of the reference dew point while it is learned again after a defrost
     private static final double TAUPUNKT_WIRD_GELERNT = -39;
 
@@ -541,10 +544,13 @@ public class Waermepumpe {
     }
 
     /**
-     * How many K the compensated dew point may still fall before the heat pump defrosts; fails while the reference is
-     * learned again after a defrost
+     * How many K the compensated dew point may still fall before the heat pump defrosts; fails at standstill, in the
+     * first 11 minutes after a start or a defrost and while the reference is learned again
      */
     public ValueContainer<Double> getAbtauReserve() throws Exception {
+        if (!abtauReserveGueltig(verdichterLaeuftSeit, Instant.now())) {
+            throw new Exception("COMPRESSOR_NOT_RUNNING_LONG_ENOUGH");
+        }
         ValueContainer<Double> referenz = getTaupunktReferenz();
         ValueContainer<Double> kompensiert = getTaupunktKompensiert();
         Double reserve = abtauReserve(referenz.getValue(), kompensiert.getValue());
@@ -554,6 +560,14 @@ public class Waermepumpe {
         Instant zeit = referenz.getTimestamp().isBefore(kompensiert.getTimestamp()) ? referenz.getTimestamp()
                 : kompensiert.getTimestamp();
         return new ValueContainer<>(reserve, zeit);
+    }
+
+    /**
+     * True if the compressor runs since at least ABTAU_RESERVE_AB; a defrost stops it for a moment and counts as a
+     * new start
+     */
+    static boolean abtauReserveGueltig(Instant laeuftSeit, Instant jetzt) {
+        return laeuftSeit != null && !laeuftSeit.plus(ABTAU_RESERVE_AB).isAfter(jetzt);
     }
 
     static Double abtauReserve(double referenz, double kompensiert) {

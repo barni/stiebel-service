@@ -1,5 +1,7 @@
 package nrw.andresen.stbl.services;
 
+import nrw.andresen.stbl.Application;
+
 import de.fischl.usbtin.FilterChain;
 import de.fischl.usbtin.FilterMask;
 import de.fischl.usbtin.FilterValue;
@@ -409,7 +411,7 @@ public class CanBus {
      * adapter gets the same 2 minutes again. While it stays silent, an alert is sent for the first restart and then
      * once an hour: an adapter that was pulled off would otherwise send a mail and a push message every 30 s.
      */
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 30000, scheduler = Application.CAN_SCHEDULER)
     public synchronized void checkUSBisAlive() {
         Instant jetzt = Instant.now();
         long sekunden = Duration.between(letzteAntwort, jetzt).toSeconds();
