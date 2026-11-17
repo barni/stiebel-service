@@ -220,9 +220,11 @@ public class StatusService {
                                 + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, weil die Erkennung erst "
                                 + "seit 25.09.2026 gespeichert wird."),
                         Map.entry("Druckhub (berechnet)", "Tagesspanne des Heizungsdrucks geteilt durch die Tagesspanne der mittleren "
-                                + "Wassertemperatur, in bar je 10 K. Zeigt den Zustand des Ausdehnungsgefäßes: "
-                                + "Verliert es Vordruck, steigt der Wert über die Monate. Im Januar 2026 lag er bei "
-                                + "0,17 bis 0,32. Nur für Tage mit mindestens "
+                                + "Wassertemperatur, in bar je 10 K. Nur ein grober Tageswert: innerhalb eines Tages "
+                                + "ändert sich das Wasser im Fußboden viel weniger als Vor- und Rücklauf, und der "
+                                + "Pumpendruck mischt sich ein. Für den Zustand des Ausdehnungsgefäßes zählt die "
+                                + "Druckschwankung auf der Seite Zustand (Tagesmittel über einen Monat). Nur für Tage "
+                                + "mit mindestens "
                                 + zahl(Tagesuebersicht.DRUCKHUB_MIN_LAUFZEIT_H, 0) + " h Laufzeit und "
                                 + zahl(Tagesuebersicht.DRUCKHUB_MIN_TEMPERATURHUB_K, 0) + " K Temperaturspanne, sonst "
                                 + "„–“. Wird täglich als WP_DruckhubJe10K gespeichert.")))

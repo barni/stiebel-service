@@ -209,17 +209,50 @@ public class ZustandTest {
             aussen.put(t, 2.0);
             druck.put(t, 1.5 + 0.01 * (vorlauf - 2.5));
         }
-        Zustand.Betrieb b = Zustand.betrieb(leistung, nd, hd, vl, rl, aussen, druck);
+        Zustand.Betrieb b = Zustand.betrieb(leistung, nd, hd, vl, rl, aussen, druck, java.util.Set.of());
         // 2 °C outside, −10 °C evaporation at 5.73 bar
         assertEquals(12.0, b.verdampferAbstand(), 1e-9);
         // 35 °C condensation at 21.4 bar, flow 32 to 36 °C
         assertEquals(1.0, b.verfluessigerAbstand(), 0.05);
         assertEquals(5.0, b.spreizung(), 1e-9);
-        // 0.01 bar per K
-        assertEquals(0.1, b.druckschwankung(), 1e-9);
+        // Every day has the same mean water temperature, so there is no pressure swing across the days
+        assertNull(b.druckschwankung());
         // At standstill nothing counts
         leistung.replaceAll((t, w) -> 0.0);
-        assertEquals(Zustand.Betrieb.LEER, Zustand.betrieb(leistung, nd, hd, vl, rl, aussen, druck));
+        assertEquals(Zustand.Betrieb.LEER, Zustand.betrieb(leistung, nd, hd, vl, rl, aussen, druck,
+                java.util.Set.of()));
+    }
+
+    @Test
+    public void testDruckschwankungJeMonat() {
+        Map<Instant, Double> leistung = new java.util.TreeMap<>();
+        Map<Instant, Double> vl = new java.util.TreeMap<>();
+        Map<Instant, Double> rl = new java.util.TreeMap<>();
+        Map<Instant, Double> druck = new java.util.TreeMap<>();
+        Map<Instant, Double> leer = Map.of();
+        // December and January: every day 8 h running at a daily water temperature of 27 to 33 °C, the pressure
+        // 0.03 bar per K around 1.8 bar at 30 °C; within the day the pressure jumps by the pump
+        Instant start = Instant.parse("2025-11-30T23:00:00Z");
+        for (int tag = 0; tag < 62; tag++) {
+            double wasser = 27 + tag % 7;
+            for (int i = 0; i < 48; i++) {
+                Instant t = start.plusSeconds(86400L * tag + 600L * i);
+                leistung.put(t, 800.0);
+                vl.put(t, wasser + 2.5);
+                rl.put(t, wasser - 2.5);
+                druck.put(t, 1.8 + 0.03 * (wasser - 30) + (i % 2 == 0 ? 0.05 : -0.05));
+            }
+        }
+        Zustand.Betrieb b = Zustand.betrieb(leistung, leer, leer, vl, rl, leer, druck, java.util.Set.of());
+        // 0.3 bar per 10 K at 1.8 bar and 30 °C, the factor for other pressures and temperatures is close to 1
+        assertEquals(0.3, b.druckschwankung(), 0.01);
+        // A month with a refill does not count, one month is too little
+        assertNull(Zustand.betrieb(leistung, leer, leer, vl, rl, leer, druck,
+                java.util.Set.of(java.time.YearMonth.of(2025, 12))).druckschwankung());
+        // The swing grows with the square of the absolute pressure and with the expansion of water
+        assertEquals(1.0, Zustand.normierung(1.8, 30), 1e-9);
+        assertEquals(Math.pow(3.013 / 2.813, 2), Zustand.normierung(2.0, 30), 1e-9);
+        assertEquals(3.45 / 3.03, Zustand.normierung(1.8, 35), 1e-9);
     }
 
     @Test
