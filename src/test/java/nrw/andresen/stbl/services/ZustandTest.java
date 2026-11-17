@@ -83,7 +83,8 @@ public class ZustandTest {
         assertEquals("beobachten", p.get(1).status());
         // 21 defrosts against 16: 31 % more
         assertEquals("auffällig", p.get(2).status());
-        assertEquals("unauffällig", p.get(3).status());
+        // Run time per start depends on the settings, shown without a status
+        assertEquals("nur Info", p.get(3).status());
         // Failed starts more than doubled
         assertEquals("auffällig", p.get(4).status());
         // Pressure 1.45 bar: time to refill
@@ -96,6 +97,105 @@ public class ZustandTest {
         assertEquals("zu wenige Daten", Zustand.pruefung("x", List.of(saison("2025/26", 4.0, 15, 10.0, 1.8)),
                 s -> s.kalt().arbeitszahl(), "", 2, false, 0.95, 0.90, "").status());
         assertEquals("auffällig", Zustand.druck(List.of(saison("2025/26", 4.0, 15, 10.0, 1.35))).status());
+        // Without values of the steady run and without refills
+        assertEquals("Abstand am Verdampfer bei 0 bis 5 °C", p.get(6).name());
+        assertEquals("zu wenige Daten", p.get(6).status());
+        assertEquals("Druckverlust je Jahr", p.getLast().name());
+        assertEquals("zu wenige Daten", p.getLast().status());
+    }
+
+    private static Zustand.Saison mitBetrieb(String name, double verdampfer, double spreizung, double schwankung) {
+        Zustand.Saison s = saison(name, 4.0, 15, 10.0, 1.8);
+        return new Zustand.Saison(s.name(), false, s.heiztage(), s.arbeitszahl(), s.kalt(), s.mild(),
+                s.fehlstartsJe1000(), s.druckWinter(), new Zustand.Betrieb(verdampfer, -0.2, spreizung, schwankung));
+    }
+
+    @Test
+    public void testVergleichMitDenLetztenSaisons() {
+        // Only the three seasons before count: the old 10 K of 2020/21 would hide the rise
+        List<Zustand.Saison> saisons = List.of(mitBetrieb("2020/21", 10.0, 4.9, 0.10),
+                mitBetrieb("2022/23", 8.0, 4.9, 0.10), mitBetrieb("2023/24", 8.0, 4.9, 0.10),
+                mitBetrieb("2024/25", 8.0, 4.9, 0.10), mitBetrieb("2025/26", 9.2, 5.6, 0.16));
+        List<Zustand.Pruefung> p = Zustand.pruefungen(saisons);
+        Zustand.Pruefung verdampfer = p.get(6);
+        assertEquals(8.0, verdampfer.vorher(), 1e-9);
+        // 1.2 K more: watch
+        assertEquals("beobachten", verdampfer.status());
+        assertEquals("unauffällig", p.get(7).status());
+        // Spread 0.7 K more: watch
+        assertEquals("beobachten", p.get(8).status());
+        // Pressure swing 60 % more: conspicuous
+        assertEquals("auffällig", p.get(9).status());
+    }
+
+    @Test
+    public void testSaettigung() {
+        assertEquals(0.0, Zustand.saettigung(7.99), 1e-9);
+        // 20.5 bar high pressure: about 33 °C condensation
+        assertEquals(33.2, Zustand.saettigung(20.5), 1e-9);
+        assertNull(Zustand.saettigung(1.0));
+    }
+
+    @Test
+    public void testBetrieb() {
+        Map<Instant, Double> leistung = new java.util.TreeMap<>();
+        Map<Instant, Double> nd = new java.util.TreeMap<>();
+        Map<Instant, Double> hd = new java.util.TreeMap<>();
+        Map<Instant, Double> vl = new java.util.TreeMap<>();
+        Map<Instant, Double> rl = new java.util.TreeMap<>();
+        Map<Instant, Double> aussen = new java.util.TreeMap<>();
+        Map<Instant, Double> druck = new java.util.TreeMap<>();
+        Instant start = Instant.parse("2025-12-01T00:00:00Z");
+        for (int i = 0; i < 6 * 144; i++) {
+            Instant t = start.plusSeconds(600L * i);
+            double vorlauf = 32 + (i % 144) / 36.0;
+            leistung.put(t, 800.0);
+            nd.put(t, 5.73);
+            hd.put(t, 21.4);
+            vl.put(t, vorlauf);
+            rl.put(t, vorlauf - 5);
+            aussen.put(t, 2.0);
+            druck.put(t, 1.5 + 0.01 * (vorlauf - 2.5));
+        }
+        Zustand.Betrieb b = Zustand.betrieb(leistung, nd, hd, vl, rl, aussen, druck);
+        // 2 °C outside, −10 °C evaporation at 5.73 bar
+        assertEquals(12.0, b.verdampferAbstand(), 1e-9);
+        // 35 °C condensation at 21.4 bar, flow 32 to 36 °C
+        assertEquals(1.0, b.verfluessigerAbstand(), 0.05);
+        assertEquals(5.0, b.spreizung(), 1e-9);
+        // 0.01 bar per K
+        assertEquals(0.1, b.druckschwankung(), 1e-9);
+        // At standstill nothing counts
+        leistung.replaceAll((t, w) -> 0.0);
+        assertEquals(Zustand.Betrieb.LEER, Zustand.betrieb(leistung, nd, hd, vl, rl, aussen, druck));
+    }
+
+    @Test
+    public void testNachfuellungen() {
+        Map<Instant, Double> stuendlich = new java.util.TreeMap<>();
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        int stunden = 24 * 400;
+        for (int i = 0; i < stunden; i++) {
+            double p = 1.5 + (i % 24 == 6 ? 0.14 : 0) + (i >= 100 ? 0.25 : 0) + (i >= 100 + 24 * 365 ? 0.2 : 0);
+            stuendlich.put(start.plusSeconds(3600L * i), p);
+        }
+        List<Zustand.Nachfuellung> n = Zustand.nachfuellungen(stuendlich);
+        // The daily rise by heating is no refill
+        assertEquals(2, n.size());
+        assertEquals(start.plusSeconds(3600L * 100), n.get(0).zeit());
+        assertEquals(0.25, n.get(0).bar(), 0.02);
+        assertNull(n.get(0).barProJahr());
+        assertEquals(0.2, n.get(1).barProJahr(), 0.01);
+
+        Zustand.Nachfuellung a = new Zustand.Nachfuellung(Instant.parse("2024-02-15T16:00:00Z"), 0.28, 0.15);
+        Zustand.Nachfuellung b = new Zustand.Nachfuellung(Instant.parse("2025-04-28T14:00:00Z"), 0.29, 0.24);
+        assertEquals("unauffällig", Zustand.druckverlust(List.of(a, b, new Zustand.Nachfuellung(
+                Instant.parse("2026-10-13T13:00:00Z"), 0.23, 0.16))).status());
+        Zustand.Pruefung schlecht = Zustand.druckverlust(List.of(a, b, new Zustand.Nachfuellung(
+                Instant.parse("2026-10-13T13:00:00Z"), 0.4, 0.35)));
+        assertEquals("auffällig", schlecht.status());
+        assertEquals("13.10.2026", schlecht.saison());
+        assertEquals(0.195, schlecht.vorher(), 1e-9);
     }
 
     @Test
@@ -127,6 +227,11 @@ public class ZustandTest {
         assertTrue(rot.contains("<p class=\"meldung rot\">Auffällig: Arbeitszahl bei 0 bis 5 °C, "
                 + "Arbeitszahl bei 5 bis 10 °C"));
         assertTrue(rot.contains("Eine Saison fehlt noch"));
+        assertTrue(html.contains("Keine Nachfüllung erkannt."));
+        String mitNachfuellung = ZustandSeite.render(new Zustand.Ergebnis(saisons, Zustand.pruefungen(saisons), false,
+                Instant.EPOCH, List.of(new Zustand.Nachfuellung(Instant.parse("2026-10-13T13:00:00Z"), 0.23, 0.16))),
+                null);
+        assertTrue(mitNachfuellung.contains("<td>13.10.2026</td><td>0,23</td><td>0,16</td>"));
         assertTrue(ZustandSeite.render(null, null).contains("wird berechnet"));
         assertTrue(ZustandSeite.render(null, "InfluxDB ist aus").contains("InfluxDB ist aus"));
     }

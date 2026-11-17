@@ -43,18 +43,31 @@ public final class ZustandSeite {
                 .append("<section class=\"cards\"><article class=\"card breit\"><h2>Prüfungen</h2>")
                 .append(pruefungen(ergebnis.pruefungen()))
                 .append("<p class=\"note\">Verglichen wird die neueste Saison mit genug Tagen (mindestens ")
-                .append(Zustand.MIN_TAGE).append(" im Temperaturbereich) mit dem Mittel der Saisons davor. ")
-                .append("Eine laufende Saison ist noch unvollständig, ihre Werte ändern sich bis zum Sommer.</p>")
+                .append(Zustand.MIN_TAGE).append(" im Temperaturbereich) mit dem Mittel der bis zu ")
+                .append(Zustand.VERGLEICH_SAISONS).append(" Saisons davor. Eine laufende Saison ist noch ")
+                .append("unvollständig, ihre Werte ändern sich bis zum Sommer; im Herbst liegen Spreizung und ")
+                .append("Druckschwankung meist niedriger als im Mittel des Winters.</p>")
                 .append("</article><article class=\"card breit\"><h2>Je Heizsaison</h2>")
                 .append(tabelle(List.of("Saison", "Heiztage", "Arbeitszahl", "AZ 0–5 °C (Tage)", "AZ 5–10 °C (Tage)",
-                        "Starts/Tag 0–5 °C", "h/Start 0–5 °C", "Abtauungen/Tag 0–5 °C", "Fehlstarts je 1000",
-                        "Druck Winter bar"), zeilen(ergebnis.saisons())))
+                        "Starts/Tag 0–5 °C", "h/Start 0–5 °C", "Abtauungen/Tag 0–5 °C", "Fehlstarts je 1000 mild",
+                        "Druck Winter bar", "Verdampfer K", "Verflüssiger K", "Spreizung K",
+                        "Druckschwankung bar/10 K"), zeilen(ergebnis.saisons())))
                 .append("<p class=\"note\">Arbeitszahl = Wärme ÷ geschätzte Wirkleistung des Verdichter-Inverters ")
                 .append("(ohne Pumpe und Regelung), über alle Tage unter 15 °C bzw. die Tage im Temperaturbereich. ")
                 .append("Ein Start zählt nach mindestens 3 Minuten Stillstand. Fehlstarts je 1000 Starts an milden ")
                 .append("Tagen (0 bis 15 °C) aus der Auswertung der Fehlstarts. „–“: zu wenige Tage oder keine Daten. ")
                 .append("Starts und Laufzeit hängen von den Einstellungen ab; im Herbst 2026 wurden Wärmebedarf, ")
-                .append("Mindestlaufzeit und Betriebsart geändert.</p>")
+                .append("Mindestlaufzeit und Betriebsart geändert. Verdampfer, Verflüssiger, Spreizung und ")
+                .append("Druckschwankung: Mediane der 10-Minuten-Mittel von November bis März im ruhigen Lauf, ")
+                .append("Verdampfungs- und Kondensationstemperatur aus Nieder- und Hochdruck für R410A.</p>")
+                .append("</article><article class=\"card breit\"><h2>Nachfüllungen</h2>")
+                .append(ergebnis.nachfuellungen().isEmpty() ? "<p class=\"note\">Keine Nachfüllung erkannt.</p>"
+                        : tabelle(List.of("Datum", "Anstieg bar", "Verlust seit der davor bar/Jahr"),
+                        nachfuellungen(ergebnis.nachfuellungen())))
+                .append("<p class=\"note\">Erkannt am Heizungsdruck: Das Stundenmittel steigt um mindestens ")
+                .append(zahl(Zustand.NACHFUELLEN_SPRUNG, 2)).append(" bar und die 24 Stunden danach liegen ")
+                .append("mindestens ").append(zahl(Zustand.NACHFUELLEN_DAUERHAFT, 2))
+                .append(" bar über den 24 Stunden davor.</p>")
                 .append("</article></section><p class=\"note\">Stand ").append(ZEIT.format(ergebnis.berechnet()))
                 .append(", alle 6 Stunden neu berechnet.")
                 .append(ergebnis.unvollstaendig() ? " Eine Saison fehlt noch, weil die InfluxDB zu langsam "
@@ -125,7 +138,20 @@ public final class ZustandSeite {
                     zahl(s.arbeitszahl(), 2), mitTagen(s.kalt().arbeitszahl(), s.kalt().tage()),
                     mitTagen(s.mild().arbeitszahl(), s.mild().tage()), zahl(s.kalt().startsProTag(), 1),
                     zahl(s.kalt().laufzeitProStart(), 2), zahl(s.kalt().abtauungenProTag(), 1),
-                    zahl(s.fehlstartsJe1000(), 1), zahl(s.druckWinter(), 2)));
+                    zahl(s.fehlstartsJe1000(), 1), zahl(s.druckWinter(), 2),
+                    zahl(s.betrieb().verdampferAbstand(), 1), zahl(s.betrieb().verfluessigerAbstand(), 2),
+                    zahl(s.betrieb().spreizung(), 2), zahl(s.betrieb().druckschwankung(), 3)));
+        }
+        return zeilen;
+    }
+
+    /**
+     * Rows of the table of the refills, the newest first
+     */
+    static List<List<String>> nachfuellungen(List<Zustand.Nachfuellung> nachfuellungen) {
+        List<List<String>> zeilen = new ArrayList<>();
+        for (Zustand.Nachfuellung n : nachfuellungen.reversed()) {
+            zeilen.add(List.of(Zustand.datum(n.zeit()), zahl(n.bar(), 2), zahl(n.barProJahr(), 2)));
         }
         return zeilen;
     }
