@@ -23,11 +23,21 @@ before you rely on it.
   `/vorlaufIstTemp`, `/abgabeWaerme`, `/aufnahmeLeistung`, `/arbeitszahl`, `/heizungsdruck`; see `StblController` for
   all endpoints. A value that is missing or not meaningful (e.g. efficiency while the compressor stands still) is
   answered with HTTP 503 and the reason.
-- **Status page** `/status` with all current values. A click on a value that is stored in InfluxDB shows its course
+- **Pages**: all pages share a bar with tabs (Übersicht, Anlage, Woche, Jahr, Zustand, CAN-Bus, Einstellungen) and
+  four signals: operation (heating with the estimated electricity, standing still since, defrosting), active
+  warnings, the condition rating and the service with the CAN answer rate.
+- **Overview** `/status`: what the heat pump does right now (running: electricity, heat, efficiency and the margin
+  until the next defrost; standing still: the controller integral that starts it at −1000), the numbers of today
+  against yesterday, tiles with the course of the last 24 hours (outdoor temperature, estimated electricity, heating
+  pressure, compressor), a timeline of the electricity, the defrosts and the flow, return and outdoor temperatures,
+  failures and checks. The courses are read from InfluxDB at most once a minute.
+- **Plant** `/anlage` with all current values, the warnings, the fault list, the evaluations and the service. A
+  click on a value that is stored in InfluxDB shows its course
   as chart, selectable for 6 h, 24 h, 7 days, 30 days or 1 year (from `/history/<name>?range=6h|24h|7d|30d|1y`,
   name as in InfluxDB without `WP_`, e.g. `/history/VorlaufIstTemp?range=7d`; means over 1 min to 12 h, default
   24h). The InfluxDB token then also needs read access to the bucket.
-  The status page, the CAN bus page and the scan page update themselves in place (20 s, 10 s) without reloading, so
+  The overview, the plant page, the CAN bus page and the scan page update themselves in place (20 s, 10 s) without
+  reloading, so
   an open tooltip, folded areas, the course dialog and the scroll position stay.
   Every value has an ⓘ tooltip that explains it and names the CAN node it comes from; values calculated by the
   service are marked "(berechnet)" and show their formula as well.
