@@ -8,7 +8,7 @@ import java.util.Locale;
 
 /**
  * HTML of the page with the electricity of the heating per month in the last three years, optionally with the
- * household electricity and the wallbox stacked on top, linked with the status page, the weekly report and the configuration page
+ * household electricity and the wallbox stacked on top, linked with the other pages
  */
 public final class JahresvergleichSeite {
 
@@ -47,7 +47,6 @@ public final class JahresvergleichSeite {
                 .append(vergleich == null ? "Strom der Heizung je Monat"
                         : "Strom der Heizung je Monat, " + vergleich.jahre().get(0) + " bis " + vergleich.jahr())
                 .append("</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
-                .append("<a class=\"nav\" href=\"wochenbericht\">Wochenbericht</a> · ")
                 .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
                 .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a></nav></header>");
         if (hinweis != null || vergleich == null) {

@@ -44,7 +44,6 @@ public final class KonfigurationSeite {
                 .append("</style></head><body><main>")
                 .append("<header><div><h1>Konfiguration</h1><p class=\"sub\">Einstellungen dieses Dienstes, nicht ")
                 .append("der Wärmepumpe</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
-                .append("<a class=\"nav\" href=\"wochenbericht\">Wochenbericht</a> · ")
                 .append("<a class=\"nav\" href=\"jahresvergleich\">Jahresvergleich</a> · ")
                 .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
                 .append("<a class=\"nav\" href=\"canbus\">CAN-Bus</a></nav></header>").append(system);

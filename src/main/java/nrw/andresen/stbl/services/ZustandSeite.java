@@ -30,7 +30,6 @@ public final class ZustandSeite {
                 .append("Je Heizsaison (Juli bis Juni) bei gleicher Außentemperatur</p></div>")
                 .append("<nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"jahresvergleich\">Jahresvergleich</a> · ")
-                .append("<a class=\"nav\" href=\"wochenbericht\">Wochenbericht</a> · ")
                 .append("<a class=\"nav\" href=\"konfiguration\">Konfiguration</a></nav></header>");
         if (hinweis != null || ergebnis == null) {
             html.append("<p class=\"meldung\">").append(text(hinweis != null ? hinweis

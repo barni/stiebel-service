@@ -24,11 +24,11 @@ public final class Rahmen {
     }
 
     static final List<Reiter> REITER = List.of(new Reiter("Übersicht", "status"), new Reiter("Anlage", "anlage"),
-            new Reiter("Woche", "wochenbericht"), new Reiter("Jahr", "jahresvergleich"),
+            new Reiter("Jahr", "jahresvergleich"),
             new Reiter("Zustand", "zustand"), new Reiter("CAN-Bus", "canbus"),
             new Reiter("Einstellungen", "konfiguration"));
     // These pages show stored values and are left out without InfluxDB
-    static final Set<String> NUR_MIT_INFLUX = Set.of("wochenbericht", "jahresvergleich", "zustand");
+    static final Set<String> NUR_MIT_INFLUX = Set.of("jahresvergleich", "zustand");
     private static final Pattern HEADER = Pattern.compile("<header>(.*?)</header>", Pattern.DOTALL);
     private static final Pattern NAV = Pattern.compile("<nav>(.*?)</nav>", Pattern.DOTALL);
     private static final Pattern LINK = Pattern.compile("<a [^>]*href=\"([^\"]*)\"[^>]*>.*?</a>", Pattern.DOTALL);

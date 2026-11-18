@@ -85,12 +85,6 @@ before you rely on it.
 - **Daily overview** on the status page and as JSON from `/tagesuebersicht`: compressor starts, run time, heat,
   estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
   the days of similar outdoor temperature (±1.5 K) from the comparison above. Updated every 10 minutes.
-- **Weekly report** on the page `/wochenbericht` (linked with the status and the configuration page) and as JSON
-  from `/wochenbericht/daten`: the last 7 complete days next to the 7 days before and to what is usual at the same
-  outdoor temperature (for each day the mean of the earlier days within ±1.5 K, added up): heat, estimated power,
-  efficiency, run time, starts, hours per start, defrosts, highest flow temperature and heating pressure, the single
-  days, and one sentence that sums it up. Sent by mail on Sunday at 20:00 unless `bericht.woche.mail=false`, as
-  HTML with tables and the same content as plain text.
 - **Year comparison** on the page `/jahresvergleich` and as JSON from `/jahresvergleich/daten`: estimated electric
   energy of the heating per month in the current year and the two years before, as bars and as a table with the
   change and the mean outdoor temperature. The current month is compared with the same days of the year before.
@@ -118,7 +112,7 @@ before you rely on it.
   the worse rating counts; the hours per start depend on the settings and are shown without a rating.
   Seasons that are over are read once, the current one every 6 hours. When a check gets worse a mail is sent, for
   auffällig also by Pushover; the ratings are stored as `WP_Zustand_<check>`, so a restart does not report them
-  again, and getting better is not reported. The weekly report names the overall result.
+  again, and getting better is not reported.
 - **Warnings** checked every minute, shown on the status page and as JSON from `/ueberwachung`; a mail is sent when a
   warning becomes active: heating pressure below `warnung.heizungsdruck.min` (default 1.3 bar) or above
   `warnung.heizungsdruck.max` (default 2.5 bar), heating element on,
@@ -143,8 +137,7 @@ before you rely on it.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, when a
   new entry appears in the fault list and when a warning becomes active.
 - **Pushover**: the same alerts also as push message over [pushover.net](https://pushover.net) when
-  `pushover.user` and `pushover.token` are set (priority with `pushover.prioritaet`, -2 to 1). The weekly report goes
-  only by mail. The button "Testnachricht senden" on the configuration page sends a test alert over both ways.
+  `pushover.user` and `pushover.token` are set (priority with `pushover.prioritaet`, -2 to 1). The button "Testnachricht senden" on the configuration page sends a test alert over both ways.
 
 Derived values: the calculated heat output uses flow rate and spread, the estimated efficiency divides it by the
 real power estimated from the inverter's apparent power; both are skipped during the start phase and the defrost. The
