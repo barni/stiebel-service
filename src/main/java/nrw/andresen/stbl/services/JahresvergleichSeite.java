@@ -60,8 +60,11 @@ public final class JahresvergleichSeite {
         boolean mitWallbox = wallbox && vergleich.mitWallbox();
         List<Integer> jahre = vergleich.jahre();
         int jahr = vergleich.jahr();
-        html.append("<p class=\"meldung\">").append(text(satz(vergleich, mitHaushalt, mitWallbox))).append("</p>")
-                .append("<section class=\"kpis\">");
+        // With the house meter the tiles below say the same as the sentence
+        if (vergleich.gesamt() == null) {
+            html.append("<p class=\"meldung\">").append(text(satz(vergleich))).append("</p>");
+        }
+        html.append("<section class=\"kpis\">");
         if (vergleich.gesamt() != null) {
             html.append(kpi("Gesamt " + jahr + " bis " + DATUM.format(vergleich.bis()), zahl(vergleich.gesamt(), 0),
                             "kWh"))
@@ -297,43 +300,21 @@ public final class JahresvergleichSeite {
     }
 
     /**
-     * One sentence: this year up to today against the same days of the year before, with the household and the
-     * wallbox if shown
+     * One sentence without the house meter: the heating this year up to today against the same days of the year
+     * before and the whole years before
      */
-    static String satz(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
+    static String satz(Jahresvergleich.Vergleich v) {
         int jahr = v.jahr();
         Double aenderung = v.aenderung();
-        String text = "";
-        Double gesamt = v.gesamtAenderung();
-        if (gesamt != null) {
-            text = "Vom 1. Januar bis " + DATUM.format(v.bis()) + " " + jahr + " hat das Haus " + zahl(v.gesamt(), 0)
-                    + " kWh aus dem Netz bezogen, " + (Math.abs(gesamt) < 0.5 ? "genauso viel wie"
-                    : zahl(Math.abs(gesamt), 1) + " % " + (gesamt > 0 ? "mehr" : "weniger") + " als")
-                    + " in denselben Tagen " + (jahr - 1) + " (" + zahl(v.gesamtVorjahrGleich(), 0) + " kWh). ";
-        }
-        if (gesamt != null) {
-            // The parts are in the bars and in "Woran liegt es?" below
-            return text.trim();
-        }
-        text += (gesamt != null ? "Die Heizung brauchte " + zahl(v.heizung(J - 1), 0) + " kWh"
-                : "Vom 1. Januar bis " + DATUM.format(v.bis()) + " " + jahr + " hat die Heizung "
-                + zahl(v.heizung(J - 1), 0) + " kWh Strom gebraucht");
+        String text = "Vom 1. Januar bis " + DATUM.format(v.bis()) + " " + jahr + " hat die Heizung "
+                + zahl(v.heizung(J - 1), 0) + " kWh Strom gebraucht";
         if (aenderung != null) {
             text += ", " + (Math.abs(aenderung) < 0.5 ? "genauso viel wie"
                     : zahl(Math.abs(aenderung), 1) + " % " + (aenderung > 0 ? "mehr" : "weniger") + " als")
                     + " in denselben Tagen " + (jahr - 1) + " (" + zahl(v.heizungGleich(J - 2), 0) + " kWh)";
         }
-        text += ". Im ganzen Jahr waren es " + zahl(v.heizung(J - 2), 0) + " kWh (" + (jahr - 1) + ") und "
+        return text + ". Im ganzen Jahr waren es " + zahl(v.heizung(J - 2), 0) + " kWh (" + (jahr - 1) + ") und "
                 + zahl(v.heizung(J - 3), 0) + " kWh (" + (jahr - 2) + ").";
-        if (mitHaushalt) {
-            text += " Der Haushalt ohne Heizung und Wallbox brauchte " + jahr + " bisher " + zahl(v.haushalt(J - 1), 0)
-                    + " kWh, " + (jahr - 1) + " im ganzen Jahr " + zahl(v.haushalt(J - 2), 0) + " kWh.";
-        }
-        if (mitWallbox) {
-            text += " An der Wallbox wurden " + jahr + " bisher " + zahl(v.wallbox(J - 1), 0) + " kWh geladen, "
-                    + (jahr - 1) + " im ganzen Jahr " + zahl(v.wallbox(J - 2), 0) + " kWh.";
-        }
-        return text;
     }
 
     static List<String> kopf(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
