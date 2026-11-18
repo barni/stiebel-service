@@ -40,9 +40,9 @@ public final class ZustandSeite {
         }
         html.append("<p class=\"meldung ").append(klasse(gesamt(ergebnis.pruefungen()))).append("\">")
                 .append(text(satz(ergebnis.pruefungen()))).append("</p>")
-                .append("<section class=\"cards\"><article class=\"card breit\"><h2>Prüfungen</h2>")
+                .append("<section class=\"pkarten\" aria-label=\"Prüfungen\">")
                 .append(pruefungen(ergebnis.pruefungen()))
-                .append("<p class=\"note\">Verglichen wird die neueste Saison mit genug Tagen (mindestens ")
+                .append("</section><p class=\"note pnote\">Verglichen wird die neueste Saison mit genug Tagen (mindestens ")
                 .append(Zustand.MIN_TAGE).append(" im Temperaturbereich) mit dem Mittel der bis zu ")
                 .append(Zustand.VERGLEICH_SAISONS).append(" Saisons davor. Die Werte mit „Bezug“ werden zusätzlich ")
                 .append("mit dem Mittel der ersten ").append(Zustand.BEZUG_SAISONS).append(" Saisons verglichen, ")
@@ -52,8 +52,9 @@ public final class ZustandSeite {
                 .append("Push-Nachricht; geprüft wird alle 6 Stunden, eine Besserung wird nicht gemeldet. ")
                 .append("Eine laufende Saison ist noch ")
                 .append("unvollständig, ihre Werte ändern sich bis zum Sommer. Die Druckschwankung braucht ")
-                .append("mindestens ").append(Zustand.MIN_MONATE_DRUCK).append(" Wintermonate mit genug Tagen.</p>")
-                .append("</article><article class=\"card breit\"><h2>Je Heizsaison</h2>")
+                .append("mindestens ").append(Zustand.MIN_MONATE_DRUCK).append(" Wintermonate mit genug Tagen. ")
+                .append("Im Verlauf jeder Karte steht ein Punkt je Saison, die gestrichelte Linie ist der Bezug.</p>")
+                .append("<section class=\"cards\"><article class=\"card breit\"><h2>Je Heizsaison</h2>")
                 .append(tabelle(List.of("Saison", "Heiztage", "Arbeitszahl", "AZ 0–5 °C (Tage)", "AZ 5–10 °C (Tage)",
                         "Starts/Tag 0–5 °C", "h/Start 0–5 °C", "Abtauungen/Tag 0–5 °C", "Fehlstarts je 1000 mild",
                         "Druck Winter bar", "Verdampfer K", "Verflüssiger K", "Spreizung K",
@@ -120,24 +121,89 @@ public final class ZustandSeite {
         return text.substring(0, 1).toUpperCase(Locale.GERMANY) + text.substring(1);
     }
 
-    private static String pruefungen(List<Zustand.Pruefung> pruefungen) {
-        StringBuilder html = new StringBuilder("<div class=\"tbl\"><table><thead><tr><th>Wert</th><th>Saison</th>"
-                + "<th>Wert</th><th>Mittel davor</th><th>Bezug</th><th>Status</th></tr></thead><tbody>");
-        for (Zustand.Pruefung p : pruefungen) {
+    /**
+     * One card per check, the conspicuous ones first
+     */
+    static String pruefungen(List<Zustand.Pruefung> pruefungen) {
+        List<Zustand.Pruefung> sortiert = new ArrayList<>(pruefungen);
+        sortiert.sort(java.util.Comparator.comparingInt((Zustand.Pruefung p) -> -Zustand.stufe(p.status())));
+        StringBuilder html = new StringBuilder();
+        for (Zustand.Pruefung p : sortiert) {
             String einheit = p.einheit().isEmpty() ? "" : " " + p.einheit();
-            html.append("<tr><td><span class=\"pname\">").append(text(p.name())).append("</span><span class=\"phint\">")
-                    .append(text(p.hinweis())).append("</span>")
-                    .append(p.regel() == null ? "" : "<span class=\"pregel\">Meldung: " + text(p.regel()) + "</span>")
-                    .append("</td><td>").append(text(p.saison() == null ? "–"
-                            : p.saison())).append("</td><td>").append(zahl(p.wert(), p.stellen()))
-                    .append(p.wert() == null ? "" : text(einheit)).append("</td><td>")
+            html.append("<article class=\"pkarte ").append(klasse(p.status())).append("\"><div class=\"pk-kopf\">")
+                    .append("<span class=\"pname\">").append(text(p.name())).append("</span><span class=\"status ")
+                    .append(klasse(p.status())).append("\">").append(text(p.status())).append("</span></div>")
+                    .append("<div class=\"pk-wert\">").append(zahl(p.wert(), p.stellen()))
+                    .append(p.wert() == null ? "" : "<span class=\"unit\">" + text(einheit) + "</span>")
+                    .append("<span class=\"pk-saison\">").append(text(p.saison() == null ? "" : p.saison()))
+                    .append("</span></div><div class=\"pk-vergleich\">Mittel davor ")
                     .append(zahl(p.vorher(), p.stellen())).append(p.vorher() == null ? "" : text(einheit))
-                    .append("</td><td>").append(zahl(p.bezug(), p.stellen()))
-                    .append(p.bezug() == null ? "" : text(einheit))
-                    .append("</td><td><span class=\"status ").append(klasse(p.status())).append("\">")
-                    .append(text(p.status())).append("</span></td></tr>");
+                    .append(p.bezug() == null ? "" : " · Bezug " + zahl(p.bezug(), p.stellen()) + text(einheit))
+                    .append("</div>").append(verlauf(p.verlauf(), p.bezug()))
+                    .append(p.regel() == null ? "" : "<p class=\"pregel\">Meldung: " + text(p.regel()) + "</p>")
+                    .append("<details class=\"mehr\"><summary>Was bedeutet das?</summary><p class=\"phint\">")
+                    .append(text(p.hinweis())).append("</p></details></article>");
         }
-        return html.append("</tbody></table></div>").toString();
+        return html.toString();
+    }
+
+    /**
+     * Small chart of a check over the seasons: a point per season, the newest bigger, the reference dashed
+     */
+    static String verlauf(Zustand.Verlauf v, Double bezug) {
+        List<Double> werte = v.werte();
+        long anzahl = werte.stream().filter(java.util.Objects::nonNull).count();
+        if (anzahl < 2) {
+            return "";
+        }
+        double min = Double.MAX_VALUE;
+        double max = -Double.MAX_VALUE;
+        for (Double w : werte) {
+            if (w != null) {
+                min = Math.min(min, w);
+                max = Math.max(max, w);
+            }
+        }
+        if (bezug != null) {
+            min = Math.min(min, bezug);
+            max = Math.max(max, bezug);
+        }
+        double rand = max > min ? (max - min) * 0.15 : Math.max(Math.abs(max) * 0.1, 0.1);
+        min -= rand;
+        max += rand;
+        int n = werte.size();
+        StringBuilder linie = new StringBuilder();
+        StringBuilder punkte = new StringBuilder();
+        int letzter = -1;
+        for (int i = 0; i < n; i++) {
+            if (werte.get(i) != null) {
+                letzter = i;
+            }
+        }
+        for (int i = 0; i < n; i++) {
+            Double w = werte.get(i);
+            if (w == null) {
+                continue;
+            }
+            double x = n == 1 ? 150 : 8 + i * 284.0 / (n - 1);
+            double y = 50 - (w - min) / (max - min) * 44;
+            String xy = String.format(Locale.ROOT, "%.1f,%.1f", x, y);
+            linie.append(linie.isEmpty() ? "" : " ").append(xy);
+            punkte.append(String.format(Locale.ROOT, "<circle cx=\"%.1f\" cy=\"%.1f\" r=\"%s\"%s><title>%s: %s"
+                            + "</title></circle>", x, y, i == letzter ? "4.5" : "3", i == letzter ? " class=\"neu\"" : "",
+                    text(v.namen().get(i)), String.format(Locale.GERMANY, "%.3f", w)));
+        }
+        StringBuilder svg = new StringBuilder("<svg class=\"pk-verlauf\" viewBox=\"0 0 300 56\" "
+                + "preserveAspectRatio=\"none\" role=\"img\" aria-label=\"Verlauf über ").append(n)
+                .append(" Saisons\">");
+        if (bezug != null) {
+            double y = 50 - (bezug - min) / (max - min) * 44;
+            svg.append(String.format(Locale.ROOT, "<line class=\"bezug\" x1=\"0\" x2=\"300\" y1=\"%.1f\" "
+                    + "y2=\"%.1f\"/>", y, y));
+        }
+        svg.append("<polyline points=\"").append(linie).append("\"/>").append(punkte).append("</svg>");
+        return svg + "<div class=\"pk-achse\"><span>" + text(v.namen().get(0)) + "</span><span>"
+                + text(v.namen().get(n - 1)) + "</span></div>";
     }
 
     /**
@@ -212,8 +278,29 @@ public final class ZustandSeite {
             .tbl { overflow-x: auto; }
             .tbl table { font-size: 14px; }
             .pname { display: block; font-weight: 600; }
-            .phint { display: block; color: var(--muted); font-size: 12px; max-width: 46ch; white-space: normal; }
-            .pregel { display: block; font-size: 12px; max-width: 46ch; white-space: normal; margin-top: 2px; }
+            .phint { display: block; color: var(--muted); font-size: 13px; margin: 4px 0 6px; }
+            .pregel { font-size: 12px; margin: 8px 0 0; color: var(--text); }
+            .pkarten { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 12px;
+              margin-bottom: 8px; }
+            .pkarte { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 8px;
+              display: flex; flex-direction: column; }
+            .pkarte.rot { border-color: var(--warn); }
+            .pkarte.gelb { border-color: var(--stale); }
+            .pk-kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+            .pk-kopf .pname { font-weight: 650; }
+            .pk-wert { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 6px; }
+            .pk-wert .unit { margin-left: 4px; font-size: 14px; font-weight: 500; color: var(--muted); }
+            .pk-saison { margin-left: 10px; font-size: 13px; font-weight: 500; color: var(--muted); }
+            .pk-vergleich { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+            .pk-verlauf { width: 100%; height: 56px; margin-top: 8px; overflow: visible; }
+            .pk-verlauf polyline { fill: none; stroke: var(--accent); stroke-width: 2; vector-effect: non-scaling-stroke; }
+            .pk-verlauf circle { fill: var(--card); stroke: var(--accent); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+            .pk-verlauf circle.neu { fill: var(--accent); }
+            .pkarte.gelb .pk-verlauf circle.neu { fill: var(--stale); stroke: var(--stale); }
+            .pkarte.rot .pk-verlauf circle.neu { fill: var(--warn); stroke: var(--warn); }
+            .pk-verlauf .bezug { stroke: var(--muted); stroke-dasharray: 4 3; stroke-width: 1; vector-effect: non-scaling-stroke; }
+            .pk-achse { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+            .pnote { margin: 8px 0 18px; }
             .status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 13px;
               background: var(--off-bg); color: var(--muted); white-space: nowrap; }
             .status.rot { background: var(--warn-bg); color: var(--warn); }
