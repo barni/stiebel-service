@@ -160,7 +160,7 @@ public class JahresvergleichTest {
         assertTrue(karte.contains("<h2>Prognose bis Jahresende</h2>"));
         assertTrue(karte.contains("Die Heizung wird 2026 voraussichtlich 1.290 kWh brauchen, 7,5 % mehr als 2025 "
                 + "(1.200 kWh)."));
-        assertTrue(karte.contains("<td>Heizung</td><td>1.050</td><td>240</td><td>1.290</td><td>1.200</td>"
+        assertTrue(karte.contains("<td>Heizung ≈</td><td>1.050</td><td>240</td><td>1.290</td><td>1.200</td>"
                 + "<td>+7,5 %</td>"));
         assertTrue(JahresvergleichSeite.render(vergleich(true), null, false, false).contains("Das Haus wird 2026 "
                 + "voraussichtlich"));

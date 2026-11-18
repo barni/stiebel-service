@@ -640,6 +640,10 @@ public class StatusPage {
             html.append("</section>");
         }
         bereiche(html);
+        if (html.indexOf(" ≈") >= 0) {
+            html.append("<p class=\"note legende\">≈ vom Dienst berechnet oder geschätzt; Formel und Herkunft stehen "
+                    + "im ⓘ.</p>");
+        }
         html.append("</main><script>").append(BEREICH_SCRIPT).append("</script>");
         if (hasHistory) {
             html.append(HISTORY_DIALOG).append("<script>").append(HISTORY_SCRIPT).append("</script>");

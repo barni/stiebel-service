@@ -463,13 +463,13 @@ public class StatusService {
                 gleich == null ? "–" : zahl(gleich.laufzeitProStart(), 2)));
         zeilen.add(List.of("Wärme kWh", zahl(heute.waermeKWh(), 1), zahl(gestern.waermeKWh(), 1),
                 gleich == null ? "–" : zahl(gleich.waermeKWh(), 1)));
-        zeilen.add(List.of("Strom kWh (geschätzt)", zahl(heute.stromKWh(), 1), zahl(gestern.stromKWh(), 1),
+        zeilen.add(List.of("Strom kWh ≈", zahl(heute.stromKWh(), 1), zahl(gestern.stromKWh(), 1),
                 gleich == null ? "–" : zahl(gleich.stromKWh(), 1)));
-        zeilen.add(List.of("Arbeitszahl (berechnet)", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1),
+        zeilen.add(List.of("Arbeitszahl ≈", zahl(heute.arbeitszahl(), 1), zahl(gestern.arbeitszahl(), 1),
                 gleich == null ? "–" : zahl(gleich.arbeitszahl(), 1)));
         zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
                 gleich == null ? "–" : zahl(gleich.abtauungen(), 1)));
-        zeilen.add(List.of("Druckhub (berechnet)", "–", zahl(tagesuebersicht.getDruckhubGestern(), 2), "–"));
+        zeilen.add(List.of("Druckhub ≈", "–", zahl(tagesuebersicht.getDruckhubGestern(), 2), "–"));
         page.table(List.of("", "Heute", "Gestern", "Ø gleiche Temp."), zeilen, false, Map.ofEntries(
                         Map.entry("Heute", "Von Mitternacht bis jetzt."),
                         Map.entry("Ø gleiche Temp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
@@ -487,14 +487,14 @@ public class StatusService {
                                 + "Lauf nicht. Länger ist effizienter und schont den "
                                 + "Verdichter."),
                         Map.entry("Wärme kWh", "Abgegebene Heizwärme laut Wärmezähler der Wärmepumpe."),
-                        Map.entry("Strom kWh (geschätzt)", "Geschätzte Wirkleistung des Verdichter-Inverters, aufsummiert; ohne Pumpe und "
+                        Map.entry("Strom kWh ≈", "Geschätzte Wirkleistung des Verdichter-Inverters, aufsummiert; ohne Pumpe und "
                                 + "Regelung, daher etwas zu niedrig."),
-                        Map.entry("Arbeitszahl (berechnet)", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch."),
+                        Map.entry("Arbeitszahl ≈", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch."),
                         Map.entry("Abtauungen", "Heute und gestern: vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa "
                                 + "2 Minuten). Vergleichstage: Wiederanläufe nach einer Pause unter "
                                 + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, weil die Erkennung erst "
                                 + "seit 25.09.2026 gespeichert wird."),
-                        Map.entry("Druckhub (berechnet)", "Tagesspanne des Heizungsdrucks geteilt durch die Tagesspanne der mittleren "
+                        Map.entry("Druckhub ≈", "Tagesspanne des Heizungsdrucks geteilt durch die Tagesspanne der mittleren "
                                 + "Wassertemperatur, in bar je 10 K. Nur ein grober Tageswert: innerhalb eines Tages "
                                 + "ändert sich das Wasser im Fußboden viel weniger als Vor- und Rücklauf, und der "
                                 + "Pumpendruck mischt sich ein. Für den Zustand des Ausdehnungsgefäßes zählt die "
@@ -570,7 +570,7 @@ public class StatusService {
                         + "Stillstand etwa 1 K unter dem Rücklauf der Wärmepumpe. Denselben Wert schreibt der Manager "
                         + "als Heizkreis-Isttemperatur (0x02CA) an die Wärmepumpe, am 16.11.2026 höchstens 0,2 K "
                         + "abweichend.")
-                .row("Spreizung fein (berechnet)", "K", 1, null, wp::getSpreizungFein)
+                .row("Spreizung fein ≈", "K", 1, null, wp::getSpreizungFein)
                 .info("Feiner Vorlauf minus feiner Rücklauf. Im Lauf vom 12. bis 17.11.2026 im Median 5,4 K, der "
                         + "Sollwert ist 5 K.")
                 .formula("Vorlauf fein − Rücklauf fein")
@@ -589,7 +589,7 @@ public class StatusService {
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
-                .row("Spreizung (berechnet)", "K", 1, "Spreizung", wp::getSpreizung)
+                .row("Spreizung ≈", "K", 1, "Spreizung", wp::getSpreizung)
                 .info("Temperaturunterschied zwischen Vor- und Rücklauf. Der Sollwert steht unter Einstellungen "
                         + "(Soll-Spreizung).")
                 .formula("Vorlauf − Rücklauf")
@@ -598,13 +598,13 @@ public class StatusService {
                         + "regelt ihn so, dass die Soll-Spreizung erreicht wird; bei kleiner Leistung daher oft nur "
                         + "8–10 l/min. Laut Anleitung WPL 17: mindestens 10 l/min (0,6 m³/h), nenn 22 l/min bei "
                         + "A−7/W35, beim Abtauen etwa 30 l/min.")
-                .row("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
+                .row("Wärmeleistung ≈", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
                 .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt. Laut Anleitung kann die WPL 17 "
                         + "bei A7/W35 2,6–8,5 kW und bei A−7/W35 3,0–7,8 kW; braucht das Haus weniger als das "
                         + "Minimum, taktet sie.")
                 .formula(Waermepumpe.formelWaermeleistung())
                 .ersatz("–")
-                .row("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
+                .row("Arbeitszahl ≈", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
                 .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
                         + "während der Verdichter läuft. Datenblatt WPL 17: A7/W35 4,76, A2/W35 3,97, A−7/W35 2,92, "
                         + "SCOP 4,48.")
@@ -650,7 +650,7 @@ public class StatusService {
                 .info("Rechengröße der Wärmepumpe (0x500, 0x080B), keine Temperatur an einer Stelle: im Kern, wie "
                         + "viel kälter als die Außenluft das Kältemittel verdampfen muss, bereinigt um die Drehzahl. "
                         + "Sinkt, während Eis am Verdampfer wächst, nur der Abstand zur Referenz zählt.")
-                .row("Reserve bis Abtauung (berechnet)", "K", 1, "AbtauReserve", wp::getAbtauReserve)
+                .row("Reserve bis Abtauung ≈", "K", 1, "AbtauReserve", wp::getAbtauReserve)
                 .info("Wie weit der kompensierte Taupunkt noch sinken darf, bis die Wärmepumpe abtaut. Alle fünf "
                         + "Abtauungen in der Nacht zum 17.11.2026 starteten bei etwa 3,1 K unter der Referenz. Im "
                         + "Stillstand und beim Starten und Stoppen springt der kompensierte Wert, die Referenz folgt "
@@ -689,7 +689,7 @@ public class StatusService {
                 .row("Strom", "A", 1, "StromInverter", wp::getStromInverter)
                 .info("Stromaufnahme des Verdichter-Inverters (0x500). Laut Anleitung max. 20 A Betriebsstrom, "
                         + "7 A Anlaufstrom, abgesichert mit B25.")
-                .row("Scheinleistung (berechnet)", "VA", 0, "LeistungInverter", wp::getLeistungInverter)
+                .row("Scheinleistung ≈", "VA", 0, "LeistungInverter", wp::getLeistungInverter)
                 .info("Momentane Leistungsaufnahme des Verdichter-Inverters. Die Wirkleistung liegt laut Smartmeter "
                         + "bei etwa 80 % bei 600 VA und erreicht ab 1000 VA die Scheinleistung.")
                 .formula(Waermepumpe.FORMEL_SCHEINLEISTUNG)
@@ -714,10 +714,10 @@ public class StatusService {
                         + "Stimmt auf etwa 6 % mit der Rechnung aus Durchfluss und Spreizung überein.")
                 .row("Zusatzheizung", "MWh", 3, "WaermeZusatzheizung", wp::getWaermeZusatzheizung)
                 .info("Vom Heizstab erzeugte Wärme (0x514).")
-                .row("Effizienz (Zähler, berechnet)", "", 2, "EffizienzZaehler", wp::getEffizienz)
+                .row("Effizienz Zähler ≈", "", 2, "EffizienzZaehler", wp::getEffizienz)
                 .info("Arbeitszahl nach den Zählern der Wärmepumpe. Zu hoch, weil der Stromzähler zu wenig zählt.")
                 .formula("Wärmeerzeugung ÷ Stromaufnahme, beides Zähler der Wärmepumpe")
-                .row("Effizienz (korrigiert, berechnet)", "", 2, "EffizienzKorrigiert", wp::getEffizienzKorrigiert)
+                .row("Effizienz korrigiert ≈", "", 2, "EffizienzKorrigiert", wp::getEffizienzKorrigiert)
                 .info("Realistische Arbeitszahl mit korrigiertem Stromverbrauch.")
                 .formula("Wärmeerzeugung ÷ (Stromaufnahme × " + Waermepumpe.zahl(Waermepumpe.STROMZAEHLER_KORREKTUR)
                         + "), der Stromzähler der Wärmepumpe zählt rund 20 % zu wenig")
@@ -745,7 +745,7 @@ public class StatusService {
                 .row("Verdichterstarts", "", 0, "VerdichterStarts", wp::getVerdichterStarts)
                 .info("Anzahl der Verdichterstarts seit Inbetriebnahme (0x514). Wenige, lange Läufe sind effizienter "
                         + "und schonen den Verdichter.")
-                .row("Laufzeit je Start (berechnet)", "h", 2, "LaufzeitProStart", wp::getLaufzeitProStart)
+                .row("Laufzeit je Start ≈", "h", 2, "LaufzeitProStart", wp::getLaufzeitProStart)
                 .info("Durchschnittliche Laufzeit eines Verdichterlaufs über die gesamte Betriebszeit.")
                 .formula("Laufzeit Heizen ÷ Verdichterstarts")
                 .row("Laufzeit Verdichter Abtauen", "h", 0, "LaufzeitVerdichterAbtauen", wp::getLaufzeitVerdichterAbtauen)

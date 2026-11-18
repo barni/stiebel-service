@@ -40,7 +40,7 @@ before you rely on it.
   reloading, so
   an open tooltip, folded areas, the course dialog and the scroll position stay.
   Every value has an ⓘ tooltip that explains it and names the CAN node it comes from; values calculated by the
-  service are marked "(berechnet)" and show their formula as well.
+  service (calculated or estimated) are marked "≈" and show their formula as well.
 - **Connection**: the status page shows the USBtin adapter (port, firmware, connected since, restarts by the
   watchdog) and the CAN bus of the last full minute (received messages, answers, sent requests, answer rate, answers
   "not available", estimated bus load, messages per node). Stored every minute as `WP_CAN_*`, e.g.
