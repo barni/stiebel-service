@@ -365,7 +365,7 @@ public final class Uebersicht {
             polyline.vorlauf { stroke: var(--vorlauf); }
             polyline.ruecklauf { stroke: var(--ruecklauf); }
             polyline.aussen { stroke: var(--aussen); stroke-dasharray: 5 4; }
-            .spark polyline.aussen { stroke-dasharray: none; }
+            .spark polyline.aussen { stroke: var(--accent); stroke-dasharray: none; }
             polyline.strom { stroke: var(--strom); }
             polyline.druck, polyline.drehzahl { stroke: var(--accent); }
             .zeitleiste { margin-bottom: 16px; padding: 16px 20px 14px; }

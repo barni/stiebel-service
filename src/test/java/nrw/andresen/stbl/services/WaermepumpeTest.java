@@ -185,7 +185,7 @@ public class WaermepumpeTest {
         Instant jetzt = Instant.parse("2026-11-18T14:00:00Z");
         // Standing still after a restart: the stored stop is taken
         Waermepumpe steht = new Waermepumpe();
-        steht.vorgeschichte(null, jetzt.minusSeconds(3600));
+        steht.vorgeschichte(null, jetzt.minusSeconds(3600), null);
         assertEquals(jetzt.minusSeconds(3600), steht.getVerdichterGestopptUm());
         assertNull(steht.getVerdichterLaeuftSeit());
 
@@ -194,15 +194,42 @@ public class WaermepumpeTest {
         java.lang.reflect.Field seit = Waermepumpe.class.getDeclaredField("verdichterLaeuftSeit");
         seit.setAccessible(true);
         seit.set(laeuft, jetzt);
-        laeuft.vorgeschichte(jetzt.minusSeconds(42 * 60), jetzt.minusSeconds(90 * 60));
+        laeuft.vorgeschichte(jetzt.minusSeconds(42 * 60), jetzt.minusSeconds(90 * 60), jetzt.minusSeconds(80 * 60));
+        assertEquals(jetzt.minusSeconds(80 * 60), laeuft.getLaufBeginn());
         assertEquals(jetzt.minusSeconds(42 * 60), laeuft.getVerdichterLaeuftSeit());
         assertEquals(jetzt.minusSeconds(90 * 60), laeuft.getVerdichterGestopptUm());
         // A stored start later than the one seen, or a stop after the start, does not fit and is ignored
-        laeuft.vorgeschichte(jetzt, null);
+        laeuft.vorgeschichte(jetzt, null, null);
         assertEquals(jetzt.minusSeconds(42 * 60), laeuft.getVerdichterLaeuftSeit());
         Waermepumpe falsch = new Waermepumpe();
         seit.set(falsch, jetzt);
-        falsch.vorgeschichte(null, jetzt.plusSeconds(60));
+        falsch.vorgeschichte(null, jetzt.plusSeconds(60), null);
         assertNull(falsch.getVerdichterGestopptUm());
+    }
+
+    @Test
+    public void testLaufBeginnUeberAbtauung() {
+        Instant t = Instant.parse("2026-11-18T17:00:00Z");
+        Instant vorher = t.minusSeconds(40 * 60);
+        // Stop 40 s before the start, defrost seen after the stop: the run before continues
+        assertEquals(vorher, Waermepumpe.laufBeginn(t, t.minusSeconds(40), t.plusSeconds(20), vorher));
+        // No defrost after the stop, or a stop longer than 5 minutes: a new run
+        assertEquals(t, Waermepumpe.laufBeginn(t, t.minusSeconds(40), t.minusSeconds(60), vorher));
+        assertEquals(t, Waermepumpe.laufBeginn(t, t.minusSeconds(6 * 60), t.plusSeconds(20), vorher));
+        assertEquals(t, Waermepumpe.laufBeginn(t, null, null, null));
+
+        // From stored values as on 2026-11-18: run from 16:38, stop 17:28:37, defrost 17:29:17, running again
+        java.util.SortedMap<Instant, Double> hz = new java.util.TreeMap<>();
+        hz.put(Instant.parse("2026-11-18T16:37:59Z"), 0.0);
+        hz.put(Instant.parse("2026-11-18T16:38:19Z"), 28.0);
+        hz.put(Instant.parse("2026-11-18T17:26:34Z"), 26.0);
+        hz.put(Instant.parse("2026-11-18T17:28:37Z"), 0.0);
+        hz.put(Instant.parse("2026-11-18T17:29:17Z"), 48.0);
+        hz.put(Instant.parse("2026-11-18T17:38:56Z"), 23.0);
+        List<Instant> abtauung = List.of(Instant.parse("2026-11-18T17:29:17Z"), Instant.parse("2026-11-18T17:30:17Z"));
+        assertEquals(Instant.parse("2026-11-18T16:38:19Z"), Waermepumpe.laufBeginn(hz, abtauung));
+        assertEquals(Instant.parse("2026-11-18T17:29:17Z"), Waermepumpe.laufBeginn(hz, List.of()));
+        hz.put(Instant.parse("2026-11-18T17:40:00Z"), 0.0);
+        assertNull(Waermepumpe.laufBeginn(hz, abtauung));
     }
 }
