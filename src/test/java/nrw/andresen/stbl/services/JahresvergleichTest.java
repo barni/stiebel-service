@@ -128,6 +128,9 @@ public class JahresvergleichTest {
         assertFalse(karte.contains("-0 %"));
         // Two years at the same days only without the grid import of two years before
         assertFalse(karte.contains("2024 kWh"));
+        // The tiles of the heating only without the house meter, otherwise they repeat the card and the table
+        assertFalse(JahresvergleichSeite.render(vergleich(true), null, false, false).contains("ganzes Jahr</"));
+        assertTrue(JahresvergleichSeite.render(vergleich(false), null, false, false).contains("Heizung ≈ 2025 ganzes Jahr"));
     }
 
     @Test

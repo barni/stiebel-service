@@ -71,12 +71,17 @@ public final class JahresvergleichSeite {
                     .append("</section>").append(ursachen(vergleich)).append(prognose(vergleich))
                     .append("<section class=\"kpis\">");
         }
-        html.append(kpi("Heizung ≈ " + jahr + " bis " + DATUM.format(vergleich.bis()),
-                        zahl(vergleich.heizung(J - 1), 0), "kWh"))
-                .append(kpi("Heizung ≈ " + (jahr - 1) + " gleiche Tage", zahl(vergleich.heizungGleich(J - 2), 0), "kWh"))
-                .append(kpi("Heizung ≈ Veränderung", prozent(vergleich.aenderung()), ""));
-        for (int i = J - 2; i >= 0; i--) {
-            html.append(kpi("Heizung ≈ " + jahre.get(i) + " ganzes Jahr", zahl(vergleich.heizung(i), 0), "kWh"));
+        // With the house meter the heating of the same days is in "Woran liegt es?" and the whole years in the
+        // table per month; without it these tiles are the only summary of the heating
+        if (vergleich.gesamt() == null) {
+            html.append(kpi("Heizung ≈ " + jahr + " bis " + DATUM.format(vergleich.bis()),
+                            zahl(vergleich.heizung(J - 1), 0), "kWh"))
+                    .append(kpi("Heizung ≈ " + (jahr - 1) + " gleiche Tage", zahl(vergleich.heizungGleich(J - 2), 0),
+                            "kWh"))
+                    .append(kpi("Heizung ≈ Veränderung", prozent(vergleich.aenderung()), ""));
+            for (int i = J - 2; i >= 0; i--) {
+                html.append(kpi("Heizung ≈ " + jahre.get(i) + " ganzes Jahr", zahl(vergleich.heizung(i), 0), "kWh"));
+            }
         }
         if (mitHaushalt) {
             html.append(kpi("Haushalt " + jahr + " bis " + DATUM.format(vergleich.bis()),
