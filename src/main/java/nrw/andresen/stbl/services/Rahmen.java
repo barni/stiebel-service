@@ -30,7 +30,8 @@ public final class Rahmen {
     // These pages show stored values and are left out without InfluxDB
     static final Set<String> NUR_MIT_INFLUX = Set.of("wochenbericht", "jahresvergleich", "zustand");
     private static final Pattern HEADER = Pattern.compile("<header>(.*?)</header>", Pattern.DOTALL);
-    private static final Pattern NAV = Pattern.compile("<nav>.*?</nav>", Pattern.DOTALL);
+    private static final Pattern NAV = Pattern.compile("<nav>(.*?)</nav>", Pattern.DOTALL);
+    private static final Pattern LINK = Pattern.compile("<a [^>]*href=\"([^\"]*)\"[^>]*>.*?</a>", Pattern.DOTALL);
 
     private Rahmen() {
     }
@@ -58,7 +59,7 @@ public final class Rahmen {
                     .append(text(reiter.text())).append("</a>");
         }
         html.append("</nav><span class=\"live\"><span class=\"punkt\"></span>Stand ").append(text(stand))
-                .append("</span></header>");
+                .append("</span></header><script src=\"/js/diagramm.js\" defer></script>");
         if (!signale.isEmpty()) {
             html.append("<section class=\"signale\" aria-label=\"Signale\">");
             for (Signal s : signale) {
@@ -80,8 +81,22 @@ public final class Rahmen {
         if (!m.find()) {
             return seite;
         }
-        String titel = NAV.matcher(m.group(1)).replaceAll("");
-        return seite.substring(0, m.start()) + kopf + "<div class=\"seitentitel\">" + titel + "</div>"
+        Matcher nav = NAV.matcher(m.group(1));
+        String titel = m.group(1);
+        StringBuilder eigene = new StringBuilder();
+        if (nav.find()) {
+            titel = titel.substring(0, nav.start()) + titel.substring(nav.end());
+            // Links to other pages are tabs now; links of the page itself, e.g. to the bus scan, stay
+            Matcher link = LINK.matcher(nav.group(1));
+            while (link.find()) {
+                String ziel = link.group(1).replace("../", "").replaceAll("[#?].*", "");
+                if (REITER.stream().noneMatch(r -> r.ziel().equals(ziel))) {
+                    eigene.append(eigene.isEmpty() ? "" : " · ").append(link.group());
+                }
+            }
+        }
+        return seite.substring(0, m.start()) + kopf + "<div class=\"seitentitel\">" + titel
+                + (eigene.isEmpty() ? "" : "<nav class=\"seitenlinks\">" + eigene + "</nav>") + "</div>"
                 + seite.substring(m.end());
     }
 
@@ -128,5 +143,20 @@ public final class Rahmen {
             .seitentitel { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end;
               gap: 8px 24px; margin: 4px 0 16px; }
             .seitentitel h1 { font-size: 24px; }
+            .seitenlinks { font-size: 14px; }
+            .seitenlinks a { color: var(--accent); font-weight: 600; text-decoration: none; }
+            .dtip { position: fixed; z-index: 30; pointer-events: none; background: var(--card); color: var(--text);
+              border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px;
+              box-shadow: 0 4px 16px rgb(0 0 0 / 0.14); font-variant-numeric: tabular-nums; max-width: 280px; }
+            .dtip div { display: flex; justify-content: space-between; gap: 14px; }
+            .dtip .dtip-zeit { color: var(--muted); font-size: 12px; margin-bottom: 2px; }
+            .dlinie { position: fixed; z-index: 29; width: 1px; pointer-events: none;
+              background: color-mix(in srgb, var(--text) 45%, transparent); }
+            [data-wert] { cursor: default; }
+            .wert-art { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 13px;
+              background: var(--off-bg); color: var(--muted); }
+            .wert-art.ok { background: var(--on-bg); color: var(--on); }
+            .wert-art.warn { background: var(--warn-bg); color: var(--warn); }
+            .wert-art.achtung { background: color-mix(in srgb, var(--stale) 16%, transparent); color: var(--stale); }
             """;
 }

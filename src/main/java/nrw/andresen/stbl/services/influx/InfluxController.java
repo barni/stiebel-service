@@ -142,8 +142,15 @@ public class InfluxController {
      * The token needs read access to the bucket.
      */
     public History history(String name, Duration range, Duration window) {
+        return history(name, range, window, "");
+    }
+
+    /**
+     * Like history, with a step applied to every stored value before the means, e.g. a map
+     */
+    public History history(String name, Duration range, Duration window, String schritt) {
         List<FluxRecord> records = new ArrayList<>();
-        for (FluxTable table : client().getQueryApi().query(flux(bucket, name, range, window), org)) {
+        for (FluxTable table : client().getQueryApi().query(flux(bucket, name, range, window, schritt), org)) {
             records.addAll(table.getRecords());
         }
         records.sort(Comparator.comparing(FluxRecord::getTime));
@@ -222,12 +229,17 @@ public class InfluxController {
     }
 
     static String flux(String bucket, String name, Duration range, Duration window) {
+        return flux(bucket, name, range, window, "");
+    }
+
+    static String flux(String bucket, String name, Duration range, Duration window, String schritt) {
         if (name == null || !SERIES_NAME.matcher(name).matches()) {
             throw new IllegalArgumentException("Unbekannter Wert: " + name);
         }
         return "from(bucket: \"" + bucket + "\")"
                 + " |> range(start: -" + range.toSeconds() + "s)"
                 + " |> filter(fn: (r) => r._measurement == \"WP_" + name + "\" and r._field == \"value\")"
+                + (schritt.isEmpty() ? "" : " |> " + schritt)
                 + " |> aggregateWindow(every: " + window.toSeconds() + "s, fn: mean, createEmpty: false)"
                 + " |> keep(columns: [\"_time\", \"_value\"])";
     }

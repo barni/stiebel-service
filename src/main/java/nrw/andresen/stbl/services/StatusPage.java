@@ -107,6 +107,8 @@ public class StatusPage {
         String text;
         // Shown instead of "keine Daten" if the value is missing, e.g. "aus"
         String ersatz;
+        // ok, achtung, warn or neutral: the text is shown as a colored mark
+        String art;
     }
 
     private Card current() {
@@ -328,6 +330,17 @@ public class StatusPage {
     /**
      * Row with a text, e.g. a version or a time, "–" if the text is missing
      */
+    /**
+     * Text shown as colored mark, e.g. "keine" warnings in green
+     *
+     * @param art ok, achtung, warn or neutral
+     */
+    public StatusPage textArt(String label, String text, String art) {
+        text(label, text);
+        last.art = art;
+        return this;
+    }
+
     public StatusPage text(String label, String text) {
         Item item = new Item();
         item.label = label;
@@ -465,7 +478,8 @@ public class StatusPage {
     private String renderRow(Item row) {
         if (row.text != null) {
             return "<div class=\"row\"><span class=\"label\">" + label(row) + "</span><span class=\"value\">"
-                    + attr(row.text) + "</span></div>";
+                    + (row.art == null ? attr(row.text) : "<span class=\"wert-art " + attr(row.art) + "\">"
+                    + attr(row.text) + "</span>") + "</span></div>";
         }
         return "<div class=\"row\"" + history(row) + "><span class=\"label\">" + label(row) + "</span>"
                 + "<span class=\"value\"><span class=\"num\">" + number(row)

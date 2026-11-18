@@ -11,6 +11,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 
@@ -101,7 +102,8 @@ public final class CanBusSeite {
             boolean gewaehlt = knoten != null && k.id() == knoten;
             geraete.add(List.of("<a class=\"nav" + (gewaehlt ? " gewaehlt" : "") + "\" href=\""
                             + link(gewaehlt ? null : k.id(), anzahl) + "\"" + (gewaehlt ? " aria-current=\"true\"" : "")
-                            + ">" + text(k.name()) + (gewaehlt ? " ✕" : "") + "</a>",
+                            + " title=\"" + text(KNOTEN_ERKLAERUNG.getOrDefault(k.id(), "Unbekanntes Gerät am CAN-Bus."))
+                            + "\">" + text(k.name()) + (gewaehlt ? " ✕" : "") + "</a>",
                     zahl(k.proMinute(), 0), alter(k.zuletzt(), jetzt)));
         }
         html.append("<article class=\"card\"><h2>Knoten</h2>");
@@ -407,6 +409,20 @@ public final class CanBusSeite {
     }
 
     // Filters the rows of the requested values while typing; applied again after every update in place
+    // What the CAN nodes are, as far as known from the answered values
+    static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
+            0x180, "Wärmepumpenmanager WPM3 im HM Trend, Heizungsregler (Betriebsstatus, Heizungsdruck).",
+            0x480, "Wärmepumpenmanager WPM3, Steuerung der Wärmepumpe, fragt die Außeneinheit 0x500 ab.",
+            0x500, "Außeneinheit WPL 17 ACS (Verdichter, Kältekreis, Inverter, Lüfter).",
+            0x514, "Außeneinheit, Zugang für externe Abfragen mit Zählern, Laufzeiten und Einstellungen.",
+            0x100, "Bedieneinheit des WPM3 (Elster-Name FES_COMFORT): bekommt vom Manager jede Minute die Uhrzeit und "
+                    + "fragt den Kessel nach Außen- und Rücklauftemperatur. Nur mit „Alle Nachrichten empfangen“ zu "
+                    + "sehen.",
+            0x601, "Mischermodul für Heizkreis 2 laut Elster-Liste, sendet eine Nachricht alle 7 Minuten. Der zweite "
+                    + "Heizkreis wird nicht genutzt. Nur mit „Alle Nachrichten empfangen“ zu sehen.",
+            0x700, "Gerät der Anlage selbst (kein ISG angeschlossen), der Manager tauscht damit alle 5 s Einstellungen "
+                    + "und Infoblöcke aus. Elster-Name ExternalDevice. Nur mit „Alle Nachrichten empfangen“ zu sehen.");
+
     static final String SUCHE = """
             (() => {
               const filtern = () => {

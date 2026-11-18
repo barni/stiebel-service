@@ -133,11 +133,11 @@ public final class WochenberichtSeite {
             double hw = t.waermeKWh() / max * 160;
             double hs = t.stromKWh() / max * 160;
             svg.append(String.format(java.util.Locale.ROOT, "<rect class=\"wd-waerme\" x=\"%.1f\" y=\"%.1f\" "
-                            + "width=\"26\" height=\"%.1f\" rx=\"4\"><title>%s</title></rect>", mitte - 28,
-                    180 - hw, Math.max(0, hw), text(Wochenbericht.zahl(t.waermeKWh(), 1) + " kWh Wärme")));
+                            + "width=\"26\" height=\"%.1f\" rx=\"4\" data-wert=\"%s\"></rect>", mitte - 28,
+                    180 - hw, Math.max(0, hw), text(t.datum().format(DateTimeFormatter.ofPattern("dd.MM.")) + ": " + Wochenbericht.zahl(t.waermeKWh(), 1) + " kWh Wärme")));
             svg.append(String.format(java.util.Locale.ROOT, "<rect class=\"wd-strom\" x=\"%.1f\" y=\"%.1f\" "
-                            + "width=\"26\" height=\"%.1f\" rx=\"4\"><title>%s</title></rect>", mitte + 2,
-                    180 - hs, Math.max(0, hs), text(Wochenbericht.zahl(t.stromKWh(), 1) + " kWh Strom")));
+                            + "width=\"26\" height=\"%.1f\" rx=\"4\" data-wert=\"%s\"></rect>", mitte + 2,
+                    180 - hs, Math.max(0, hs), text(t.datum().format(DateTimeFormatter.ofPattern("dd.MM.")) + ": " + Wochenbericht.zahl(t.stromKWh(), 1) + " kWh Strom ≈")));
             svg.append(String.format(java.util.Locale.ROOT, "<text class=\"wd-wert\" x=\"%.1f\" y=\"%.1f\" "
                     + "text-anchor=\"middle\">%s</text>", mitte - 15, 174 - hw, Wochenbericht.zahl(t.waermeKWh(), 0)));
             svg.append(String.format(java.util.Locale.ROOT, "<text class=\"wd-tag\" x=\"%.1f\" y=\"200\" "

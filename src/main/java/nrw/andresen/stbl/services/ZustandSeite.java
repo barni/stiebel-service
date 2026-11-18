@@ -189,8 +189,8 @@ public final class ZustandSeite {
             double y = 50 - (w - min) / (max - min) * 44;
             String xy = String.format(Locale.ROOT, "%.1f,%.1f", x, y);
             linie.append(linie.isEmpty() ? "" : " ").append(xy);
-            punkte.append(String.format(Locale.ROOT, "<circle cx=\"%.1f\" cy=\"%.1f\" r=\"%s\"%s><title>%s: %s"
-                            + "</title></circle>", x, y, i == letzter ? "4.5" : "3", i == letzter ? " class=\"neu\"" : "",
+            punkte.append(String.format(Locale.ROOT, "<circle cx=\"%.1f\" cy=\"%.1f\" r=\"%s\"%s data-wert=\"%s: %s\">"
+                            + "</circle>", x, y, i == letzter ? "4.5" : "3", i == letzter ? " class=\"neu\"" : "",
                     text(v.namen().get(i)), String.format(Locale.GERMANY, "%.3f", w)));
         }
         StringBuilder svg = new StringBuilder("<svg class=\"pk-verlauf\" viewBox=\"0 0 300 56\" "

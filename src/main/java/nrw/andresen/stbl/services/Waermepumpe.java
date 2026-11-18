@@ -961,7 +961,7 @@ public class Waermepumpe {
      * The same line as wirkleistung as a Flux map step: turns each stored apparent power of the inverter into the
      * estimated real power in W, 0 while the compressor stands (up to laeuftAbW)
      */
-    static String wirkleistungFlux(double laeuftAbW) {
+    public static String wirkleistungFlux(double laeuftAbW) {
         return String.format(Locale.ROOT, """
                 map(fn: (r) => {
                       anteil = if r._value <= %.1f then 0.0 else %.4f - %.1f / r._value

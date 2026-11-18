@@ -71,6 +71,36 @@ public final class Uebersicht {
     private Uebersicht() {
     }
 
+    /**
+     * Series for the values under the pointer (diagramm.js)
+     */
+    public record Reihe(String name, String einheit, int stellen, long[] zeit, double[] wert) {
+    }
+
+    /**
+     * JSON for data-verlauf, NaN as null
+     */
+    static String verlaufJson(long von, long bis, List<Reihe> reihen) {
+        StringBuilder json = new StringBuilder("{\"von\":").append(von).append(",\"bis\":").append(bis)
+                .append(",\"reihen\":[");
+        for (int r = 0; r < reihen.size(); r++) {
+            Reihe reihe = reihen.get(r);
+            json.append(r == 0 ? "" : ",").append("{\"n\":\"").append(reihe.name().replace("\"", "")).append("\",\"e\":\"")
+                    .append(reihe.einheit().replace("\"", "")).append("\",\"s\":").append(reihe.stellen()).append(",\"t\":[");
+            for (int i = 0; i < reihe.zeit().length; i++) {
+                json.append(i == 0 ? "" : ",").append(reihe.zeit()[i]);
+            }
+            json.append("],\"w\":[");
+            for (int i = 0; i < reihe.wert().length; i++) {
+                double w = reihe.wert()[i];
+                json.append(i == 0 ? "" : ",").append(Double.isNaN(w) ? "null"
+                        : String.format(Locale.ROOT, "%." + reihe.stellen() + "f", w));
+            }
+            json.append("]}");
+        }
+        return json.append("]}").toString();
+    }
+
     public static String jetzt(Jetzt j) {
         StringBuilder html = new StringBuilder("<section class=\"jetzt ").append(j.art())
                 .append("\" aria-label=\"Zustand der Wärmepumpe\"><div class=\"jetzt-links\">")
@@ -118,8 +148,10 @@ public final class Uebersicht {
                             + "</span>").append("</span><span class=\"kachel-sub\">").append(t(k.sub())).append("</span>");
             String punkte = punkte(k.zeit(), k.werte(), k.min(), k.max());
             if (!punkte.isEmpty()) {
-                html.append("<svg class=\"spark\" viewBox=\"0 0 100 30\" preserveAspectRatio=\"none\" aria-hidden=\"true\">"
-                        + "<polyline class=\"").append(k.linie()).append("\" points=\"").append(punkte)
+                html.append("<svg class=\"spark\" viewBox=\"0 0 100 30\" preserveAspectRatio=\"none\" aria-hidden=\"true\" "
+                        + "data-verlauf=\"").append(t(verlaufJson(k.zeit()[0], k.zeit()[k.zeit().length - 1],
+                                List.of(new Reihe(k.name().replace(" jetzt", ""), k.einheit(), k.stellen(), k.zeit(),
+                                        k.werte()))))).append("\"><polyline class=\"").append(k.linie()).append("\" points=\"").append(punkte)
                         .append("\"/></svg><span class=\"kachel-fuss\">letzte 24 h</span>");
             }
             html.append("</div>");
@@ -160,8 +192,14 @@ public final class Uebersicht {
         for (Linie l : z.linien()) {
             html.append("<span><i class=\"lg ").append(l.klasse()).append("\"></i>").append(t(l.name())).append("</span>");
         }
-        html.append("</div></div><div class=\"zl-raster\"><span class=\"zl-achse-name\">Strom kW ≈</span>"
-                + "<div class=\"zl-strom\"><svg viewBox=\"0 0 1000 60\" preserveAspectRatio=\"none\" aria-hidden=\"true\">"
+        List<Reihe> reihen = new ArrayList<>();
+        reihen.add(new Reihe("Strom ≈", "W", 0, z.stromZeit(), z.stromW()));
+        for (Linie l : z.linien()) {
+            reihen.add(new Reihe(l.name(), "°C", 1, l.zeit(), l.wert()));
+        }
+        html.append("</div></div><div class=\"zl-raster\" data-verlauf=\"")
+                .append(t(verlaufJson(z.start(), z.ende(), reihen))).append("\"><span class=\"zl-achse-name\">Strom kW ≈</span>"
+                + "<div class=\"zl-strom\" data-plot><svg viewBox=\"0 0 1000 60\" preserveAspectRatio=\"none\" aria-hidden=\"true\">"
                 + "<line x1=\"0\" x2=\"1000\" y1=\"31\" y2=\"31\"/><line x1=\"0\" x2=\"1000\" y1=\"4\" y2=\"4\"/>");
         if (z.stromW().length > 0) {
             StringBuilder flaeche = new StringBuilder("0,58");
@@ -176,11 +214,11 @@ public final class Uebersicht {
         html.append("</svg><span class=\"zl-mark\" style=\"top:0\">1 kW</span><span class=\"zl-mark\" "
                 + "style=\"top:44%\">0,5</span>");
         for (long a : z.abtauungen()) {
-            html.append("<span class=\"zl-abtau\" title=\"Abtauung ").append(UHR.format(Instant.ofEpochMilli(a).atZone(zone)))
+            html.append("<span class=\"zl-abtau\" data-wert=\"Abtauung ").append(UHR.format(Instant.ofEpochMilli(a).atZone(zone)))
                     .append("\" style=\"left:").append(String.format(Locale.ROOT, "%.2f", (a - z.start()) * 100 / spanne))
                     .append("%\"></span>");
         }
-        html.append("</div><span class=\"zl-achse-name\">°C</span><div class=\"zl-temp\">"
+        html.append("</div><span class=\"zl-achse-name\">°C</span><div class=\"zl-temp\" data-plot>"
                 + "<svg viewBox=\"0 0 1000 120\" preserveAspectRatio=\"none\" aria-hidden=\"true\">");
         for (int grad : new int[]{10, 20, 30}) {
             html.append("<line class=\"gitter\" x1=\"0\" x2=\"1000\" y1=\"").append(yTemp(grad)).append("\" y2=\"")
