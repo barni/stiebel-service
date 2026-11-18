@@ -268,12 +268,13 @@ public class JahresvergleichTest {
         assertTrue(html.contains("<title>Wärmepumpe · Jahresvergleich</title>"));
         assertTrue(html.contains("<a class=\"nav\" href=\"status\">← Status</a>"));
         assertTrue(html.contains("Netzbezug des Hauses und Strom der Heizung, 2024 bis 2026"));
-        // With the house meter the sentence is about the whole grid import, the parts follow below
-        assertTrue(html.contains("Vom 1. Januar bis 24. Oktober 2026 hat das Haus 7.800 kWh aus dem Netz bezogen, "
-                + "2,5 % weniger als in denselben Tagen 2025 (8.000 kWh).</p>"));
+        // With the house meter no sentence at the top, the tiles say the same
+        assertFalse(html.contains("<p class=\"meldung\">"));
         assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung</div><div class=\"value\">−2,5 %</div>"));
         assertTrue(html.contains("<h2>Netzbezug je Jahr</h2>"));
         assertTrue(html.contains("2026 Prognose"));
+        // Each year after the first with its change against the year before
+        assertEquals(2, html.split("<tspan class=\"aenderung\"").length - 1);
         assertTrue(html.contains("<h2>Woran liegt es?</h2><p class=\"ursache\">"));
         assertTrue(html.contains("<polyline class=\"abstand gesamt\""));
         assertTrue(html.contains("<polyline class=\"abstand wallbox\""));

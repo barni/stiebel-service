@@ -60,8 +60,11 @@ public final class JahresvergleichSeite {
         boolean mitWallbox = wallbox && vergleich.mitWallbox();
         List<Integer> jahre = vergleich.jahre();
         int jahr = vergleich.jahr();
-        html.append("<p class=\"meldung\">").append(text(satz(vergleich, mitHaushalt, mitWallbox))).append("</p>")
-                .append("<section class=\"kpis\">");
+        // With the house meter the tiles below say the same as the sentence
+        if (vergleich.gesamt() == null) {
+            html.append("<p class=\"meldung\">").append(text(satz(vergleich))).append("</p>");
+        }
+        html.append("<section class=\"kpis\">");
         if (vergleich.gesamt() != null) {
             html.append(kpi("Gesamt " + jahr + " bis " + DATUM.format(vergleich.bis()), zahl(vergleich.gesamt(), 0),
                             "kWh"))
@@ -297,43 +300,21 @@ public final class JahresvergleichSeite {
     }
 
     /**
-     * One sentence: this year up to today against the same days of the year before, with the household and the
-     * wallbox if shown
+     * One sentence without the house meter: the heating this year up to today against the same days of the year
+     * before and the whole years before
      */
-    static String satz(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
+    static String satz(Jahresvergleich.Vergleich v) {
         int jahr = v.jahr();
         Double aenderung = v.aenderung();
-        String text = "";
-        Double gesamt = v.gesamtAenderung();
-        if (gesamt != null) {
-            text = "Vom 1. Januar bis " + DATUM.format(v.bis()) + " " + jahr + " hat das Haus " + zahl(v.gesamt(), 0)
-                    + " kWh aus dem Netz bezogen, " + (Math.abs(gesamt) < 0.5 ? "genauso viel wie"
-                    : zahl(Math.abs(gesamt), 1) + " % " + (gesamt > 0 ? "mehr" : "weniger") + " als")
-                    + " in denselben Tagen " + (jahr - 1) + " (" + zahl(v.gesamtVorjahrGleich(), 0) + " kWh). ";
-        }
-        if (gesamt != null) {
-            // The parts are in the bars and in "Woran liegt es?" below
-            return text.trim();
-        }
-        text += (gesamt != null ? "Die Heizung brauchte " + zahl(v.heizung(J - 1), 0) + " kWh"
-                : "Vom 1. Januar bis " + DATUM.format(v.bis()) + " " + jahr + " hat die Heizung "
-                + zahl(v.heizung(J - 1), 0) + " kWh Strom gebraucht");
+        String text = "Vom 1. Januar bis " + DATUM.format(v.bis()) + " " + jahr + " hat die Heizung "
+                + zahl(v.heizung(J - 1), 0) + " kWh Strom gebraucht";
         if (aenderung != null) {
             text += ", " + (Math.abs(aenderung) < 0.5 ? "genauso viel wie"
                     : zahl(Math.abs(aenderung), 1) + " % " + (aenderung > 0 ? "mehr" : "weniger") + " als")
                     + " in denselben Tagen " + (jahr - 1) + " (" + zahl(v.heizungGleich(J - 2), 0) + " kWh)";
         }
-        text += ". Im ganzen Jahr waren es " + zahl(v.heizung(J - 2), 0) + " kWh (" + (jahr - 1) + ") und "
+        return text + ". Im ganzen Jahr waren es " + zahl(v.heizung(J - 2), 0) + " kWh (" + (jahr - 1) + ") und "
                 + zahl(v.heizung(J - 3), 0) + " kWh (" + (jahr - 2) + ").";
-        if (mitHaushalt) {
-            text += " Der Haushalt ohne Heizung und Wallbox brauchte " + jahr + " bisher " + zahl(v.haushalt(J - 1), 0)
-                    + " kWh, " + (jahr - 1) + " im ganzen Jahr " + zahl(v.haushalt(J - 2), 0) + " kWh.";
-        }
-        if (mitWallbox) {
-            text += " An der Wallbox wurden " + jahr + " bisher " + zahl(v.wallbox(J - 1), 0) + " kWh geladen, "
-                    + (jahr - 1) + " im ganzen Jahr " + zahl(v.wallbox(J - 2), 0) + " kWh.";
-        }
-        return text;
     }
 
     static List<String> kopf(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
@@ -578,7 +559,7 @@ public final class JahresvergleichSeite {
         }
         int zeile = 34;
         int links = 120;
-        int rechts = 110;
+        int rechts = 190;
         int hoehe = J * zeile + 6;
         double breite = B - links - rechts;
         String[] klassen = {"heizung", "haushalt", "wallbox"};
@@ -606,13 +587,24 @@ public final class JahresvergleichSeite {
                         prognose ? " prognose" : "", x, y + 4, Math.max(1, w - 2), zeile - 10, text(titel)));
                 x += w;
             }
-            svg.append(String.format(Locale.ROOT, "<text class=\"wert\" x=\"%.1f\" y=\"%.1f\">%s kWh</text>",
-                    x + 6, y + zeile / 2.0 + 1, (prognose ? "≈ " : "") + zahl(summe, 0)));
+            // Change against the year before, the current year with its forecast
+            String aenderung = "";
+            if (i > 0) {
+                double[] v0 = jahre.get(i - 1);
+                double vorher = v0[0] + v0[1] + v0[2];
+                if (vorher > 0) {
+                    aenderung = "<tspan class=\"aenderung\" dx=\"10\">" + prozent((summe / vorher - 1) * 100)
+                            + "</tspan>";
+                }
+            }
+            svg.append(String.format(Locale.ROOT, "<text class=\"wert\" x=\"%.1f\" y=\"%.1f\">%s kWh%s</text>",
+                    x + 6, y + zeile / 2.0 + 1, (prognose ? "≈ " : "") + zahl(summe, 0), aenderung));
         }
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Netzbezug je Jahr</h2>"
                 + "<p class=\"legende\"><span><i class=\"sw teil-heizung\"></i>Heizung ≈</span><span><i class=\"sw "
                 + "haushalt\"></i>Haushalt</span><span><i class=\"sw wallbox\"></i>Wallbox</span><span>"
-                + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten"
+                + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten; "
+                + "% gegenüber dem Vorjahr"
                 + "</span></p>" + svg + "</svg></div></article></section>";
     }
 
@@ -797,6 +789,7 @@ public final class JahresvergleichSeite {
             .diagramm rect.teil.wallbox { fill: var(--wallbox); }
             .diagramm rect.teil.prognose { fill-opacity: 0.55; }
             .diagramm .teil { font-size: 13px; fill: var(--text); }
+            .diagramm .aenderung { font-weight: 500; fill: var(--muted); }
             .diagramm .wert { font-size: 13px; fill: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
             .sw.teil-heizung { background: var(--accent); }
             """;
