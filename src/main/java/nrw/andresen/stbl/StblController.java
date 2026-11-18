@@ -349,6 +349,12 @@ public class StblController {
     public InfluxController.History history(@PathVariable String name,
                                             @RequestParam(defaultValue = "24h") String range) {
         HistoryRange historyRange = historyRange(range);
+        if (StatusService.WIRKLEISTUNG.equals(name)) {
+            // Converted value by value before the means, like the electricity of the days
+            InfluxController.History schein = influxController.history("LeistungInverter", historyRange.range(),
+                    historyRange.window(), Waermepumpe.wirkleistungFlux(50));
+            return new InfluxController.History(name, schein.time(), schein.value());
+        }
         return influxController.history(name, historyRange.range(), historyRange.window());
     }
 

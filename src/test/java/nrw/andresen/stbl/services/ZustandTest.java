@@ -190,7 +190,7 @@ public class ZustandTest {
         assertTrue(svg.contains("<line class=\"bezug\""));
         // A season without a value is left out, the newest point is marked
         assertEquals(2, svg.split("<circle").length - 1);
-        assertTrue(svg.contains("class=\"neu\"><title>2024/25: 2,000</title>"));
+        assertTrue(svg.contains("class=\"neu\" data-wert=\"2024/25: 2,000\">"));
         assertTrue(svg.contains("<span>2022/23</span><span>2024/25</span>"));
     }
 

@@ -36,6 +36,11 @@ public class UebersichtTest {
         assertEquals("<main><header class=\"kopf\">K</header><div class=\"seitentitel\"><div><h1>Zustand</h1>"
                 + "<p class=\"sub\">Je Saison</p></div></div><p>Inhalt</p></main>", neu);
         assertEquals("<p>ohne Kopf</p>", Rahmen.einsetzen("<p>ohne Kopf</p>", "K"));
+        // Links of the page itself stay, links to other pages are tabs
+        String can = Rahmen.einsetzen("<main><header><div><h1>CAN-Bus</h1></div><nav><a class=\"nav\" href=\"status\">"
+                + "← Status</a> · <a class=\"nav\" href=\"canbus/scan\">Bus-Scan</a></nav></header></main>", "K");
+        assertTrue(can.contains("<nav class=\"seitenlinks\"><a class=\"nav\" href=\"canbus/scan\">Bus-Scan</a></nav>"));
+        assertFalse(can.contains("← Status"));
     }
 
     @Test
@@ -97,6 +102,8 @@ public class UebersichtTest {
                         null, 0)));
         assertTrue(html.contains("class=\"kachel klickbar\" data-series=\"Heizungsdruck\""));
         assertTrue(html.contains("data-decimals=\"2\""));
+        assertTrue(html.contains("<svg class=\"spark\" viewBox=\"0 0 100 30\" preserveAspectRatio=\"none\" "
+                + "aria-hidden=\"true\" data-verlauf=\""));
         // Without a course no chart and no dialog
         assertTrue(html.contains("<div class=\"kachel\"><span class=\"kachel-name\">Strom jetzt ≈</span>"));
     }
@@ -120,7 +127,12 @@ public class UebersichtTest {
                 List.of(start + 12 * 60 * MIN), List.of(new Uebersicht.Linie("Vorlauf", "vorlauf", zeit,
                 new double[]{33, 34, 35, Double.NaN})), satz), ZONE);
         assertTrue(html.contains("<polygon points=\"0,58"));
-        assertTrue(html.contains("class=\"zl-abtau\" title=\"Abtauung 03:00\" style=\"left:50.00%\""));
+        assertTrue(html.contains("class=\"zl-abtau\" data-wert=\"Abtauung 03:00\" style=\"left:50.00%\""));
+        // Values under the pointer: electricity and lines with their times, the gap as null
+        assertTrue(html.contains("class=\"zl-raster\" data-verlauf=\"{&quot;von&quot;:" + start));
+        assertTrue(html.contains("&quot;n&quot;:&quot;Strom ≈&quot;,&quot;e&quot;:&quot;W&quot;,&quot;s&quot;:0"));
+        assertTrue(html.contains("&quot;w&quot;:[33.0,34.0,35.0,null]"));
+        assertTrue(html.contains("<div class=\"zl-strom\" data-plot>"));
         assertTrue(html.contains("<polyline class=\"vorlauf\""));
         assertTrue(html.contains(">jetzt</span>"));
         assertTrue(html.contains(satz));

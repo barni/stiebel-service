@@ -46,20 +46,10 @@ public class StatusService {
     private Verlauf24h verlauf24h;
     @Autowired
     private Zustand zustand;
+    // Course of the estimated real power: the apparent power of the inverter converted value by value
+    public static final String WIRKLEISTUNG = "Wirkleistung";
 
-    // What the CAN nodes are, as far as known from the answered values
-    private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
-            0x180, "Wärmepumpenmanager WPM3 im HM Trend, Heizungsregler (Betriebsstatus, Heizungsdruck).",
-            0x480, "Wärmepumpenmanager WPM3, Steuerung der Wärmepumpe, fragt die Außeneinheit 0x500 ab.",
-            0x500, "Außeneinheit WPL 17 ACS (Verdichter, Kältekreis, Inverter, Lüfter).",
-            0x514, "Außeneinheit, Zugang für externe Abfragen mit Zählern, Laufzeiten und Einstellungen.",
-            0x100, "Bedieneinheit des WPM3 (Elster-Name FES_COMFORT): bekommt vom Manager jede Minute die Uhrzeit und "
-                    + "fragt den Kessel nach Außen- und Rücklauftemperatur. Nur mit „Alle Nachrichten empfangen“ zu "
-                    + "sehen.",
-            0x601, "Mischermodul für Heizkreis 2 laut Elster-Liste, sendet eine Nachricht alle 7 Minuten. Der zweite "
-                    + "Heizkreis wird nicht genutzt. Nur mit „Alle Nachrichten empfangen“ zu sehen.",
-            0x700, "Gerät der Anlage selbst (kein ISG angeschlossen), der Manager tauscht damit alle 5 s Einstellungen "
-                    + "und Infoblöcke aus. Elster-Name ExternalDevice. Nur mit „Alle Nachrichten empfangen“ zu sehen.");
+
 
     private static final DateTimeFormatter ZEITPUNKT = DateTimeFormatter.ofPattern("dd.MM.yy, HH:mm:ss");
 
@@ -282,7 +272,7 @@ public class StatusService {
         kacheln.add(new Uebersicht.Kachel("Strom jetzt ≈", jetztSchein == null ? "–"
                 : zahl(Waermepumpe.wirkleistung(jetztSchein), 0), "W", d == null ? "Wirkleistung des Verdichters"
                 : "24 h: " + zahl(kWh, 1) + " kWh" + (lauf == 0 ? "" : " · im Lauf Ø " + zahl(imLauf / lauf, 0) + " W"),
-                schein.time(), w, 0, 1000, "strom", null, 0));
+                schein.time(), w, 0, 1000, "strom", d == null ? null : StatusService.WIRKLEISTUNG, 0));
         InfluxController.History druck = d == null ? leer : d.reihe("Heizungsdruck");
         Double p = wert(wp::getHeizungsdruck);
         kacheln.add(new Uebersicht.Kachel("Heizungsdruck", p == null ? "–" : zahl(p, 2), "bar",
@@ -395,21 +385,23 @@ public class StatusService {
         List<Warnung> warnungen = ueberwachung.getWarnungen();
         List<Warnung> aktiv = warnungen.stream().filter(Warnung::isAktiv).toList();
         if (aktiv.isEmpty()) {
-            page.text("Warnungen", "keine · " + warnungen.size() + " Prüfungen")
+            page.textArt("Warnungen", "keine · " + warnungen.size() + " Prüfungen", "ok")
                     .info("Jede Minute geprüft. Wird eine Warnung aktiv, kommt eine Mail und, falls eingerichtet, eine "
                             + "Push-Nachricht.");
         }
         for (Warnung w : aktiv) {
-            page.text(w.getName(), "seit " + Fehlerliste.ZEITFORMAT.format(w.getAktivSeit().atZone(
-                    ZoneId.systemDefault())) + ": " + w.getText()).info(w.getRegel());
+            page.textArt(w.getName(), "seit " + Fehlerliste.ZEITFORMAT.format(w.getAktivSeit().atZone(
+                    ZoneId.systemDefault())) + ": " + w.getText(), "warn").info(w.getRegel());
         }
         if (influx.isAktiv()) {
             Zustand.Ergebnis e = zustand.getErgebnis();
-            page.text("Zustand und Alterung", e == null ? "wird berechnet" : ZustandSeite.gesamt(e.pruefungen()))
+            Rahmen.Signal z = SignalService.zustand(e == null ? null : e.pruefungen());
+            page.textArt("Zustand und Alterung", e == null ? "wird berechnet" : ZustandSeite.gesamt(e.pruefungen()),
+                            z.art())
                     .info("Vergleich der Heizsaisons bei gleicher Außentemperatur, alle 6 Stunden neu berechnet.");
         }
         Rahmen.Signal dienst = SignalService.dienst(ueberwachung.getPruefungen(), null);
-        page.text("Dienst", dienst.wert()).info("Prüfung des Dienstes alle 15 Minuten: InfluxDB, USB-Adapter, Mail, "
+        page.textArt("Dienst", dienst.wert(), dienst.art()).info("Prüfung des Dienstes alle 15 Minuten: InfluxDB, USB-Adapter, Mail, "
                 + "Pushover.");
         page.note("<a class=\"nav\" href=\"zustand\">Zustand und Alterung</a> · "
                 + "<a class=\"nav\" href=\"anlage#system\">System</a>");
@@ -423,17 +415,19 @@ public class StatusService {
             if (warnung.isAktiv()) {
                 keine = false;
                 String seit = Fehlerliste.ZEITFORMAT.format(warnung.getAktivSeit().atZone(ZoneId.systemDefault()));
-                page.text(warnung.getName(), "seit " + seit + ": " + warnung.getText()).info(warnung.getRegel());
+                page.textArt(warnung.getName(), "seit " + seit + ": " + warnung.getText(), "warn")
+                        .info(warnung.getRegel());
             }
         }
         if (keine) {
-            page.text("Aktive Warnungen", "keine")
+            page.textArt("Aktive Warnungen", "keine", "ok")
                     .info("Jede Minute geprüft. Wird eine Warnung aktiv, kommt eine Mail an stbl.mail.to und, falls "
                             + "eingerichtet, eine Push-Nachricht über Pushover.");
         }
         page.details("Alle " + warnungen.size() + " Prüfungen");
         for (Warnung warnung : warnungen) {
-            page.text(warnung.getName(), warnung.isAktiv() ? "aktiv" : "nein").info(warnung.getRegel());
+            page.textArt(warnung.getName(), warnung.isAktiv() ? "aktiv" : "nein", warnung.isAktiv() ? "warn" : "ok")
+                    .info(warnung.getRegel());
         }
         page.detailsEnde();
     }
@@ -842,7 +836,9 @@ public class StatusService {
                 .text("Gestartet", zeitpunkt(version.getGestartet()))
                 .info("Start des Dienstes, zum Beispiel nach einem Deployment oder Neustart des Raspberry Pi.");
         for (Ueberwachung.Pruefung pruefung : pruefungen) {
-            page.text(pruefung.name(), pruefung.text()).info(pruefung.erklaerung());
+            boolean keineMail = pruefung.name().equals("Mail") && pruefung.text().equals("nicht eingerichtet");
+            page.textArt(pruefung.name(), pruefung.text(), pruefung.ok() ? "ok" : keineMail ? "neutral" : "warn")
+                    .info(pruefung.erklaerung());
         }
         page.note("Geprüft " + (ueberwachung.getGeprueft() == null ? "noch nicht"
                         : zeitpunkt(ueberwachung.getGeprueft())) + ", alle 15 Minuten neu.")
@@ -872,37 +868,9 @@ public class StatusService {
                         + "weil 2 min keine Antwort kam.")
                 .text("Letzter Neustart", zeitpunkt(statistik.getLetzterNeustart()))
                 .info("Zeitpunkt des letzten USB-Neustarts durch die Überwachung.")
-                .card("CAN-Bus")
-                .row("Letzte Antwort vor", "s", 0, can::getSekundenSeitAntwort)
-                .info("Zeit seit der letzten Antwort auf eine Anfrage des Dienstes. Nach 120 s startet die "
-                        + "Überwachung die USB-Verbindung neu.")
-                .row("Antwortquote (berechnet)", "%", 0, "CAN_Antwortquote",
-                        () -> can.minute(CanStatistik.Minute::antwortquote))
-                .info("Anteil der beantworteten Anfragen. Dauerhaft deutlich unter 100 % deutet auf Probleme am Bus "
-                        + "oder auf Werte hin, die kein Gerät kennt. Warnung unter 90 % für 10 Minuten.")
-                .formula("Antworten ÷ gesendete Anfragen der letzten Minute, höchstens 100 %")
-                .row("Empfangen", "/min", 0, "CAN_Empfangen", () -> can.minute(CanStatistik.Minute::empfangen))
-                .info("Alle empfangenen CAN-Nachrichten pro Minute. Mit can.logall=false nur die Antworten an den "
-                        + "Dienst.")
-                .row("davon Antworten", "/min", 0, "CAN_Antworten", () -> can.minute(CanStatistik.Minute::antworten))
-                .info("Antworten auf Anfragen des Dienstes pro Minute.")
-                .row("Anfragen gesendet", "/min", 0, "CAN_Gesendet", () -> can.minute(CanStatistik.Minute::gesendet))
-                .info("Vom Dienst gesendete Abfragen pro Minute.")
-                .row("Antwort „nicht verfügbar“", "/min", 0, "CAN_NichtVerfuegbar",
-                        () -> can.minute(CanStatistik.Minute::nichtVerfuegbar))
-                .info("Antworten mit dem Wert 0x8000 pro Minute: Das Gerät kennt den abgefragten Wert nicht.")
-                .row("Buslast (berechnet)", "%", 1, "CAN_Buslast", () -> can.minute(CanStatistik.Minute::buslast))
-                .info("Wie stark der CAN-Bus ausgelastet ist.")
-                .formula("Summe (47 + 8 × Datenbytes) Bit aller empfangenen und gesendeten Nachrichten der letzten "
-                        + "Minute ÷ 60 s ÷ " + can.getBitrate() + " bit/s. Ohne Bit-Stuffing, also eher etwas zu "
-                        + "niedrig");
-        for (CanStatistik.KnotenStatus knoten : statistik.getKnoten()) {
-            page.row(knoten.name(), "/min", 0, CanBus.knotenSerie(knoten.id()),
-                    () -> new ValueContainer<>(knoten.proMinute(), knoten.zuletzt()))
-                    .info(KNOTEN_ERKLAERUNG.getOrDefault(knoten.id(), "Unbekanntes Gerät am CAN-Bus.")
-                            + " Nachrichten pro Minute, „seit“ zeigt, wann es zuletzt gesendet hat.");
-        }
-        page.note("Werte der letzten vollen Minute.");
+;
+        page.note("Nachrichten, Antworten, Buslast und die Geräte am Bus stehen auf der Seite "
+                + "<a class=\"nav\" href=\"canbus\">CAN-Bus</a>.");
     }
 
     /**

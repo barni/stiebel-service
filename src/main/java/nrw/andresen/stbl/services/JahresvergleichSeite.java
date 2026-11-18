@@ -414,7 +414,7 @@ public final class JahresvergleichSeite {
         double y = y(bis, oben);
         double hoehe = Math.max(0, y(von, oben) - y);
         return String.format(Locale.ROOT, "<rect class=\"%s\" x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" "
-                + "rx=\"2\"><title>%s</title></rect>", klasse, x, y, breite, hoehe, text(titel));
+                + "rx=\"2\" data-wert=\"%s\"></rect>", klasse, x, y, breite, hoehe, text(titel));
     }
 
     private static double y(double wert, double oben) {

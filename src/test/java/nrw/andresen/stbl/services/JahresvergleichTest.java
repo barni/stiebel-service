@@ -252,7 +252,7 @@ public class JahresvergleichTest {
         assertEquals(9, html.split("<rect class=\"j2\"").length - 1);
         assertEquals(1, html.split("<rect class=\"j2 laufend\"").length - 1);
         assertFalse(html.contains("<rect class=\"haushalt"));
-        assertTrue(html.contains("<title>Okt 2025: Heizung 100 kWh; bis zum gleichen Tag 50 kWh</title>"));
+        assertTrue(html.contains("data-wert=\"Okt 2025: Heizung 100 kWh; bis zum gleichen Tag 50 kWh\""));
         assertTrue(html.contains("href=\"jahresvergleich?haushalt=ja\">Haushaltsstrom einblenden</a>"));
         assertTrue(html.contains("href=\"jahresvergleich?wallbox=ja\">Wallbox einblenden</a>"));
         assertFalse(html.contains("<rect class=\"wallbox"));
@@ -267,7 +267,7 @@ public class JahresvergleichTest {
         assertTrue(mit.contains("<td>+20,0 %</td><td>–</td><td>300</td><td>200 (bis 24.)</td>"));
         assertEquals(12, mit.split("<rect class=\"haushalt j1\"").length - 1);
         assertEquals(1, mit.split("<rect class=\"haushalt j2 laufend\"").length - 1);
-        assertTrue(mit.contains("<title>Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh</title>"));
+        assertTrue(mit.contains("data-wert=\"Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh\""));
 
         String beide = JahresvergleichSeite.render(vergleich(true), null, true, true);
         assertTrue(beide.contains("href=\"jahresvergleich?wallbox=ja\">Haushaltsstrom ausblenden</a>"));
@@ -278,7 +278,7 @@ public class JahresvergleichTest {
         // The wallbox sits on top of the household: October 2026 from 60 + 200 to 340 kWh
         assertEquals(5, beide.split("<rect class=\"wallbox j2\"").length - 1);
         assertEquals(1, beide.split("<rect class=\"wallbox j2 laufend\"").length - 1);
-        assertTrue(beide.contains("<title>Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh, Wallbox 80 kWh</title>"));
+        assertTrue(beide.contains("data-wert=\"Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh, Wallbox 80 kWh\""));
 
         // Without the house meter there is nothing to show in, even if asked for
         String ohne = JahresvergleichSeite.render(vergleich(false), null, true, true);
