@@ -31,7 +31,7 @@ before you rely on it.
   against yesterday, tiles with the course of the last 24 hours (outdoor temperature, estimated electricity, heating
   pressure, compressor), a timeline of the electricity, the defrosts and the flow, return and outdoor temperatures,
   failures and checks. The courses are read from InfluxDB at most once a minute.
-- **Plant** `/anlage` with all current values, the warnings, the fault list, the evaluations and the service. A
+- **Plant** `/anlage` with all current values, the warnings, the fault list and the evaluations. A
   click on a value that is stored in InfluxDB shows its course
   as chart, selectable for 6 h, 24 h, 7 days, 30 days or 1 year (from `/history/<name>?range=6h|24h|7d|30d|1y`,
   name as in InfluxDB without `WP_`, e.g. `/history/VorlaufIstTemp?range=7d`; means over 1 min to 12 h, default
@@ -40,7 +40,7 @@ before you rely on it.
   reloading, so
   an open tooltip, folded areas, the course dialog and the scroll position stay.
   Every value has an ⓘ tooltip that explains it and names the CAN node it comes from; values calculated by the
-  service are marked "(berechnet)" and show their formula as well.
+  service (calculated or estimated) are marked "≈" and show their formula as well.
 - **Connection**: the status page shows the USBtin adapter (port, firmware, connected since, restarts by the
   watchdog) and the CAN bus of the last full minute (received messages, answers, sent requests, answer rate, answers
   "not available", estimated bus load, messages per node). Stored every minute as `WP_CAN_*`, e.g.
@@ -155,7 +155,8 @@ energy counters of the heat pump are combined from sum and day counters and neve
 Copy [application.properties](application.properties) next to the jar and fill in login, USBtin port and InfluxDB.
 The InfluxDB token is read from the environment variable `INFLUX_TOKEN`.
 
-The page `/konfiguration`, linked with the status page in both directions, shows the settings of the service: the
+The page `/konfiguration` shows at the top the state of the service (version, start, checks), the software of the
+devices and the USB adapter, below the settings of the service: the
 limits of the warnings, the start dates and the outdoor temperature of the evaluations, InfluxDB (on or off, address,
 organisation, bucket), mail (recipient, server, port, user, password, authentication, STARTTLS), Pushover (user key,
 API token, priority) and the CAN adapter (port, speed, receive all messages). The mail password and the Pushover token

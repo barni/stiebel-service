@@ -126,6 +126,35 @@ public class JahresvergleichTest {
         assertTrue(karte.contains("<td>Gesamt</td><td>7.135</td><td>7.814</td><td>+679 kWh (+9,5 %)</td><td>–</td>"));
         assertTrue(karte.contains("<td>Wallbox</td><td>0</td><td>651</td><td>+651 kWh</td><td>96 %</td>"));
         assertFalse(karte.contains("-0 %"));
+        // Two years at the same days only without the grid import of two years before
+        assertFalse(karte.contains("2024 kWh"));
+        // The tiles of the heating only without the house meter, otherwise they repeat the card and the table
+        assertFalse(JahresvergleichSeite.render(vergleich(true), null, false, false).contains("ganzes Jahr</"));
+        assertTrue(JahresvergleichSeite.render(vergleich(false), null, false, false).contains("Heizung ≈ 2025 ganzes Jahr"));
+    }
+
+    @Test
+    public void testAufteilungDreiJahre() {
+        Jahresvergleich.Vergleich zwei = vergleich(true);
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true, true,
+                zwei.gesamt(), zwei.gesamtVorjahrGleich(), zwei.wallboxBisJetzt(), zwei.wallboxVorjahrGleich(),
+                zwei.berechnet(), 7935.0, null);
+        java.util.List<Jahresvergleich.Anteil> anteile = v.aufteilung();
+        Jahresvergleich.Anteil gesamt = anteile.get(0);
+        assertEquals(7935.0, gesamt.vorvorher(), 1e-9);
+        // The heating of two years before up to the same day, no wallbox then, the rest from the grid import
+        Jahresvergleich.Anteil heizung = anteile.stream().filter(a -> a.name().equals("Heizung")).findFirst().orElseThrow();
+        assertEquals(v.heizungGleich(0), heizung.vorvorher(), 1e-9);
+        Jahresvergleich.Anteil wallbox = anteile.stream().filter(a -> a.name().equals("Wallbox")).findFirst().orElseThrow();
+        assertEquals(0.0, wallbox.vorvorher(), 1e-9);
+        Jahresvergleich.Anteil rest = anteile.get(anteile.size() - 1);
+        assertEquals(7935.0 - v.heizungGleich(0), rest.vorvorher(), 1e-9);
+
+        String karte = JahresvergleichSeite.ursachen(v);
+        assertTrue(karte.contains("<th>2024 kWh</th><th>2025 kWh</th><th>2026 kWh</th><th>Änderung zu 2025</th>"
+                + "<th>Änderung zu 2024</th><th>Anteil an der Änderung</th>"));
+        assertTrue(karte.contains("<td>Gesamt</td><td>7.935</td>"));
+        assertEquals(new Jahresvergleich.Anteil("x", 1, 2), new Jahresvergleich.Anteil("x", 1, 2, null));
     }
 
     @Test
@@ -160,7 +189,7 @@ public class JahresvergleichTest {
         assertTrue(karte.contains("<h2>Prognose bis Jahresende</h2>"));
         assertTrue(karte.contains("Die Heizung wird 2026 voraussichtlich 1.290 kWh brauchen, 7,5 % mehr als 2025 "
                 + "(1.200 kWh)."));
-        assertTrue(karte.contains("<td>Heizung</td><td>1.050</td><td>240</td><td>1.290</td><td>1.200</td>"
+        assertTrue(karte.contains("<td>Heizung ≈</td><td>1.050</td><td>240</td><td>1.290</td><td>1.200</td>"
                 + "<td>+7,5 %</td>"));
         assertTrue(JahresvergleichSeite.render(vergleich(true), null, false, false).contains("Das Haus wird 2026 "
                 + "voraussichtlich"));

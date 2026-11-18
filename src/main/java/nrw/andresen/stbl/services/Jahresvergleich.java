@@ -90,10 +90,20 @@ public class Jahresvergleich {
      * @param gesamtVorjahrGleich grid import in the year before up to the same day and hour
      * @param wallboxBisJetzt     wallbox in the current year up to now, null without its counter
      * @param wallboxVorjahrGleich wallbox in the year before up to the same day and hour
+     * @param gesamtVorvorjahrGleich  grid import two years before up to the same day and hour, null if unknown
+     * @param wallboxVorvorjahrGleich wallbox two years before up to the same day and hour
      */
     public record Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                             boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
-                            Double wallboxVorjahrGleich, Instant berechnet) {
+                            Double wallboxVorjahrGleich, Instant berechnet, Double gesamtVorvorjahrGleich,
+                            Double wallboxVorvorjahrGleich) {
+
+        public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
+                         boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
+                         Double wallboxVorjahrGleich, Instant berechnet) {
+            this(jahre, bis, monate, mitHaushalt, mitWallbox, gesamt, gesamtVorjahrGleich, wallboxBisJetzt,
+                    wallboxVorjahrGleich, berechnet, null, null);
+        }
 
         /**
          * What the grid import from the 1st of January up to now consists of, against the same days of the year
@@ -169,14 +179,20 @@ public class Jahresvergleich {
             double heizungVorher = heizungGleich(JAHRE - 2);
             double wallboxJetzt = wallboxBisJetzt == null ? 0 : wallboxBisJetzt;
             double wallboxVorher = wallboxVorjahrGleich == null ? 0 : wallboxVorjahrGleich;
+            // Two years before, only with the grid import of then
+            boolean mitVorvorjahr = gesamtVorvorjahrGleich != null;
+            Double heizungVorvorher = mitVorvorjahr ? heizungGleich(JAHRE - 3) : null;
+            Double wallboxVorvorher = mitVorvorjahr ? (wallboxVorvorjahrGleich == null ? 0 : wallboxVorvorjahrGleich)
+                    : null;
             List<Anteil> anteile = new ArrayList<>();
-            anteile.add(new Anteil("Gesamt", gesamtVorjahrGleich, gesamt));
+            anteile.add(new Anteil("Gesamt", gesamtVorjahrGleich, gesamt, gesamtVorvorjahrGleich));
             if (mitWallbox) {
-                anteile.add(new Anteil("Wallbox", wallboxVorher, wallboxJetzt));
+                anteile.add(new Anteil("Wallbox", wallboxVorher, wallboxJetzt, wallboxVorvorher));
             }
-            anteile.add(new Anteil("Heizung", heizungVorher, heizungJetzt));
+            anteile.add(new Anteil("Heizung", heizungVorher, heizungJetzt, heizungVorvorher));
             anteile.add(new Anteil(mitWallbox ? "Rest (Haushalt)" : "Rest (Haushalt und Wallbox)",
-                    gesamtVorjahrGleich - heizungVorher - wallboxVorher, gesamt - heizungJetzt - wallboxJetzt));
+                    gesamtVorjahrGleich - heizungVorher - wallboxVorher, gesamt - heizungJetzt - wallboxJetzt,
+                    mitVorvorjahr ? gesamtVorvorjahrGleich - heizungVorvorher - wallboxVorvorher : null));
             return anteile;
         }
 
@@ -259,7 +275,11 @@ public class Jahresvergleich {
     /**
      * One part of the grid import, the same days in the year before and in the current year
      */
-    public record Anteil(String name, double vorher, double jetzt) {
+    public record Anteil(String name, double vorher, double jetzt, Double vorvorher) {
+
+        public Anteil(String name, double vorher, double jetzt) {
+            this(name, vorher, jetzt, null);
+        }
 
         public double differenz() {
             return jetzt - vorher;
@@ -267,6 +287,13 @@ public class Jahresvergleich {
 
         public Double prozent() {
             return vorher > 0 ? (jetzt / vorher - 1) * 100 : null;
+        }
+
+        /**
+         * Change against two years before in percent, null without a value then
+         */
+        public Double prozentVorvorjahr() {
+            return vorvorher == null || vorvorher <= 0 ? null : (jetzt / vorvorher - 1) * 100;
         }
     }
 
@@ -328,9 +355,12 @@ public class Jahresvergleich {
         // Grid import from the 1st of January up to now and up to the same hour a year ago
         Double[] gesamt = bisJetzt(hauszaehler, jetzt);
         Double[] wallboxBisJetzt = bisJetzt(wallboxZaehler, jetzt);
-        return vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, wallbox),
+        Vergleich v = vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, wallbox),
                 !hauszaehler.isEmpty(), wallbox, !wallboxZaehler.isEmpty(), aussen, gesamt[0], gesamt[1],
                 wallboxBisJetzt[0], wallboxBisJetzt[1], Instant.now());
+        return new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.mitWallbox(), v.gesamt(),
+                v.gesamtVorjahrGleich(), v.wallboxBisJetzt(), v.wallboxVorjahrGleich(), v.berechnet(), gesamt[2],
+                wallboxBisJetzt[2]);
     }
 
     /**
@@ -339,13 +369,16 @@ public class Jahresvergleich {
      */
     private Double[] bisJetzt(String entity, ZonedDateTime jetzt) {
         if (entity.isEmpty()) {
-            return new Double[2];
+            return new Double[3];
         }
         int jahr = jetzt.getYear();
         Instant vorJahr = jetzt.minusYears(1).toInstant();
+        Instant vorvorJahr = jetzt.minusYears(2).toInstant();
         return new Double[]{differenz(stand(entity, start(YearMonth.of(jahr, 1))), letzter(entity, jetzt.toInstant())),
                 differenz(stand(entity, start(YearMonth.of(jahr - 1, 1))),
-                        stand(zaehler(entity, vorJahr, false), zaehler(entity, vorJahr, true), vorJahr))};
+                        stand(zaehler(entity, vorJahr, false), zaehler(entity, vorJahr, true), vorJahr)),
+                differenz(stand(entity, start(YearMonth.of(jahr - 2, 1))),
+                        stand(zaehler(entity, vorvorJahr, false), zaehler(entity, vorvorJahr, true), vorvorJahr))};
     }
 
     /**

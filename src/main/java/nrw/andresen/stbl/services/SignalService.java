@@ -77,7 +77,7 @@ public class SignalService {
         }
         if (Boolean.TRUE.equals(laeuft)) {
             String text = "Heizt" + (laeuftSeit == null ? "" : " seit " + dauer(laeuftSeit, jetzt))
-                    + (stromW == null || stromW <= 0 ? "" : " · " + kw(stromW) + " kW");
+                    + (stromW == null || stromW <= 0 ? "" : " · Strom ≈ " + kw(stromW) + " kW");
             return new Rahmen.Signal("Betrieb", text, "aktiv", "▲", "status");
         }
         if (laeuft == null) {
@@ -114,7 +114,7 @@ public class SignalService {
 
     static Rahmen.Signal dienst(List<Ueberwachung.Pruefung> pruefungen, Double antwortquote) {
         if (pruefungen.isEmpty()) {
-            return new Rahmen.Signal("Dienst und CAN-Bus", "Prüfung läuft", "neutral", "…", "anlage#system");
+            return new Rahmen.Signal("Dienst und CAN-Bus", "Prüfung läuft", "neutral", "…", "konfiguration#system");
         }
         // Mail that is not set up is a decision, not a fault
         List<String> fehler = pruefungen.stream()
@@ -122,10 +122,10 @@ public class SignalService {
                 .map(Ueberwachung.Pruefung::name).toList();
         if (!fehler.isEmpty()) {
             return new Rahmen.Signal("Dienst und CAN-Bus", "Fehler: " + String.join(", ", fehler), "warn", "!",
-                    "anlage#system");
+                    "konfiguration#system");
         }
         return new Rahmen.Signal("Dienst und CAN-Bus", "OK" + (antwortquote == null ? ""
-                : " · Antworten " + Math.round(antwortquote) + " %"), "ok", "✓", "anlage#system");
+                : " · Antworten " + Math.round(antwortquote) + " %"), "ok", "✓", "konfiguration#system");
     }
 
     static String dauer(Instant seit, Instant jetzt) {

@@ -71,12 +71,17 @@ public final class JahresvergleichSeite {
                     .append("</section>").append(ursachen(vergleich)).append(prognose(vergleich))
                     .append("<section class=\"kpis\">");
         }
-        html.append(kpi("Heizung " + jahr + " bis " + DATUM.format(vergleich.bis()),
-                        zahl(vergleich.heizung(J - 1), 0), "kWh"))
-                .append(kpi("Heizung " + (jahr - 1) + " gleiche Tage", zahl(vergleich.heizungGleich(J - 2), 0), "kWh"))
-                .append(kpi("Heizung Veränderung", prozent(vergleich.aenderung()), ""));
-        for (int i = J - 2; i >= 0; i--) {
-            html.append(kpi("Heizung " + jahre.get(i) + " ganzes Jahr", zahl(vergleich.heizung(i), 0), "kWh"));
+        // With the house meter the heating of the same days is in "Woran liegt es?" and the whole years in the
+        // table per month; without it these tiles are the only summary of the heating
+        if (vergleich.gesamt() == null) {
+            html.append(kpi("Heizung ≈ " + jahr + " bis " + DATUM.format(vergleich.bis()),
+                            zahl(vergleich.heizung(J - 1), 0), "kWh"))
+                    .append(kpi("Heizung ≈ " + (jahr - 1) + " gleiche Tage", zahl(vergleich.heizungGleich(J - 2), 0),
+                            "kWh"))
+                    .append(kpi("Heizung ≈ Veränderung", prozent(vergleich.aenderung()), ""));
+            for (int i = J - 2; i >= 0; i--) {
+                html.append(kpi("Heizung ≈ " + jahre.get(i) + " ganzes Jahr", zahl(vergleich.heizung(i), 0), "kWh"));
+            }
         }
         if (mitHaushalt) {
             html.append(kpi("Haushalt " + jahr + " bis " + DATUM.format(vergleich.bis()),
@@ -150,20 +155,48 @@ public final class JahresvergleichSeite {
         }
         Jahresvergleich.Anteil gesamt = anteile.get(0);
         String zeitraum = "1. Januar bis " + DATUM.format(v.bis());
+        // Three years when the grid import of two years before is known
+        boolean dreiJahre = gesamt.vorvorher() != null;
         List<List<String>> zeilen = new ArrayList<>();
         for (Jahresvergleich.Anteil a : anteile) {
             boolean mitAnteil = a != gesamt && Math.abs(gesamt.differenz()) >= MIN_AENDERUNG_KWH;
-            zeilen.add(List.of(a.name(), zahl(a.vorher(), 0), zahl(a.jetzt(), 0), differenz(a),
-                    mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–"));
+            List<String> zeile = new ArrayList<>();
+            zeile.add(geschaetzt(a.name()));
+            if (dreiJahre) {
+                zeile.add(zahl(a.vorvorher(), 0));
+            }
+            zeile.add(zahl(a.vorher(), 0));
+            zeile.add(zahl(a.jetzt(), 0));
+            zeile.add(differenz(a));
+            if (dreiJahre) {
+                zeile.add(a.vorvorher() == null ? "–" : vorzeichen(a.jetzt() - a.vorvorher())
+                        + zahl(Math.abs(a.jetzt() - a.vorvorher()), 0) + " kWh"
+                        + (a.prozentVorvorjahr() == null ? "" : " (" + prozent(a.prozentVorvorjahr()) + ")"));
+            }
+            zeile.add(mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–");
+            zeilen.add(zeile);
         }
+        List<String> kopf = new ArrayList<>();
+        kopf.add(zeitraum);
+        if (dreiJahre) {
+            kopf.add((v.jahr() - 2) + " kWh");
+        }
+        kopf.add((v.jahr() - 1) + " kWh");
+        kopf.add(v.jahr() + " kWh");
+        kopf.add(dreiJahre ? "Änderung zu " + (v.jahr() - 1) : "Änderung");
+        if (dreiJahre) {
+            kopf.add("Änderung zu " + (v.jahr() - 2));
+        }
+        kopf.add("Anteil an der Änderung");
         Double prozent = gesamt.prozent();
         boolean steigt = prozent != null && prozent > STEIGT_AB_PROZENT;
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Woran liegt es?</h2>"
                 + "<p class=\"ursache" + (steigt ? " steigt" : "") + "\">" + text(ursache(anteile, v.jahr())) + "</p>"
-                + tabelle(List.of(zeitraum, (v.jahr() - 1) + " kWh", v.jahr() + " kWh", "Änderung",
-                "Anteil an der Änderung"), zeilen)
-                + "<p class=\"note\">Rest ist Netzbezug minus Heizung" + (v.mitWallbox() ? " und Wallbox" : "")
-                + ", also der übrige Haushalt mit Warmwasser, Lüftung und Geräten.</p></article></section>";
+                + tabelle(kopf, zeilen)
+                + "<p class=\"note\">Jeweils vom 1. Januar bis zum selben Tag und zur selben Stunde. Rest ist "
+                + "Netzbezug minus Heizung" + (v.mitWallbox() ? " und Wallbox" : "") + ", also der übrige Haushalt mit "
+                + "Warmwasser, Lüftung und Geräten. Der Anteil an der Änderung bezieht sich auf " + (v.jahr() - 1)
+                + ".</p></article></section>";
     }
 
     /**
@@ -186,7 +219,7 @@ public final class JahresvergleichSeite {
                 + (jahr - 1) + " (" + zahl(erste.vorjahr(), 0) + " kWh).");
         List<List<String>> zeilen = new ArrayList<>();
         for (Jahresvergleich.Prognose p : teile) {
-            zeilen.add(List.of(p.name(), zahl(p.bisher(), 0), zahl(p.erwartet(), 0), zahl(p.jahr(), 0),
+            zeilen.add(List.of(geschaetzt(p.name()), zahl(p.bisher(), 0), zahl(p.erwartet(), 0), zahl(p.jahr(), 0),
                     zahl(p.vorjahr(), 0), prozent(p.aenderung())));
         }
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Prognose bis Jahresende</h2>"
@@ -297,7 +330,7 @@ public final class JahresvergleichSeite {
     static List<String> kopf(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
         List<String> kopf = new ArrayList<>();
         kopf.add("Monat");
-        v.jahre().forEach(j -> kopf.add("Heizung " + j + " kWh"));
+        v.jahre().forEach(j -> kopf.add("Heizung ≈ " + j + " kWh"));
         kopf.add("Änderung");
         if (mitHaushalt) {
             v.jahre().forEach(j -> kopf.add("Haushalt " + j + " kWh"));
@@ -512,4 +545,11 @@ public final class JahresvergleichSeite {
             .diagramm .achslinie { stroke: var(--muted); stroke-width: 1; }
             .diagramm .achse { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
             """;
+
+    /**
+     * The electricity of the heating is the estimated real power of the inverter, marked like everywhere with ≈
+     */
+    static String geschaetzt(String name) {
+        return name.equals("Heizung") ? "Heizung ≈" : name;
+    }
 }

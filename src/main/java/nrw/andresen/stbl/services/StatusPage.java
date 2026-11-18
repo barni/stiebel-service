@@ -568,6 +568,49 @@ public class StatusPage {
                 + "\">seit " + SHORT_TIME.format(container.getTimestamp().atZone(zone)) + "</span>";
     }
 
+    private void bereiche(StringBuilder html) {
+        for (Bereich bereich : bereiche) {
+            if (bereich.klappbar) {
+                html.append("<details class=\"bereich\" data-id=\"").append(attr(bereich.titel)).append("\"")
+                        .append(bereich.erzwingen ? " open data-erzwingen" : "").append("><summary><span>")
+                        .append(attr(bereich.titel)).append("</span>")
+                        .append(bereich.zusammenfassung == null ? ""
+                                : "<span class=\"zusammenfassung\">" + attr(bereich.zusammenfassung) + "</span>")
+                        .append("</summary>");
+            } else if (bereich.titel != null) {
+                html.append("<h2 class=\"bereich-titel\"").append(bereich.id == null ? ""
+                        : " id=\"" + attr(bereich.id) + "\"").append(">").append(attr(bereich.titel)).append("</h2>");
+            }
+            html.append("<section class=\"cards").append(bereich.zweiSpalten ? " zwei" : "").append("\">");
+            for (Card card : bereich.cards) {
+                html.append("<article class=\"card").append(card.breit ? " breit" : "").append("\"><h2>")
+                        .append(card.title).append("</h2>");
+                if (!card.pills.isEmpty()) {
+                    html.append("<div class=\"pills\">");
+                    card.pills.forEach(pill -> html.append(renderPill(pill)));
+                    html.append("</div>");
+                }
+                for (Object content : card.content) {
+                    html.append(content instanceof Item row ? renderRow(row) : content);
+                }
+                html.append("</article>");
+            }
+            html.append("</section>").append(bereich.klappbar ? "</details>" : "");
+        }
+    }
+
+    /**
+     * Only the areas with their cards, to be put into another page that has the base styles, e.g. the configuration
+     */
+    public String renderBereiche() {
+        StringBuilder html = new StringBuilder();
+        if (hasTooltip) {
+            html.append("<style>").append(TOOLTIP_CSS).append("</style>");
+        }
+        bereiche(html);
+        return html.toString();
+    }
+
     public String render() {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
@@ -596,33 +639,10 @@ public class StatusPage {
             kpis.forEach(kpi -> html.append(renderKpi(kpi)));
             html.append("</section>");
         }
-        for (Bereich bereich : bereiche) {
-            if (bereich.klappbar) {
-                html.append("<details class=\"bereich\" data-id=\"").append(attr(bereich.titel)).append("\"")
-                        .append(bereich.erzwingen ? " open data-erzwingen" : "").append("><summary><span>")
-                        .append(attr(bereich.titel)).append("</span>")
-                        .append(bereich.zusammenfassung == null ? ""
-                                : "<span class=\"zusammenfassung\">" + attr(bereich.zusammenfassung) + "</span>")
-                        .append("</summary>");
-            } else if (bereich.titel != null) {
-                html.append("<h2 class=\"bereich-titel\"").append(bereich.id == null ? ""
-                        : " id=\"" + attr(bereich.id) + "\"").append(">").append(attr(bereich.titel)).append("</h2>");
-            }
-            html.append("<section class=\"cards").append(bereich.zweiSpalten ? " zwei" : "").append("\">");
-            for (Card card : bereich.cards) {
-                html.append("<article class=\"card").append(card.breit ? " breit" : "").append("\"><h2>")
-                        .append(card.title).append("</h2>");
-                if (!card.pills.isEmpty()) {
-                    html.append("<div class=\"pills\">");
-                    card.pills.forEach(pill -> html.append(renderPill(pill)));
-                    html.append("</div>");
-                }
-                for (Object content : card.content) {
-                    html.append(content instanceof Item row ? renderRow(row) : content);
-                }
-                html.append("</article>");
-            }
-            html.append("</section>").append(bereich.klappbar ? "</details>" : "");
+        bereiche(html);
+        if (html.indexOf(" ≈") >= 0) {
+            html.append("<p class=\"note legende\">≈ vom Dienst berechnet oder geschätzt; Formel und Herkunft stehen "
+                    + "im ⓘ.</p>");
         }
         html.append("</main><script>").append(BEREICH_SCRIPT).append("</script>");
         if (hasHistory) {

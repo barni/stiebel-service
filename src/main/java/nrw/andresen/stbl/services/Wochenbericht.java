@@ -282,9 +282,9 @@ public class Wochenbericht {
         zeilen.add(List.of("Außentemperatur °C", zahl(w.aussentemp(), 1), zahl(v.aussentemp(), 1), "gleich"));
         zeilen.add(List.of("Wärme kWh", zahl(w.waermeKWh(), 0), zahl(v.waermeKWh(), 0),
                 u == null ? "–" : zahl(u.waermeKWh(), 0)));
-        zeilen.add(List.of("Strom kWh", zahl(w.stromKWh(), 1), zahl(v.stromKWh(), 1),
+        zeilen.add(List.of("Strom kWh ≈", zahl(w.stromKWh(), 1), zahl(v.stromKWh(), 1),
                 u == null ? "–" : zahl(u.stromKWh(), 1)));
-        zeilen.add(List.of("Arbeitszahl", zahl(w.arbeitszahl(), 1), zahl(v.arbeitszahl(), 1),
+        zeilen.add(List.of("Arbeitszahl ≈", zahl(w.arbeitszahl(), 1), zahl(v.arbeitszahl(), 1),
                 u == null ? "–" : zahl(u.arbeitszahl(), 1)));
         zeilen.add(List.of("Laufzeit h", zahl(w.laufzeitH(), 1), zahl(v.laufzeitH(), 1),
                 u == null ? "–" : zahl(u.laufzeitH(), 1)));
@@ -325,7 +325,7 @@ public class Wochenbericht {
             text.append("- ").append(zeile.get(0)).append(": ").append(zeile.get(1)).append(" (")
                     .append(zeile.get(2)).append(" / ").append(zeile.get(3)).append(")\n");
         }
-        text.append("\nDie Tage (außen °C, Wärme kWh, Strom kWh, Starts, h je Start, Abtauungen):\n");
+        text.append("\nDie Tage (außen °C, Wärme kWh, Strom kWh ≈, Starts, h je Start, Abtauungen):\n");
         for (List<String> zeile : tageszeilen(b.woche())) {
             text.append("- ").append(String.join(" | ", zeile)).append("\n");
         }
@@ -356,7 +356,7 @@ public class Wochenbericht {
                         + "Mittel der früheren Tage mit ähnlicher Außentemperatur, aufsummiert. Die übliche Arbeitszahl "
                         + "stammt nur aus den Tagen mit Stromwert.</p>")
                 .append(ueberschrift("Die Tage"))
-                .append(mailTabelle(List.of("Tag", "Außen °C", "Wärme kWh", "Strom kWh", "Starts", "h je Start",
+                .append(mailTabelle(List.of("Tag", "Außen °C", "Wärme kWh", "Strom kWh ≈", "Starts", "h je Start",
                         "Abtauungen"), tageszeilen(b.woche())))
                 .append("<p style=\"margin:16px 0 0;font-size:12px;color:#69726e\">Strom ist die geschätzte "
                         + "Wirkleistung des Verdichters ohne Pumpe und Regelung, die Arbeitszahl daraus liegt deshalb "

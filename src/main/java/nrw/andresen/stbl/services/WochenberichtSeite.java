@@ -52,7 +52,7 @@ public final class WochenberichtSeite {
                 .append(" Minuten Stillstand, also ohne die Wiederanläufe nach einer Abtauung. Heizungsdruck: ")
                 .append("Tagesmittel des ersten und des letzten Tages.</p></article>")
                 .append("<article class=\"card breit\"><h2>Die Tage</h2>")
-                .append(tabelle(List.of("Tag", "Außen °C", "Wärme kWh", "Strom kWh", "Starts", "h je Start",
+                .append(tabelle(List.of("Tag", "Außen °C", "Wärme kWh", "Strom kWh ≈", "Starts", "h je Start",
                         "Abtauungen"), Wochenbericht.tageszeilen(bericht.woche())))
                 .append("</article></section><p class=\"note\">Stand ").append(zeit(bericht.berechnet()))
                 .append(", stündlich neu berechnet. Per Mail kommt der Bericht sonntags um 20 Uhr, abschaltbar in ")
