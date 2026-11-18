@@ -40,6 +40,12 @@ public class StatusService {
     private Version version;
     @Autowired
     private InfluxController influx;
+    @Autowired
+    private SignalService signale;
+    @Autowired
+    private Verlauf24h verlauf24h;
+    @Autowired
+    private Zustand zustand;
 
     // What the CAN nodes are, as far as known from the answered values
     private static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
@@ -68,28 +74,49 @@ public class StatusService {
     }
 
     /**
-     * Status page in four areas: overview (always open), plant, evaluation and system (folded)
+     * Overview: what the heat pump does right now, tiles with the last 24 hours, a timeline, today and yesterday,
+     * faults and checks. All other values are on the page Anlage.
      *
      * @return HTML page
      */
     public String getStatus() {
         StatusPage page = new StatusPage();
-        if (influx.isAktiv()) {
-            page.navigation("Wochenbericht", "wochenbericht");
-            page.navigation("Jahresvergleich", "jahresvergleich");
-            page.navigation("Zustand", "zustand");
+        page.kopf(signale.kopf("status", ""), "Wärmepumpe");
+        if (!influx.isAktiv()) {
+            page.ohneVerlauf();
         }
-        page.navigation("Konfiguration", "konfiguration");
+        Verlauf24h.Daten d = influx.isAktiv() ? verlauf24h.get() : null;
+        page.oben(Uebersicht.jetzt(jetzt(d)));
+        page.oben(Uebersicht.kacheln(kacheln(d)));
+        if (d != null) {
+            page.oben(Uebersicht.zeitleiste(zeitleiste(d), ZoneId.systemDefault()));
+            page.verlaufDialog();
+        }
+        page.bereich(null);
+        if (influx.isAktiv()) {
+            tagesuebersicht(page);
+        }
+        stoerungen(page);
+        pruefungen(page);
+        return page.render();
+    }
+
+    /**
+     * All values of the heat pump, the warnings and the fault list, the evaluations and the service
+     *
+     * @return HTML page
+     */
+    public String getAnlage() {
+        StatusPage page = new StatusPage();
+        page.kopf(signale.kopf("anlage", "") + "<div class=\"seitentitel\"><div><h1>Anlage</h1><p class=\"sub\">"
+                + "Alle Messwerte, Einstellungen und Meldungen; ein Klick auf einen Wert zeigt seinen Verlauf."
+                + "</p></div></div>", "Wärmepumpe · Anlage");
         if (!influx.isAktiv()) {
             // Without InfluxDB: no courses of the values and none of the cards that are calculated from stored values
             page.ohneVerlauf();
         }
-        kopf(page);
-        page.bereich("Übersicht");
+        page.bereich("Meldungen", "meldungen");
         warnungen(page);
-        if (influx.isAktiv()) {
-            tagesuebersicht(page);
-        }
         fehlerliste(page);
         anlage(page);
         auswertung(page);
@@ -97,52 +124,295 @@ public class StatusService {
         return page.render();
     }
 
-    private void kopf(StatusPage page) {
-        List<String> aktiv = ueberwachung.getWarnungen().stream().filter(Warnung::isAktiv).map(Warnung::getName)
-                .toList();
-        page.badge("Verdichter läuft", "Verdichter aus", "Verdichter der Außeneinheit, aus dem Betriebsstatus des "
-                        + "Wärmepumpenmanagers (0x180).", wp::isVerdichterOn)
-                .badgeWennAn("Pufferladepumpe", "Pumpe, die das Heizwasser durch die Wärmepumpe fördert, "
-                        + "Betriebsstatus des Wärmepumpenmanagers (0x180).", wp::isPufferladepumpeOn)
-                .badgeWennAn("Warmwasser", "Ladung des Warmwasserspeichers aktiv, Betriebsstatus des "
-                        + "Wärmepumpenmanagers (0x180).", wp::isWarmwasserladepumpe)
-                .badgeWennAn("Abtauung", "Die Außeneinheit taut ihren vereisten Verdampfer ab und nimmt dafür kurz "
-                        + "Wärme aus dem Heizwasser. Eis bildet sich laut Anleitung vor allem bei 0–8 °C Luft mit "
-                        + "Nebel oder Regen. Vom Dienst erkannt: " + Waermepumpe.formelAbtauung() + ".",
-                        wp::isAbtauung)
-                .badgeWennAn("EVU-Sperre", "Sperrsignal des Energieversorgers am Kontakt EVU. Während der Sperre "
-                        + "darf die Wärmepumpe nicht laufen.", wp::isEvuSperre)
-                .badgeWennAn("Heizstab", "Stufe 1 oder 2 des elektrischen Heizstabs (DHC) im HM Trend ist an, "
-                        + "Betriebsstatus (0x180).", () -> {
-                    ValueContainer<Boolean> dhc1 = wp.isDHC_1On();
-                    return new ValueContainer<>(dhc1.getValue() || wp.isDHC_2On().getValue(), dhc1.getTimestamp());
-                })
-                .hinweis(aktiv.isEmpty() ? "keine Warnung" : String.join(", ", aktiv), !aktiv.isEmpty())
-                .kpi("Außentemperatur", "°C", 1, "Aussentemp", wp::getAussentemp)
-                .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
-                        + "Wärmepumpenmanagers etwas abweichen, beim Abtauen steigt sie kurz um einige Kelvin.")
-                .kpi("Vorlauf", "°C", 1, "VorlaufIstTemp", wp::getVorlaufIstTemp)
-                .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
-                        + "Schritten von etwa 1,1 K gemeldet.")
-                .kpi("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
-                .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
-                        + "Schritten von etwa 1,1 K gemeldet.")
-                .kpi("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
-                .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180). "
-                        + "Warnung unter 1,3 und über 2,5 bar, zulässig sind laut Anleitung 3 bar; er sinkt um etwa "
-                        + "0,2 bar pro Jahr.")
-                .kpi("Wärmeleistung (berechnet)", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
-                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt. Laut Anleitung kann die WPL 17 "
-                        + "bei A7/W35 2,6–8,5 kW und bei A−7/W35 3,0–7,8 kW; braucht das Haus weniger als das "
-                        + "Minimum, taktet sie.")
-                .formula(Waermepumpe.formelWaermeleistung())
-                .ersatz("–")
-                .kpi("Arbeitszahl (berechnet)", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
-                .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
-                        + "während der Verdichter läuft. Datenblatt WPL 17: A7/W35 4,76, A2/W35 3,97, A−7/W35 2,92, "
-                        + "SCOP 4,48.")
-                .formula(Waermepumpe.formelArbeitszahl())
-                .ersatz("aus");
+    private static <T extends java.io.Serializable> T wert(java.util.concurrent.Callable<ValueContainer<T>> quelle) {
+        try {
+            return quelle.call().getValue();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String zahl(double wert, int stellen, String einheit) {
+        return zahl(wert, stellen) + (einheit.isEmpty() ? "" : " " + einheit);
+    }
+
+    /**
+     * State right now: running, defrosting or standing still, with the numbers of today
+     */
+    private Uebersicht.Jetzt jetzt(Verlauf24h.Daten d) {
+        Boolean laeuft = wert(wp::isVerdichterOn);
+        Boolean abtauung = wert(wp::isAbtauung);
+        Instant jetzt = Instant.now();
+        List<Uebersicht.Zahl> heute = heuteZahlen();
+        if (Boolean.TRUE.equals(abtauung)) {
+            return new Uebersicht.Jetzt("Taut ab", "abtauen", "üblich 2 bis 5 Minuten", "Der Kreislauf läuft "
+                    + "umgekehrt: Heißgas schmilzt das Eis am Verdampfer, die Wärme dafür kommt kurz aus dem "
+                    + "Heizwasser.", null, heute);
+        }
+        if (laeuft == null) {
+            return new Uebersicht.Jetzt("Keine Daten", "neutral", "vom CAN-Bus kam noch keine Antwort", null, null,
+                    heute);
+        }
+        if (laeuft) {
+            List<String> zeile = new ArrayList<>();
+            Instant seit = wp.getVerdichterLaeuftSeit();
+            if (seit != null) {
+                zeile.add("seit " + SignalService.dauer(seit, jetzt));
+            }
+            Double schein = wert(wp::getLeistungInverter);
+            if (schein != null && schein > 0) {
+                zeile.add("Strom ≈ " + SignalService.kw(Waermepumpe.wirkleistung(schein)) + " kW");
+            }
+            Double waerme = wert(wp::getWaermeleistung);
+            if (waerme != null) {
+                zeile.add("Wärme " + zahl(waerme, 1) + " kW");
+            }
+            Double az = wert(wp::getArbeitszahl);
+            if (az != null) {
+                zeile.add("Arbeitszahl ≈ " + zahl(az, 1));
+            }
+            List<String> text = new ArrayList<>();
+            Double vl = wert(wp::getVorlaufFein);
+            Double rl = wert(wp::getRuecklaufFein);
+            if (vl != null && rl != null) {
+                text.add("Vorlauf " + zahl(vl, 1) + " °C, Rücklauf " + zahl(rl, 1) + " °C");
+            }
+            Double fluss = wert(wp::getVolumenstrom);
+            if (fluss != null) {
+                text.add("Durchfluss " + zahl(fluss, 1) + " l/min");
+            }
+            Double hz = wert(wp::getVerdichterDrehzahl);
+            if (hz != null) {
+                text.add("Verdichter " + zahl(hz, 0) + " Hz");
+            }
+            Double reserve = wert(wp::getAbtauReserve);
+            Uebersicht.Balken balken = reserve == null
+                    ? new Uebersicht.Balken("Reserve bis Abtauung", "", "", 0, "neutral",
+                    "Erscheint " + Waermepumpe.ABTAU_RESERVE_AB.toMinutes() + " Minuten nach dem Start, wenn die "
+                            + "Wärmepumpe ihren Bezug gelernt hat.")
+                    : new Uebersicht.Balken("Reserve bis Abtauung", zahl(reserve, 1) + " von "
+                    + zahl(Waermepumpe.ABTAU_SCHWELLE_K, 1) + " K", "", reserve / Waermepumpe.ABTAU_SCHWELLE_K,
+                    reserve < 1 ? "achtung" : "aktiv", "Sinkt, während Eis am Verdampfer wächst; bei 0 taut die "
+                    + "Wärmepumpe ab.");
+            return new Uebersicht.Jetzt("Heizt", "aktiv", String.join(" · ", zeile),
+                    text.isEmpty() ? null : String.join(", ", text) + ".", balken, heute);
+        }
+        Instant gestoppt = wp.getVerdichterGestopptUm();
+        String zeile = gestoppt == null ? "" : "seit " + SignalService.UHRZEIT.format(gestoppt) + " · "
+                + SignalService.dauer(gestoppt, jetzt);
+        List<String> text = new ArrayList<>();
+        if (d != null) {
+            List<long[]> laeufe = laeufe(d);
+            if (!laeufe.isEmpty()) {
+                long[] l = laeufe.get(laeufe.size() - 1);
+                text.add("Letzter Lauf etwa " + SignalService.UHRZEIT.format(Instant.ofEpochMilli(l[0])) + "–"
+                        + SignalService.UHRZEIT.format(Instant.ofEpochMilli(l[1])) + ".");
+            }
+        }
+        Double integral = wert(wp::getRegelIntegral);
+        Uebersicht.Balken balken = null;
+        if (integral != null) {
+            text.add("Gestartet wird, wenn das Regler-Integral auf −1000 gefallen ist.");
+            balken = new Uebersicht.Balken("−1000 · Start", "Regler-Integral " + zahl(integral, 0), "+1000 · Stopp",
+                    (integral + 1000) / 2000, "neutral", null);
+        }
+        return new Uebersicht.Jetzt("Stillstand", "neutral", zeile, text.isEmpty() ? null : String.join(" ", text),
+                balken, heute);
+    }
+
+    private List<Uebersicht.Zahl> heuteZahlen() {
+        Tagesuebersicht.Tag heute = tagesuebersicht.getHeute();
+        Tagesuebersicht.Tag gestern = tagesuebersicht.getGestern();
+        if (heute == null || gestern == null) {
+            return List.of();
+        }
+        return List.of(
+                new Uebersicht.Zahl("Laufzeit heute", zahl(heute.laufzeitH(), 1), "h",
+                        "gestern " + zahl(gestern.laufzeitH(), 1, "h")),
+                new Uebersicht.Zahl("Starts", String.valueOf(heute.starts()), "", "gestern " + gestern.starts()),
+                new Uebersicht.Zahl("Wärme", zahl(heute.waermeKWh(), 1), "kWh",
+                        "gestern " + zahl(gestern.waermeKWh(), 1, "kWh")),
+                new Uebersicht.Zahl("Strom ≈", zahl(heute.stromKWh(), 1), "kWh",
+                        "gestern " + zahl(gestern.stromKWh(), 1, "kWh")),
+                new Uebersicht.Zahl("Arbeitszahl ≈", zahl(heute.arbeitszahl(), 1), "",
+                        "gestern " + zahl(gestern.arbeitszahl(), 1)),
+                new Uebersicht.Zahl("Abtauungen", String.valueOf(heute.abtauungen()), "",
+                        "gestern " + gestern.abtauungen()));
+    }
+
+    /**
+     * Estimated real power of the compressor from the apparent power of the inverter, one value per window
+     */
+    private static double[] strom(InfluxController.History schein) {
+        double[] w = new double[schein.value().length];
+        for (int i = 0; i < w.length; i++) {
+            w[i] = Waermepumpe.wirkleistung(schein.value()[i]);
+        }
+        return w;
+    }
+
+    private static List<long[]> laeufe(Verlauf24h.Daten d) {
+        InfluxController.History schein = d.reihe("LeistungInverter");
+        return Uebersicht.laeufe(schein.time(), strom(schein), 50, Verlauf24h.FENSTER.toMillis());
+    }
+
+    private List<Uebersicht.Kachel> kacheln(Verlauf24h.Daten d) {
+        InfluxController.History leer = new InfluxController.History("", new long[0], new double[0]);
+        List<Uebersicht.Kachel> kacheln = new ArrayList<>();
+        Double aussenWpm = wert(wp::getAussentempWpm);
+        String aussenReihe = aussenWpm != null ? "AussentempWPM" : "Aussentemp";
+        Double aussen = aussenWpm != null ? aussenWpm : wert(wp::getAussentemp);
+        InfluxController.History a = d == null ? leer : d.reihe(aussenReihe);
+        kacheln.add(new Uebersicht.Kachel("Außentemperatur", aussen == null ? "–" : zahl(aussen, 1), "°C",
+                spanne(a, 1, "°C"), a.time(), a.value(), min(a, -1), max(a, 1), "aussen",
+                d == null ? null : aussenReihe, 1));
+        InfluxController.History schein = d == null ? leer : d.reihe("LeistungInverter");
+        double[] w = strom(schein);
+        Double jetztSchein = wert(wp::getLeistungInverter);
+        double kWh = 0;
+        double imLauf = 0;
+        int lauf = 0;
+        for (double x : w) {
+            kWh += x * Verlauf24h.FENSTER.toMinutes() / 60 / 1000;
+            if (x > 50) {
+                imLauf += x;
+                lauf++;
+            }
+        }
+        kacheln.add(new Uebersicht.Kachel("Strom jetzt ≈", jetztSchein == null ? "–"
+                : zahl(Waermepumpe.wirkleistung(jetztSchein), 0), "W", d == null ? "Wirkleistung des Verdichters"
+                : "24 h: " + zahl(kWh, 1) + " kWh" + (lauf == 0 ? "" : " · im Lauf Ø " + zahl(imLauf / lauf, 0) + " W"),
+                schein.time(), w, 0, 1000, "strom", null, 0));
+        InfluxController.History druck = d == null ? leer : d.reihe("Heizungsdruck");
+        Double p = wert(wp::getHeizungsdruck);
+        kacheln.add(new Uebersicht.Kachel("Heizungsdruck", p == null ? "–" : zahl(p, 2), "bar",
+                (druck.value().length == 0 ? "" : spanne(druck, 2, "bar") + " · ") + "Warnung unter 1,3",
+                druck.time(), druck.value(), min(druck, -0.05), max(druck, 0.05), "druck",
+                d == null ? null : "Heizungsdruck", 2));
+        InfluxController.History hz = d == null ? leer : d.reihe("VerdichterDrehzahlHz");
+        Double drehzahl = wert(wp::getVerdichterDrehzahl);
+        double hoechst = 0;
+        for (double x : hz.value()) {
+            hoechst = Math.max(hoechst, x);
+        }
+        kacheln.add(new Uebersicht.Kachel("Verdichter", drehzahl == null ? "–" : zahl(drehzahl, 0), "Hz",
+                hz.value().length == 0 ? "Drehzahl des Inverter-Verdichters"
+                        : "höchstens " + zahl(hoechst, 0) + " Hz in 24 h (10-Minuten-Mittel)",
+                hz.time(), hz.value(), 0, Math.max(60, hoechst), "drehzahl", d == null ? null : "VerdichterDrehzahlHz",
+                0));
+        return kacheln;
+    }
+
+    private static String spanne(InfluxController.History h, int stellen, String einheit) {
+        if (h.value().length == 0) {
+            return "";
+        }
+        return "24 h: " + zahl(min(h, 0), stellen) + " bis " + zahl(max(h, 0), stellen) + " " + einheit;
+    }
+
+    private static double min(InfluxController.History h, double rand) {
+        double m = Double.MAX_VALUE;
+        for (double x : h.value()) {
+            m = Math.min(m, x);
+        }
+        return h.value().length == 0 ? 0 : m + rand;
+    }
+
+    private static double max(InfluxController.History h, double rand) {
+        double m = -Double.MAX_VALUE;
+        for (double x : h.value()) {
+            m = Math.max(m, x);
+        }
+        return h.value().length == 0 ? 1 : m + rand;
+    }
+
+    private Uebersicht.Zeitleiste zeitleiste(Verlauf24h.Daten d) {
+        long ende = d.geholt().toEpochMilli();
+        long start = ende - Verlauf24h.SPANNE.toMillis();
+        InfluxController.History schein = d.reihe("LeistungInverter");
+        double[] w = strom(schein);
+        double kWh = 0;
+        for (double x : w) {
+            kWh += x * Verlauf24h.FENSTER.toMinutes() / 60 / 1000;
+        }
+        // A defrost marks the window it starts in; following windows belong to the same defrost
+        List<Long> abtauungen = new ArrayList<>();
+        InfluxController.History ab = d.reihe("Abtauung");
+        for (int i = 0; i < ab.value().length; i++) {
+            if (ab.value()[i] > 0 && (i == 0 || ab.value()[i - 1] <= 0)) {
+                abtauungen.add(ab.time()[i] - Verlauf24h.FENSTER.toMillis() / 2);
+            }
+        }
+        List<Uebersicht.Linie> linien = new ArrayList<>();
+        linien.add(linie(d, "Vorlauf", "vorlauf", "VorlaufFein", "VorlaufIstTemp"));
+        linien.add(linie(d, "Rücklauf", "ruecklauf", "RuecklaufFein", "RuecklaufIstTemp"));
+        linien.add(linie(d, "Außen", "aussen", "AussentempWPM", "Aussentemp"));
+        List<long[]> laeufe = Uebersicht.laeufe(schein.time(), w, 50, Verlauf24h.FENSTER.toMillis());
+        return new Uebersicht.Zeitleiste(start, ende, schein.time(), w, abtauungen, linien,
+                schein.value().length == 0 ? null
+                        : Uebersicht.zusammenfassung(laeufe, kWh, abtauungen.size(), ZoneId.systemDefault()));
+    }
+
+    private static Uebersicht.Linie linie(Verlauf24h.Daten d, String name, String klasse, String reihe,
+                                          String ersatz) {
+        InfluxController.History h = d.reihe(reihe);
+        if (h.value().length == 0) {
+            h = d.reihe(ersatz);
+        }
+        return new Uebersicht.Linie(name, klasse, h.time(), h.value());
+    }
+
+    /**
+     * Failed starts of the season and the newest entry of the fault list
+     */
+    private void stoerungen(StatusPage page) {
+        page.card("Störungen");
+        List<Fehlstarts.Saison> saisons = fehlstarts.getSaisons();
+        if (!saisons.isEmpty()) {
+            Fehlstarts.Saison s = saisons.get(saisons.size() - 1);
+            page.text("Fehlstarts Saison " + s.name(), s.fehlstarts() + (s.jeTausendMild() == null ? ""
+                    : " · " + zahl(s.jeTausendMild(), 1) + " je 1000 milde Starts"))
+                    .info("Der Verdichter lief nicht im ersten Anlauf an (INV H ROTORVEKTOR). Auffällig wäre deutlich "
+                            + "mehr als etwa 30 in einem Winter.");
+        }
+        List<Fehlerliste.Eintrag> eintraege = can.getFehlerliste().eintraege();
+        if (eintraege.isEmpty()) {
+            page.text("Fehlerliste", can.getFehlerlisteAngefragt() == null ? null : "keine Einträge");
+        } else {
+            Fehlerliste.Eintrag neuester = eintraege.get(0);
+            page.text("Letzter Eintrag", Fehlerliste.ZEITFORMAT.format(neuester.zeit()) + " · " + neuester.text())
+                    .info("Fehlerliste des WPM mit 20 Plätzen, alle 10 Minuten gelesen. Ein neuer Eintrag wird per "
+                            + "Mail gemeldet.");
+        }
+        page.note("<a class=\"nav\" href=\"anlage#meldungen\">Fehlerliste und alle Warnungen</a>");
+    }
+
+    /**
+     * Warnings, condition and service in one card; active warnings with their text
+     */
+    private void pruefungen(StatusPage page) {
+        page.card("Prüfungen");
+        List<Warnung> warnungen = ueberwachung.getWarnungen();
+        List<Warnung> aktiv = warnungen.stream().filter(Warnung::isAktiv).toList();
+        if (aktiv.isEmpty()) {
+            page.text("Warnungen", "keine · " + warnungen.size() + " Prüfungen")
+                    .info("Jede Minute geprüft. Wird eine Warnung aktiv, kommt eine Mail und, falls eingerichtet, eine "
+                            + "Push-Nachricht.");
+        }
+        for (Warnung w : aktiv) {
+            page.text(w.getName(), "seit " + Fehlerliste.ZEITFORMAT.format(w.getAktivSeit().atZone(
+                    ZoneId.systemDefault())) + ": " + w.getText()).info(w.getRegel());
+        }
+        if (influx.isAktiv()) {
+            Zustand.Ergebnis e = zustand.getErgebnis();
+            page.text("Zustand und Alterung", e == null ? "wird berechnet" : ZustandSeite.gesamt(e.pruefungen()))
+                    .info("Vergleich der Heizsaisons bei gleicher Außentemperatur, alle 6 Stunden neu berechnet.");
+        }
+        Rahmen.Signal dienst = SignalService.dienst(ueberwachung.getPruefungen(), null);
+        page.text("Dienst", dienst.wert()).info("Prüfung des Dienstes alle 15 Minuten: InfluxDB, USB-Adapter, Mail, "
+                + "Pushover.");
+        page.note("<a class=\"nav\" href=\"zustand\">Zustand und Alterung</a> · "
+                + "<a class=\"nav\" href=\"anlage#system\">System</a>");
     }
 
     private void warnungen(StatusPage page) {
@@ -266,7 +536,7 @@ public class StatusService {
     }
 
     private void anlage(StatusPage page) {
-        page.bereichKlappbar("Anlage", "Heizkreis · Kältekreis · Verdichter", false)
+        page.bereich("Heizkreis · Kältekreis · Verdichter", "werte")
                 .card("Heizkreis")
                 .row("Vorlauf", "°C", 1, "VorlaufIstTemp", wp::getVorlaufIstTemp)
                 .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
@@ -428,9 +698,7 @@ public class StatusService {
 
     private void auswertung(StatusPage page) {
         Duration stunde = Waermepumpe.MAX_AGE_3600;
-        page.bereichKlappbar("Auswertung", influx.isAktiv()
-                        ? "Energie · Einstellungen · Laufzeiten · Fehlstarts · Vergleich"
-                        : "Energie · Einstellungen · Laufzeiten", false)
+        page.bereich("Auswertung", "auswertung")
                 .zweiSpalten()
                 .card("Energie seit Inbetriebnahme")
                 .row("Stromaufnahme", "MWh", 3, "AufnahmeLeistung", wp::getAufnahmeLeistung)
@@ -563,7 +831,7 @@ public class StatusService {
                 .map(Ueberwachung.Pruefung::name).toList();
         String zusammenfassung = pruefungen.isEmpty() ? "Prüfung läuft"
                 : fehler.isEmpty() ? "alles OK" : "Fehler: " + String.join(", ", fehler);
-        page.bereichKlappbar("System", zusammenfassung, !fehler.isEmpty())
+        page.bereich("System · " + zusammenfassung, "system")
                 .card("Dienst");
         if (pruefungen.isEmpty()) {
             page.text("Prüfung", "läuft 30 s nach dem Start");

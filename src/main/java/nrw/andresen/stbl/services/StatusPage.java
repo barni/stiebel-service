@@ -39,6 +39,11 @@ public class StatusPage {
     // Links in the header: text and relative address
     private final List<String[]> nav = new ArrayList<>();
     private boolean hasTooltip;
+    // Frame with tabs and signals instead of the old header, null for the old header
+    private String kopf;
+    private String titel = "Wärmepumpe";
+    // Blocks of own HTML between the header and the cards, e.g. the state of the heat pump and charts
+    private final List<String> oben = new ArrayList<>();
 
     public StatusPage() {
         this(Clock.systemDefaultZone());
@@ -60,6 +65,8 @@ public class StatusPage {
         final List<Card> cards = new ArrayList<>();
         // Two equal columns instead of as many as fit, e.g. two cards above a wide one
         boolean zweiSpalten;
+        // Anchor of the area, e.g. "system" for anlage#system
+        String id;
 
         Bereich(String titel, String zusammenfassung, boolean klappbar, boolean erzwingen) {
             this.titel = titel;
@@ -134,6 +141,44 @@ public class StatusPage {
      */
     public StatusPage bereich(String titel) {
         bereiche.add(new Bereich(titel, null, false, false));
+        return this;
+    }
+
+    /**
+     * Area that is always shown, with an anchor so that links can lead to it, e.g. anlage#system
+     */
+    public StatusPage bereich(String titel, String id) {
+        Bereich bereich = new Bereich(titel, null, false, false);
+        bereich.id = id;
+        bereiche.add(bereich);
+        return this;
+    }
+
+    /**
+     * Frame with tabs and signals (see Rahmen) instead of the old header
+     *
+     * @param titel title of the browser tab
+     */
+    public StatusPage kopf(String kopf, String titel) {
+        this.kopf = kopf;
+        this.titel = titel;
+        return this;
+    }
+
+    /**
+     * Block of own HTML between the header and the cards
+     */
+    public StatusPage oben(String html) {
+        oben.add(html);
+        return this;
+    }
+
+    /**
+     * Includes the dialog with the course of a value, for own blocks with data-series
+     */
+    public StatusPage verlaufDialog() {
+        hasHistory |= verlauf;
+        hasTooltip = true;
         return this;
     }
 
@@ -515,22 +560,28 @@ public class StatusPage {
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
                 // The scripts update the page in place, the meta refresh is only the fallback without JavaScript
                 .append(AKTUALISIEREN)
-                .append("<title>Wärmepumpe</title><style>").append(CSS)
+                .append("<title>").append(attr(titel)).append("</title><style>").append(CSS)
                 .append(hasTooltip ? TOOLTIP_CSS : "").append(hasHistory ? HISTORY_CSS : "")
                 .append("</style></head><body data-aktualisieren=\"20\"><main>");
 
-        html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
-                .append(TIME.format(Instant.now(clock).atZone(zone)))
-                .append(" · aktualisiert alle 20 s")
-                .append(nav.stream().map(link -> " · <a class=\"nav\" href=\"" + attr(link[1]) + "\">"
-                        + attr(link[0]) + "</a>").collect(Collectors.joining()))
-                .append("</p></div><div class=\"badges\">");
-        headerBadges.forEach(html::append);
-        html.append("</div></header>");
-
-        html.append("<section class=\"kpis\">");
-        kpis.forEach(kpi -> html.append(renderKpi(kpi)));
-        html.append("</section>");
+        if (kopf != null) {
+            html.append(kopf);
+        } else {
+            html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
+                    .append(TIME.format(Instant.now(clock).atZone(zone)))
+                    .append(" · aktualisiert alle 20 s")
+                    .append(nav.stream().map(link -> " · <a class=\"nav\" href=\"" + attr(link[1]) + "\">"
+                            + attr(link[0]) + "</a>").collect(Collectors.joining()))
+                    .append("</p></div><div class=\"badges\">");
+            headerBadges.forEach(html::append);
+            html.append("</div></header>");
+        }
+        oben.forEach(html::append);
+        if (!kpis.isEmpty()) {
+            html.append("<section class=\"kpis\">");
+            kpis.forEach(kpi -> html.append(renderKpi(kpi)));
+            html.append("</section>");
+        }
         for (Bereich bereich : bereiche) {
             if (bereich.klappbar) {
                 html.append("<details class=\"bereich\" data-id=\"").append(attr(bereich.titel)).append("\"")
@@ -540,7 +591,8 @@ public class StatusPage {
                                 : "<span class=\"zusammenfassung\">" + attr(bereich.zusammenfassung) + "</span>")
                         .append("</summary>");
             } else if (bereich.titel != null) {
-                html.append("<h2 class=\"bereich-titel\">").append(attr(bereich.titel)).append("</h2>");
+                html.append("<h2 class=\"bereich-titel\"").append(bereich.id == null ? ""
+                        : " id=\"" + attr(bereich.id) + "\"").append(">").append(attr(bereich.titel)).append("</h2>");
             }
             html.append("<section class=\"cards").append(bereich.zweiSpalten ? " zwei" : "").append("\">");
             for (Card card : bereich.cards) {
@@ -925,5 +977,5 @@ public class StatusPage {
               .tbl.stapeln td:not(:first-child)::before { content: attr(data-label) " "; color: var(--muted);
                 font-weight: 400; }
             }
-            """;
+            """ + Rahmen.CSS + Uebersicht.CSS;
 }

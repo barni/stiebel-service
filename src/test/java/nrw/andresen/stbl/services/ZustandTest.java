@@ -176,8 +176,22 @@ public class ZustandTest {
         assertEquals("beobachten ab +25 %, auffällig ab +50 % gegen das Mittel davor oder den Bezug",
                 p.get(9).regel());
         String html = ZustandSeite.render(new Zustand.Ergebnis(saisons, p, false, Instant.EPOCH), null);
-        assertTrue(html.contains("<span class=\"pregel\">Meldung: beobachten unter 1,5 bar"));
+        assertTrue(html.contains("<p class=\"pregel\">Meldung: beobachten unter 1,5 bar"));
         assertTrue(html.contains("bei „auffällig“ auch eine Push-Nachricht"));
+    }
+
+    @Test
+    public void testVerlaufKarte() {
+        // Fewer than two values: no chart
+        assertEquals("", ZustandSeite.verlauf(new Zustand.Verlauf(List.of("2025/26"), java.util.Arrays.asList(1.0)),
+                null));
+        String svg = ZustandSeite.verlauf(new Zustand.Verlauf(List.of("2022/23", "2023/24", "2024/25"),
+                java.util.Arrays.asList(1.0, null, 2.0)), 1.5);
+        assertTrue(svg.contains("<line class=\"bezug\""));
+        // A season without a value is left out, the newest point is marked
+        assertEquals(2, svg.split("<circle").length - 1);
+        assertTrue(svg.contains("class=\"neu\"><title>2024/25: 2,000</title>"));
+        assertTrue(svg.contains("<span>2022/23</span><span>2024/25</span>"));
     }
 
     @Test
@@ -314,7 +328,12 @@ public class ZustandTest {
                 + "Arbeitszahl bei 5 bis 10 °C"));
         assertTrue(rot.contains("Eine Saison fehlt noch"));
         assertTrue(html.contains("Keine Nachfüllung erkannt."));
-        assertTrue(html.contains("<th>Mittel davor</th><th>Bezug</th>"));
+        // One card per check with value, comparison and the course over the seasons
+        assertTrue(html.contains("<article class=\"pkarte gruen\"><div class=\"pk-kopf\"><span class=\"pname\">"
+                + "Arbeitszahl bei 0 bis 5 °C</span><span class=\"status gruen\">unauffällig</span></div>"));
+        assertTrue(html.contains("<svg class=\"pk-verlauf\""));
+        // The conspicuous checks first
+        assertTrue(rot.indexOf("<article class=\"pkarte rot\">") < rot.indexOf("<article class=\"pkarte gruen\">"));
         String mitNachfuellung = ZustandSeite.render(new Zustand.Ergebnis(saisons, Zustand.pruefungen(saisons), false,
                 Instant.EPOCH, List.of(new Zustand.Nachfuellung(Instant.parse("2026-10-13T13:00:00Z"), 0.23, 0.16))),
                 null);

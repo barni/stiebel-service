@@ -209,6 +209,20 @@ public class Waermepumpe {
     }
 
     /**
+     * Time of the first received compressor speed above 0, null while the compressor stands still
+     */
+    public Instant getVerdichterLaeuftSeit() {
+        return verdichterLaeuftSeit;
+    }
+
+    /**
+     * Time of the last stop of the compressor, null if none was seen since the start of the service
+     */
+    public Instant getVerdichterGestopptUm() {
+        return verdichterGestopptUm;
+    }
+
+    /**
      * Updates the compressor start and the defrost from the latest values, every 20 s
      */
     public void aktualisieren() {

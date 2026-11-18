@@ -57,6 +57,10 @@ public class CanBusSeiteTest {
         html = CanBusSeite.render(verbindung(true), abfragen, List.of(), JETZT);
         assertTrue(html.contains("<td>mitgelesen</td>"));
         assertFalse(html.contains(CanBusSeite.HINWEIS_KONFIG));
+        // The requested values can be searched, the filter stays after an update in place
+        assertTrue(html.contains("<input type=\"search\" id=\"werte-suche\""));
+        assertTrue(html.contains("<div class=\"tbl werte\" id=\"werte\">"));
+        assertTrue(html.contains("document.addEventListener('aktualisiert', filtern)"));
     }
 
     @Test
