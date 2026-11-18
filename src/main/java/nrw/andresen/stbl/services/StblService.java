@@ -56,6 +56,8 @@ public class StblService {
     // The first run of each cycle only sends the requests: the answers are not there yet, storing would log a
     // warning for every value at each start of the service
     private boolean erster20 = true;
+    // Start and stop of the compressor are read once from the stored values after the start of the service
+    private boolean vorgeschichteGelesen;
     private boolean erster60 = true;
 
     /**
@@ -73,7 +75,44 @@ public class StblService {
             erster20 = false;
             return;
         }
+        if (!vorgeschichteGelesen) {
+            vorgeschichteGelesen = true;
+            vorgeschichte();
+        }
         storeValues20();
+    }
+
+    /**
+     * Start of the current run, or the last stop at standstill, from the stored compressor speed of the last 7 days
+     */
+    private void vorgeschichte() {
+        if (!influxController.isAktiv()) {
+            return;
+        }
+        String name = "VerdichterDrehzahlHz";
+        Instant jetzt = Instant.now();
+        Instant von = jetzt.minus(Duration.ofDays(7));
+        try {
+            Instant laeuftSeit = null;
+            Instant bis = jetzt;
+            if (wp.getVerdichterLaeuftSeit() != null) {
+                // Running: the run started with the first speed above 0 after the last 0
+                Instant letzteNull = influxController.zeitpunkt(name, false, von, jetzt, false);
+                if (letzteNull == null) {
+                    return;
+                }
+                laeuftSeit = influxController.zeitpunkt(name, true, letzteNull, jetzt, true);
+                bis = letzteNull;
+            }
+            // The stop before: the first 0 after the last run before bis
+            Instant letzterLauf = influxController.zeitpunkt(name, true, von, bis, false);
+            Instant gestopptUm = letzterLauf == null ? null
+                    : influxController.zeitpunkt(name, false, letzterLauf, jetzt, true);
+            wp.vorgeschichte(laeuftSeit, gestopptUm);
+            logger.info("Compressor from stored values: running since " + laeuftSeit + ", stopped at " + gestopptUm);
+        } catch (Exception e) {
+            logger.warn("Start and stop of the compressor could not be read: " + e.getMessage());
+        }
     }
 
     /**

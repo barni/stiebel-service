@@ -179,4 +179,30 @@ public class WaermepumpeTest {
         assertTrue(Waermepumpe.mitgelesen(jetzt.minusSeconds(10), jetzt));
         assertFalse(Waermepumpe.mitgelesen(jetzt.minusSeconds(61), jetzt));
     }
+
+    @Test
+    public void testVorgeschichte() throws Exception {
+        Instant jetzt = Instant.parse("2026-11-18T14:00:00Z");
+        // Standing still after a restart: the stored stop is taken
+        Waermepumpe steht = new Waermepumpe();
+        steht.vorgeschichte(null, jetzt.minusSeconds(3600));
+        assertEquals(jetzt.minusSeconds(3600), steht.getVerdichterGestopptUm());
+        assertNull(steht.getVerdichterLaeuftSeit());
+
+        // Running since the restart: the earlier stored start replaces the time seen by the service
+        Waermepumpe laeuft = new Waermepumpe();
+        java.lang.reflect.Field seit = Waermepumpe.class.getDeclaredField("verdichterLaeuftSeit");
+        seit.setAccessible(true);
+        seit.set(laeuft, jetzt);
+        laeuft.vorgeschichte(jetzt.minusSeconds(42 * 60), jetzt.minusSeconds(90 * 60));
+        assertEquals(jetzt.minusSeconds(42 * 60), laeuft.getVerdichterLaeuftSeit());
+        assertEquals(jetzt.minusSeconds(90 * 60), laeuft.getVerdichterGestopptUm());
+        // A stored start later than the one seen, or a stop after the start, does not fit and is ignored
+        laeuft.vorgeschichte(jetzt, null);
+        assertEquals(jetzt.minusSeconds(42 * 60), laeuft.getVerdichterLaeuftSeit());
+        Waermepumpe falsch = new Waermepumpe();
+        seit.set(falsch, jetzt);
+        falsch.vorgeschichte(null, jetzt.plusSeconds(60));
+        assertNull(falsch.getVerdichterGestopptUm());
+    }
 }
