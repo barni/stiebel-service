@@ -263,18 +263,24 @@ public class JahresvergleichTest {
 
     @Test
     public void testSeite() {
+        // Household and wallbox switched off
         String html = JahresvergleichSeite.render(vergleich(true), null, false, false);
         assertTrue(html.contains("<title>Wärmepumpe · Jahresvergleich</title>"));
         assertTrue(html.contains("<a class=\"nav\" href=\"status\">← Status</a>"));
-        assertTrue(html.contains("Strom der Heizung je Monat, 2024 bis 2026"));
+        assertTrue(html.contains("Netzbezug des Hauses und Strom der Heizung, 2024 bis 2026"));
+        // With the house meter the sentence is about the whole grid import, the parts follow below
         assertTrue(html.contains("Vom 1. Januar bis 24. Oktober 2026 hat das Haus 7.800 kWh aus dem Netz bezogen, "
-                + "2,5 % weniger als in denselben Tagen 2025 (8.000 kWh). Die Heizung brauchte 1.050 kWh, 10,5 % mehr "
-                + "als in denselben Tagen 2025 (950 kWh). Im ganzen Jahr waren es 1.200 kWh (2025) und 1.080 kWh "
-                + "(2024)."));
+                + "2,5 % weniger als in denselben Tagen 2025 (8.000 kWh).</p>"));
         assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung</div><div class=\"value\">−2,5 %</div>"));
+        assertTrue(html.contains("<h2>Netzbezug je Jahr</h2>"));
+        assertTrue(html.contains("2026 Prognose"));
         assertTrue(html.contains("<h2>Woran liegt es?</h2><p class=\"ursache\">"));
-        assertTrue(html.contains("<td>Okt</td><td>90</td><td>100</td><td>60 (bis 24.)</td><td>+20,0 %</td>"));
-        assertTrue(html.contains("<td>Nov</td><td>90</td><td>100</td><td>–</td><td>–</td>"));
+        assertTrue(html.contains("<polyline class=\"abstand gesamt\""));
+        assertTrue(html.contains("<polyline class=\"abstand wallbox\""));
+        assertFalse(html.contains("Haushalt 2025 ganzes Jahr"));
+        // The table: grid import per year first, then the heating
+        assertTrue(html.contains("<th>Gesamt 2026 kWh</th><th>Änderung</th><th>Heizung ≈ 2024 kWh</th>"));
+        assertTrue(html.contains("<td>60 (bis 24.)</td>"));
         // 12 bars each for 2024 and 2025, 10 for 2026 with the current month lighter, no household
         assertEquals(12, html.split("<rect class=\"j0\"").length - 1);
         assertEquals(12, html.split("<rect class=\"j1\"").length - 1);
@@ -282,34 +288,28 @@ public class JahresvergleichTest {
         assertEquals(1, html.split("<rect class=\"j2 laufend\"").length - 1);
         assertFalse(html.contains("<rect class=\"haushalt"));
         assertTrue(html.contains("data-wert=\"Okt 2025: Heizung 100 kWh; bis zum gleichen Tag 50 kWh\""));
-        assertTrue(html.contains("href=\"jahresvergleich?haushalt=ja\">Haushaltsstrom einblenden</a>"));
-        assertTrue(html.contains("href=\"jahresvergleich?wallbox=ja\">Wallbox einblenden</a>"));
+        assertTrue(html.contains("href=\"jahresvergleich?wallbox=nein\">Haushaltsstrom einblenden</a>"));
+        assertTrue(html.contains("href=\"jahresvergleich?haushalt=nein\">Wallbox einblenden</a>"));
         assertFalse(html.contains("<rect class=\"wallbox"));
 
         String mit = JahresvergleichSeite.render(vergleich(true), null, true, false);
-        assertTrue(mit.contains("href=\"jahresvergleich\">Haushaltsstrom ausblenden</a>"));
+        assertTrue(mit.contains("href=\"jahresvergleich?haushalt=nein&amp;wallbox=nein\">Haushaltsstrom ausblenden</a>"));
         // The other switch keeps the household shown
-        assertTrue(mit.contains("href=\"jahresvergleich?haushalt=ja&amp;wallbox=ja\">Wallbox einblenden</a>"));
-        assertTrue(mit.contains("Der Haushalt ohne Heizung und Wallbox brauchte 2026 bisher 2.720 kWh, 2025 im "
-                + "ganzen Jahr 3.600 kWh."));
-        assertTrue(mit.contains("<th>Haushalt 2026 kWh</th>"));
-        assertTrue(mit.contains("<td>+20,0 %</td><td>–</td><td>300</td><td>200 (bis 24.)</td>"));
+        assertTrue(mit.contains("href=\"jahresvergleich\">Wallbox einblenden</a>"));
         assertEquals(12, mit.split("<rect class=\"haushalt j1\"").length - 1);
         assertEquals(1, mit.split("<rect class=\"haushalt j2 laufend\"").length - 1);
         assertTrue(mit.contains("data-wert=\"Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh\""));
 
+        // Shown by default
         String beide = JahresvergleichSeite.render(vergleich(true), null, true, true);
-        assertTrue(beide.contains("href=\"jahresvergleich?wallbox=ja\">Haushaltsstrom ausblenden</a>"));
-        assertTrue(beide.contains("href=\"jahresvergleich?haushalt=ja\">Wallbox ausblenden</a>"));
-        assertTrue(beide.contains("An der Wallbox wurden 2026 bisher 830 kWh geladen, 2025 im ganzen Jahr – kWh."));
-        assertTrue(beide.contains("<th>Wallbox 2026 kWh</th>"));
-        assertTrue(beide.contains("<td>200 (bis 24.)</td><td>–</td><td>–</td><td>80 (bis 24.)</td>"));
+        assertTrue(beide.contains("href=\"jahresvergleich?haushalt=nein\">Haushaltsstrom ausblenden</a>"));
+        assertTrue(beide.contains("href=\"jahresvergleich?wallbox=nein\">Wallbox ausblenden</a>"));
         // The wallbox sits on top of the household: October 2026 from 60 + 200 to 340 kWh
         assertEquals(5, beide.split("<rect class=\"wallbox j2\"").length - 1);
         assertEquals(1, beide.split("<rect class=\"wallbox j2 laufend\"").length - 1);
         assertTrue(beide.contains("data-wert=\"Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh, Wallbox 80 kWh\""));
 
-        // Without the house meter there is nothing to show in, even if asked for
+        // Without the house meter only the heating, as before
         String ohne = JahresvergleichSeite.render(vergleich(false), null, true, true);
         assertFalse(ohne.contains("Haushaltsstrom einblenden"));
         assertFalse(ohne.contains("Wallbox einblenden"));
@@ -318,6 +318,8 @@ public class JahresvergleichTest {
         assertTrue(ohne.contains("wenn in der Konfiguration der Hauszähler eingetragen ist"));
         assertFalse(ohne.contains("Gesamt Veränderung"));
         assertFalse(ohne.contains("Woran liegt es?"));
+        assertFalse(ohne.contains("Netzbezug je Jahr"));
+        assertTrue(ohne.contains("<th>Heizung ≈ 2026 kWh</th><th>Änderung</th>"));
         assertTrue(ohne.contains("Vom 1. Januar bis 24. Oktober 2026 hat die Heizung 1.050 kWh Strom gebraucht, "
                 + "10,5 % mehr als in denselben Tagen 2025 (950 kWh)."));
         // Not calculated yet, or InfluxDB switched off

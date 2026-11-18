@@ -159,7 +159,7 @@ public class StblController {
                                   @RequestParam(required = false) String wallbox) {
         return Rahmen.einsetzen(JahresvergleichSeite.render(jahresvergleich.getVergleich(), influxController.isAktiv()
                         ? null : "Für den Jahresvergleich braucht der Dienst die InfluxDB, sie ist ausgeschaltet "
-                        + "(influx.enabled=false).", "ja".equals(haushalt), "ja".equals(wallbox)),
+                        + "(influx.enabled=false).", !"nein".equals(haushalt), !"nein".equals(wallbox)),
                 signalService.kopf("jahresvergleich", ""));
     }
 
