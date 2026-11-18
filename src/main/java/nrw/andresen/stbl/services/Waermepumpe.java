@@ -223,6 +223,25 @@ public class Waermepumpe {
     }
 
     /**
+     * Start and stop of the compressor from the stored values, after a start of the service: until then only the
+     * times seen by this service are known, a run already going would count from the start of the service. Taken
+     * only where the stored time is earlier than the one seen and fits the current state.
+     *
+     * @param laeuftSeit first stored speed above 0 of the current run, null if unknown or standing still
+     * @param gestopptUm first stored speed 0 after the last run before now, null if unknown
+     */
+    public void vorgeschichte(Instant laeuftSeit, Instant gestopptUm) {
+        Instant seit = verdichterLaeuftSeit;
+        if (seit != null && laeuftSeit != null && laeuftSeit.isBefore(seit)) {
+            verdichterLaeuftSeit = laeuftSeit;
+            seit = laeuftSeit;
+        }
+        if (verdichterGestopptUm == null && gestopptUm != null && (seit == null || !gestopptUm.isAfter(seit))) {
+            verdichterGestopptUm = gestopptUm;
+        }
+    }
+
+    /**
      * Updates the compressor start and the defrost from the latest values, every 20 s
      */
     public void aktualisieren() {

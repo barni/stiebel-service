@@ -212,6 +212,21 @@ public class InfluxController {
         return werte.isEmpty() ? null : werte.values().iterator().next();
     }
 
+    /**
+     * Time of the first or last stored value of WP_name between von and bis that is above 0 (laeuft) or not, null if
+     * there is none
+     */
+    public Instant zeitpunkt(String name, boolean ueberNull, Instant von, Instant bis, boolean erster) {
+        if (!SERIES_NAME.matcher(name).matches()) {
+            throw new IllegalArgumentException("Unbekannter Wert: " + name);
+        }
+        Map<Instant, Double> werte = werte("from(bucket: \"" + bucket + "\") |> range(start: " + von + ", stop: "
+                + bis + ") |> filter(fn: (r) => r._measurement == \"WP_" + name + "\" and r._field == \"value\")"
+                + " |> filter(fn: (r) => r._value " + (ueberNull ? ">" : "<=") + " 0.0) |> "
+                + (erster ? "first()" : "last()") + " |> keep(columns: [\"_time\", \"_value\"])");
+        return werte.isEmpty() ? null : werte.keySet().iterator().next();
+    }
+
     public Instant getLetzterSchreiberfolg() {
         return letzterSchreiberfolg;
     }

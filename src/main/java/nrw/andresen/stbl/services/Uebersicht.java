@@ -319,9 +319,9 @@ public final class Uebersicht {
     }
 
     static final String CSS = """
-            :root { --vorlauf: #c2410c; --ruecklauf: #2563eb; --strom: #0f766e; --abtau: #c2650c; }
+            :root { --vorlauf: #c2410c; --ruecklauf: #2563eb; --strom: #0f766e; --abtau: #c2650c; --aussen: #a21caf; }
             @media (prefers-color-scheme: dark) {
-              :root { --vorlauf: #fb923c; --ruecklauf: #60a5fa; --strom: #2dd4bf; --abtau: #fbbf24; }
+              :root { --vorlauf: #fb923c; --ruecklauf: #60a5fa; --strom: #2dd4bf; --abtau: #fbbf24; --aussen: #e879f9; }
             }
             .jetzt { display: flex; flex-wrap: wrap; gap: 20px 40px; background: var(--card); border: 1px solid var(--line);
               border-radius: 18px; padding: 22px 24px; margin-bottom: 16px; }
@@ -364,7 +364,7 @@ public final class Uebersicht {
               stroke-linejoin: round; }
             polyline.vorlauf { stroke: var(--vorlauf); }
             polyline.ruecklauf { stroke: var(--ruecklauf); }
-            polyline.aussen { stroke: var(--muted); stroke-dasharray: 5 4; }
+            polyline.aussen { stroke: var(--aussen); stroke-dasharray: 5 4; }
             .spark polyline.aussen { stroke-dasharray: none; }
             polyline.strom { stroke: var(--strom); }
             polyline.druck, polyline.drehzahl { stroke: var(--accent); }
@@ -379,6 +379,7 @@ public final class Uebersicht {
             .lg.abtau { width: 9px; height: 9px; transform: rotate(45deg); background: var(--abtau); }
             .lg.vorlauf { background: var(--vorlauf); }
             .lg.ruecklauf { background: var(--ruecklauf); }
+            .lg.aussen { background: repeating-linear-gradient(90deg, var(--aussen) 0 5px, transparent 5px 8px); }
             .zl-raster { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px 10px; align-items: center; }
             .zl-achse-name { font-size: 12px; color: var(--muted); }
             .zl-strom, .zl-temp { position: relative; border-radius: 8px; background: var(--bg); overflow: hidden; }
