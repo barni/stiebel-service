@@ -273,6 +273,8 @@ public class JahresvergleichTest {
         assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung</div><div class=\"value\">−2,5 %</div>"));
         assertTrue(html.contains("<h2>Netzbezug je Jahr</h2>"));
         assertTrue(html.contains("2026 Prognose"));
+        // Each year after the first with its change against the year before
+        assertEquals(2, html.split("<tspan class=\"aenderung\"").length - 1);
         assertTrue(html.contains("<h2>Woran liegt es?</h2><p class=\"ursache\">"));
         assertTrue(html.contains("<polyline class=\"abstand gesamt\""));
         assertTrue(html.contains("<polyline class=\"abstand wallbox\""));

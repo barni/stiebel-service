@@ -559,7 +559,7 @@ public final class JahresvergleichSeite {
         }
         int zeile = 34;
         int links = 120;
-        int rechts = 110;
+        int rechts = 190;
         int hoehe = J * zeile + 6;
         double breite = B - links - rechts;
         String[] klassen = {"heizung", "haushalt", "wallbox"};
@@ -587,13 +587,24 @@ public final class JahresvergleichSeite {
                         prognose ? " prognose" : "", x, y + 4, Math.max(1, w - 2), zeile - 10, text(titel)));
                 x += w;
             }
-            svg.append(String.format(Locale.ROOT, "<text class=\"wert\" x=\"%.1f\" y=\"%.1f\">%s kWh</text>",
-                    x + 6, y + zeile / 2.0 + 1, (prognose ? "≈ " : "") + zahl(summe, 0)));
+            // Change against the year before, the current year with its forecast
+            String aenderung = "";
+            if (i > 0) {
+                double[] v0 = jahre.get(i - 1);
+                double vorher = v0[0] + v0[1] + v0[2];
+                if (vorher > 0) {
+                    aenderung = "<tspan class=\"aenderung\" dx=\"10\">" + prozent((summe / vorher - 1) * 100)
+                            + "</tspan>";
+                }
+            }
+            svg.append(String.format(Locale.ROOT, "<text class=\"wert\" x=\"%.1f\" y=\"%.1f\">%s kWh%s</text>",
+                    x + 6, y + zeile / 2.0 + 1, (prognose ? "≈ " : "") + zahl(summe, 0), aenderung));
         }
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Netzbezug je Jahr</h2>"
                 + "<p class=\"legende\"><span><i class=\"sw teil-heizung\"></i>Heizung ≈</span><span><i class=\"sw "
                 + "haushalt\"></i>Haushalt</span><span><i class=\"sw wallbox\"></i>Wallbox</span><span>"
-                + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten"
+                + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten; "
+                + "% gegenüber dem Vorjahr"
                 + "</span></p>" + svg + "</svg></div></article></section>";
     }
 
@@ -778,6 +789,7 @@ public final class JahresvergleichSeite {
             .diagramm rect.teil.wallbox { fill: var(--wallbox); }
             .diagramm rect.teil.prognose { fill-opacity: 0.55; }
             .diagramm .teil { font-size: 13px; fill: var(--text); }
+            .diagramm .aenderung { font-weight: 500; fill: var(--muted); }
             .diagramm .wert { font-size: 13px; fill: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
             .sw.teil-heizung { background: var(--accent); }
             """;
