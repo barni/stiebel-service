@@ -47,7 +47,7 @@ public class UebersichtTest {
     public void testSignale() {
         Instant jetzt = Instant.parse("2026-11-18T14:00:00Z");
         Rahmen.Signal heizt = SignalService.betrieb(true, false, jetzt.minusSeconds(42 * 60), null, 890.0, jetzt);
-        assertEquals("Heizt seit 42 min · 0,89 kW", heizt.wert());
+        assertEquals("Heizt seit 42 min · Strom ≈ 0,89 kW", heizt.wert());
         assertEquals("aktiv", heizt.art());
         assertEquals("Taut ab", SignalService.betrieb(true, true, null, null, 900.0, jetzt).wert());
         assertTrue(SignalService.betrieb(false, false, null, jetzt.minusSeconds(3600), 0.0, jetzt).wert()

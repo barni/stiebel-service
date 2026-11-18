@@ -77,7 +77,7 @@ public class SignalService {
         }
         if (Boolean.TRUE.equals(laeuft)) {
             String text = "Heizt" + (laeuftSeit == null ? "" : " seit " + dauer(laeuftSeit, jetzt))
-                    + (stromW == null || stromW <= 0 ? "" : " · " + kw(stromW) + " kW");
+                    + (stromW == null || stromW <= 0 ? "" : " · Strom ≈ " + kw(stromW) + " kW");
             return new Rahmen.Signal("Betrieb", text, "aktiv", "▲", "status");
         }
         if (laeuft == null) {
