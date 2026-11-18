@@ -134,6 +134,15 @@ public class UebersichtTest {
         assertTrue(html.contains("&quot;w&quot;:[33.0,34.0,35.0,null]"));
         assertTrue(html.contains("<div class=\"zl-strom\" data-plot>"));
         assertTrue(html.contains("<polyline class=\"vorlauf\""));
+        // Water and outdoor temperature each in their own band with their own scale
+        assertTrue(html.contains("<span class=\"zl-achse-name\">Wasser °C</span><div class=\"zl-temp\" data-plot>"));
+        assertFalse(html.contains("Außen °C"));
+        double[] aussen = Uebersicht.skala(8.0, 11.4, 4);
+        assertTrue(aussen[0] < 8.0 && aussen[1] > 11.4 && aussen[1] - aussen[0] < 6);
+        assertEquals(2, aussen[2], 1e-9);
+        double[] wasser = Uebersicht.skala(24.2, 36.8, 10);
+        assertEquals(5, wasser[2], 1e-9);
+        assertTrue(wasser[0] > 15 && wasser[1] < 45);
         assertTrue(html.contains(">jetzt</span>"));
         assertTrue(html.contains(satz));
     }

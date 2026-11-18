@@ -218,28 +218,13 @@ public final class Uebersicht {
                     .append("\" style=\"left:").append(String.format(Locale.ROOT, "%.2f", (a - z.start()) * 100 / spanne))
                     .append("%\"></span>");
         }
-        html.append("</div><span class=\"zl-achse-name\">°C</span><div class=\"zl-temp\" data-plot>"
-                + "<svg viewBox=\"0 0 1000 120\" preserveAspectRatio=\"none\" aria-hidden=\"true\">");
-        for (int grad : new int[]{10, 20, 30}) {
-            html.append("<line class=\"gitter\" x1=\"0\" x2=\"1000\" y1=\"").append(yTemp(grad)).append("\" y2=\"")
-                    .append(yTemp(grad)).append("\"/>");
-        }
-        for (Linie l : z.linien()) {
-            StringBuilder p = new StringBuilder();
-            for (int i = 0; i < l.zeit().length; i++) {
-                if (Double.isNaN(l.wert()[i])) {
-                    continue;
-                }
-                p.append(p.isEmpty() ? "" : " ").append(String.format(Locale.ROOT, "%.1f,%s",
-                        (l.zeit()[i] - z.start()) * 1000 / spanne, yTemp(l.wert()[i])));
-            }
-            html.append("<polyline class=\"").append(l.klasse()).append("\" points=\"").append(p).append("\"/>");
-        }
-        html.append("</svg>");
-        for (int grad : new int[]{10, 20, 30}) {
-            html.append("<span class=\"zl-mark\" style=\"top:").append(String.format(Locale.ROOT, "%.1f",
-                    Double.parseDouble(yTemp(grad)) / 120 * 100 - 6)).append("%\">").append(grad).append("</span>");
-        }
+        html.append("</div>");
+        // Water and outdoor temperature each with their own scale: on one axis from 0 to 40 degC the outdoor
+        // temperature, a few K over the day, was a straight line
+        List<Linie> wasser = z.linien().stream().filter(l -> !l.klasse().equals("aussen")).toList();
+        List<Linie> aussen = z.linien().stream().filter(l -> l.klasse().equals("aussen")).toList();
+        temperaturBand(html, "Wasser °C", "zl-temp", wasser, 10, z.start(), spanne);
+        temperaturBand(html, "Außen °C", "zl-aussen", aussen, 4, z.start(), spanne);
         html.append("</div><span></span><div class=\"zl-zeit\">");
         ZonedDateTime erste = Instant.ofEpochMilli(z.start()).atZone(zone).truncatedTo(ChronoUnit.HOURS).plusHours(1);
         while (erste.getHour() % 3 != 0) {
@@ -258,8 +243,82 @@ public final class Uebersicht {
         return html.append("</section>").toString();
     }
 
-    private static String yTemp(double grad) {
-        return String.format(Locale.ROOT, "%.1f", 114 - (Math.max(-10, Math.min(45, grad)) + 5) / 45 * 108);
+    /**
+     * One band of the timeline with the lines on their own scale: from the lowest to the highest value, at least
+     * minSpanne K, on whole steps of the grid
+     */
+    static void temperaturBand(StringBuilder html, String name, String klasse, List<Linie> linien, double minSpanne,
+                               long start, double spanne) {
+        double min = Double.MAX_VALUE;
+        double max = -Double.MAX_VALUE;
+        for (Linie l : linien) {
+            for (double w : l.wert()) {
+                if (!Double.isNaN(w)) {
+                    min = Math.min(min, w);
+                    max = Math.max(max, w);
+                }
+            }
+        }
+        if (min > max) {
+            return;
+        }
+        double[] skala = skala(min, max, minSpanne);
+        double lo = skala[0];
+        double hi = skala[1];
+        double schritt = skala[2];
+        html.append("<span class=\"zl-achse-name\">").append(t(name)).append("</span><div class=\"").append(klasse)
+                .append("\" data-plot><svg viewBox=\"0 0 1000 100\" preserveAspectRatio=\"none\" aria-hidden=\"true\">");
+        List<Double> marken = new ArrayList<>();
+        for (double g = Math.ceil(lo / schritt) * schritt; g < hi - 1e-9; g += schritt) {
+            marken.add(g);
+            String y = String.format(Locale.ROOT, "%.1f", y(g, lo, hi));
+            html.append("<line class=\"gitter\" x1=\"0\" x2=\"1000\" y1=\"").append(y).append("\" y2=\"").append(y)
+                    .append("\"/>");
+        }
+        for (Linie l : linien) {
+            StringBuilder p = new StringBuilder();
+            for (int i = 0; i < l.zeit().length; i++) {
+                if (Double.isNaN(l.wert()[i])) {
+                    continue;
+                }
+                p.append(p.isEmpty() ? "" : " ").append(String.format(Locale.ROOT, "%.1f,%.1f",
+                        (l.zeit()[i] - start) * 1000 / spanne, y(l.wert()[i], lo, hi)));
+            }
+            html.append("<polyline class=\"").append(l.klasse()).append("\" points=\"").append(p).append("\"/>");
+        }
+        html.append("</svg>");
+        for (double g : marken) {
+            // A label at the edge would be cut off, the grid line is enough there
+            if (y(g, lo, hi) < 12 || y(g, lo, hi) > 86) {
+                continue;
+            }
+            html.append("<span class=\"zl-mark\" style=\"top:").append(String.format(Locale.ROOT, "%.1f",
+                    y(g, lo, hi) - 7)).append("%\">").append(String.format(Locale.GERMANY, "%.0f", g)).append("</span>");
+        }
+        html.append("</div>");
+    }
+
+    /**
+     * Lower and upper end and step of the grid for values from min to max, at least minSpanne wide
+     */
+    static double[] skala(double min, double max, double minSpanne) {
+        double mitte = (min + max) / 2;
+        double breite = Math.max(max - min, minSpanne);
+        // A little room above and below the lines; the grid on whole steps inside, at most three lines
+        double lo = mitte - breite * 0.6;
+        double hi = mitte + breite * 0.6;
+        double schritt = 1;
+        for (double s : new double[]{1, 2, 5, 10, 20}) {
+            schritt = s;
+            if ((hi - lo) / s <= 3.5) {
+                break;
+            }
+        }
+        return new double[]{lo, hi, schritt};
+    }
+
+    private static double y(double wert, double lo, double hi) {
+        return 96 - (Math.max(lo, Math.min(hi, wert)) - lo) / (hi - lo) * 92;
     }
 
     /**
@@ -360,12 +419,12 @@ public final class Uebersicht {
             .kachel-wert { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
             .kachel-sub, .kachel-fuss { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
             .spark { width: 100%; height: 40px; margin-top: 6px; }
-            .spark polyline, .zl-temp polyline { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke;
+            .spark polyline, .zl-temp polyline, .zl-aussen polyline { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke;
               stroke-linejoin: round; }
             polyline.vorlauf { stroke: var(--vorlauf); }
             polyline.ruecklauf { stroke: var(--ruecklauf); }
-            polyline.aussen { stroke: var(--aussen); stroke-dasharray: 5 4; }
-            .spark polyline.aussen { stroke: var(--accent); stroke-dasharray: none; }
+            polyline.aussen { stroke: var(--aussen); }
+            .spark polyline.aussen { stroke: var(--accent); }
             polyline.strom { stroke: var(--strom); }
             polyline.druck, polyline.drehzahl { stroke: var(--accent); }
             .zeitleiste { margin-bottom: 16px; padding: 16px 20px 14px; }
@@ -379,14 +438,15 @@ public final class Uebersicht {
             .lg.abtau { width: 9px; height: 9px; transform: rotate(45deg); background: var(--abtau); }
             .lg.vorlauf { background: var(--vorlauf); }
             .lg.ruecklauf { background: var(--ruecklauf); }
-            .lg.aussen { background: repeating-linear-gradient(90deg, var(--aussen) 0 5px, transparent 5px 8px); }
+            .lg.aussen { background: var(--aussen); }
             .zl-raster { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px 10px; align-items: center; }
             .zl-achse-name { font-size: 12px; color: var(--muted); }
-            .zl-strom, .zl-temp { position: relative; border-radius: 8px; background: var(--bg); overflow: hidden; }
+            .zl-strom, .zl-temp, .zl-aussen { position: relative; border-radius: 8px; background: var(--bg); overflow: hidden; }
             .zl-strom { height: 84px; }
-            .zl-temp { height: 150px; }
-            .zl-strom svg, .zl-temp svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-            .zl-strom line, .zl-temp line { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+            .zl-temp { height: 130px; }
+            .zl-aussen { height: 70px; }
+            .zl-strom svg, .zl-temp svg, .zl-aussen svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+            .zl-strom line, .zl-temp line, .zl-aussen line { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
             .zl-strom polygon { fill: var(--strom); fill-opacity: 0.85; }
             .zl-mark { position: absolute; left: 6px; font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
             .zl-abtau { position: absolute; top: 4px; width: 12px; height: 12px; margin-left: -6px; background: var(--abtau);
