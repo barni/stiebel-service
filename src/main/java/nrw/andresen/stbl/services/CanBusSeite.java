@@ -133,10 +133,13 @@ public final class CanBusSeite {
                     (offen ? "<span class=\"alt\">" : "") + grau + alter(a.zeit(), jetzt) + ende
                             + (offen ? "</span>" : "")));
         }
-        html.append("<article class=\"card breit\"><h2>Abgefragte Werte (").append(abfragen.size())
-                .append(")</h2>")
+        html.append("<article class=\"card breit\"><div class=\"werte-kopf\"><h2>Abgefragte Werte (")
+                .append(abfragen.size()).append(")</h2><label class=\"suche\"><span>Suchen</span><input type=\"search\" "
+                        + "id=\"werte-suche\" placeholder=\"Index, Name oder Wert\" autocomplete=\"off\"></label></div>")
                 .append(werte.isEmpty() ? "<p class=\"note\">Noch nichts angefragt.</p>"
-                        : tabelle(List.of("Index", "Name", "Wert", "Angefragt", "Antwort"), werte))
+                        : tabelle(List.of("Index", "Name", "Wert", "Angefragt", "Antwort"), werte)
+                        .replaceFirst("<div class=\"tbl\">", "<div class=\"tbl werte\" id=\"werte\">"))
+                .append("<script>").append(SUCHE).append("</script>")
                 .append("<p class=\"note\">Rot und oben: Auf die letzte Anfrage kam nach ")
                 .append(CanBus.ANTWORTZEIT.toSeconds()).append(" s keine gültige Antwort. Antworten mit 0x8000 ")
                 .append("(nicht verfügbar) zählen nicht. Die Einstellungen werden nur stündlich angefragt. ")
@@ -403,6 +406,23 @@ public final class CanBusSeite {
         };
     }
 
+    // Filters the rows of the requested values while typing; applied again after every update in place
+    static final String SUCHE = """
+            (() => {
+              const filtern = () => {
+                const feld = document.getElementById('werte-suche');
+                const tabelle = document.getElementById('werte');
+                if (!feld || !tabelle) return;
+                const wort = feld.value.trim().toLowerCase();
+                tabelle.querySelectorAll('tbody tr').forEach(z => {
+                  z.hidden = wort !== '' && !z.textContent.toLowerCase().includes(wort);
+                });
+              };
+              document.addEventListener('input', e => { if (e.target.id === 'werte-suche') filtern(); });
+              document.addEventListener('aktualisiert', filtern);
+            })();
+            """;
+
     private static String tabelle(List<String> kopf, List<List<String>> zeilen) {
         StringBuilder html = new StringBuilder("<div class=\"tbl\"><table>");
         if (kopf != null) {
@@ -457,6 +477,14 @@ public final class CanBusSeite {
     }
 
     private static final String CSS = """
+            .werte-kopf { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px;
+              margin-bottom: 6px; }
+            .werte-kopf h2 { margin: 0; }
+            .suche { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+            .suche input { font: inherit; font-size: 14px; color: var(--text); background: var(--bg); min-height: 40px;
+              width: min(320px, 70vw); padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; }
+            .suche input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+            .tbl.werte th:nth-child(2), .tbl.werte td:nth-child(2) { text-align: left; }
             .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
             .nav:hover, .nav:focus { text-decoration: underline; }
             .meldung { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-weight: 600;

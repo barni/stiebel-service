@@ -126,6 +126,19 @@ public class WochenberichtTest {
     }
 
     @Test
+    public void testDiagramm() {
+        Wochenbericht.Woche woche = bericht(null, 0).woche();
+        String svg = WochenberichtSeite.diagramm(woche.tage());
+        // A bar of heat and of electricity per day, the day and its outdoor temperature below
+        assertEquals(7, svg.split("<rect class=\"wd-waerme\"").length - 1);
+        assertEquals(7, svg.split("<rect class=\"wd-strom\"").length - 1);
+        assertTrue(svg.contains(">So 04.10.</text>"));
+        assertTrue(svg.contains(">15,0 °C</text>"));
+        assertEquals("", WochenberichtSeite.diagramm(List.of()));
+        assertTrue(WochenberichtSeite.render(bericht(null, 0), null).contains("Wärme und Strom je Tag"));
+    }
+
+    @Test
     public void testTextUndSeite() {
         Wochenbericht.Bericht bericht = bericht(new Wochenbericht.Ueblich(150, 40, 45, 5, 30.0), 0);
         String text = Wochenbericht.text(bericht);

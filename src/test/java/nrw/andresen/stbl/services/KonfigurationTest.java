@@ -278,5 +278,8 @@ public class KonfigurationTest {
         assertEquals(Map.of("pushover.prioritaet", "muss zwischen -2 und 1 liegen"), Konfiguration.pruefen(
                 Map.of("pushover.prioritaet", "2", "pushover.user", "uQiRzpo4DXghDmr9QzzfQu27cmVRsG"), werte));
         assertEquals("uQiRzpo4DXghDmr9QzzfQu27cmVRsG", werte.get("pushover.user"));
+        // The user key is never shown, like the tokens
+        assertEquals(Konfiguration.Typ.GEHEIM, Konfiguration.FELDER.stream()
+                .filter(f -> f.name().equals("pushover.user")).findFirst().orElseThrow().typ());
     }
 }

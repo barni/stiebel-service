@@ -165,10 +165,10 @@ public class Konfiguration {
                     "false", 0, 0, "An, wenn der Mailserver Benutzer und Passwort verlangt."),
             new Feld("spring.mail.properties.mail.smtp.starttls.enable", MAILGRUPPE, "Verschlüsselung (STARTTLS)", "",
                     Typ.SCHALTER, "false", 0, 0, "An für Server, die die Verbindung mit STARTTLS verschlüsseln."),
-            new Feld("pushover.user", PUSHOVER, "User Key", "", Typ.TEXT, null, 0, 0,
-                    "Dein User Key von pushover.net (oben auf der Seite nach dem Anmelden). Sind User Key und "
-                            + "API-Token gesetzt, kommt jede Warnmail zusätzlich als Push-Nachricht, der "
-                            + "Wochenbericht nur per Mail. Leer: keine Push-Nachrichten."),
+            new Feld("pushover.user", PUSHOVER, "User Key", "", Typ.GEHEIM, null, 0, 0,
+                    "Dein User Key von pushover.net (oben auf der Seite nach dem Anmelden), wird wie ein Passwort nie "
+                            + "angezeigt. Sind User Key und API-Token gesetzt, kommt jede Warnmail zusätzlich als "
+                            + "Push-Nachricht, der Wochenbericht nur per Mail."),
             new Feld("pushover.token", PUSHOVER, "API-Token", "", Typ.GEHEIM, null, 0, 0,
                     "Token einer Anwendung, die du auf pushover.net unter „Create an Application“ anlegst. Wird nie "
                             + "angezeigt; leer lassen, um ihn nicht zu ändern."),

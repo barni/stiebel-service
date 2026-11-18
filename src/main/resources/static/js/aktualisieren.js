@@ -23,6 +23,8 @@
       // An area the server opens because of a problem opens here too
       document.querySelectorAll('details[data-erzwingen]').forEach(d => { d.open = true; });
       document.title = neu.title;
+      // Page scripts that change the page, e.g. a search filter, apply themselves again
+      document.dispatchEvent(new Event('aktualisiert'));
     } catch (e) {
       // no answer, keep the page
     } finally {
