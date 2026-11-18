@@ -36,14 +36,27 @@ public class StatusServiceTest {
     private Version version;
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private InfluxController influx;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private SignalService signale;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private Verlauf24h verlauf24h;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    private Zustand zustand;
     @InjectMocks
     private StatusService status;
 
     @Test
     public void testSeiteBaut() {
         String html = status.getStatus();
-        assertTrue(html.contains("Reserve bis Abtauung"));
-        assertTrue(html.contains("Software der Geräte"));
+        assertTrue(html.contains("<section class=\"jetzt"));
+        assertTrue(html.contains("<section class=\"kacheln\""));
+        assertTrue(html.contains("Störungen"));
+        assertTrue(html.contains("Prüfungen"));
         assertFalse(html.contains("Vorlauf-Soll WPM"));
+        String anlage = status.getAnlage();
+        assertTrue(anlage.contains("Reserve bis Abtauung"));
+        assertTrue(anlage.contains("Software der Geräte"));
+        assertTrue(anlage.contains("id=\"system\""));
+        assertTrue(anlage.contains("id=\"meldungen\""));
     }
 }

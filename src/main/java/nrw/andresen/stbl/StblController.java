@@ -7,6 +7,8 @@ import nrw.andresen.stbl.services.Fehlstarts;
 import nrw.andresen.stbl.services.Konfiguration;
 import nrw.andresen.stbl.services.KonfigurationSeite;
 import nrw.andresen.stbl.services.PushoverService;
+import nrw.andresen.stbl.services.Rahmen;
+import nrw.andresen.stbl.services.SignalService;
 import nrw.andresen.stbl.services.StatusService;
 import nrw.andresen.stbl.services.Tagesuebersicht;
 import nrw.andresen.stbl.services.Ueberwachung;
@@ -74,6 +76,8 @@ public class StblController {
     @Autowired
     private StatusService statusService;
     @Autowired
+    private SignalService signalService;
+    @Autowired
     private WaermebedarfVergleich waermebedarfVergleich;
     @Autowired
     private Tagesuebersicht tagesuebersicht;
@@ -135,12 +139,21 @@ public class StblController {
     }
 
     /**
+     * All values of the heat pump, warnings, fault list, evaluations and the service
+     */
+    @GetMapping(value = "/anlage", produces = "text/html;charset=UTF-8")
+    public String anlage() {
+        return statusService.getAnlage();
+    }
+
+    /**
      * Weekly report: the last 7 complete days against the week before and the usual values, as a page
      */
     @GetMapping(value = "/wochenbericht", produces = "text/html;charset=UTF-8")
     public String wochenbericht() {
-        return WochenberichtSeite.render(wochenbericht.getBericht(), influxController.isAktiv() ? null
-                : "Für den Wochenbericht braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false).");
+        return Rahmen.einsetzen(WochenberichtSeite.render(wochenbericht.getBericht(), influxController.isAktiv() ? null
+                : "Für den Wochenbericht braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false)."),
+                signalService.kopf("wochenbericht", ""));
     }
 
     /**
@@ -158,9 +171,10 @@ public class StblController {
     @GetMapping(value = "/jahresvergleich", produces = "text/html;charset=UTF-8")
     public String jahresvergleich(@RequestParam(required = false) String haushalt,
                                   @RequestParam(required = false) String wallbox) {
-        return JahresvergleichSeite.render(jahresvergleich.getVergleich(), influxController.isAktiv() ? null
-                : "Für den Jahresvergleich braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false).",
-                "ja".equals(haushalt), "ja".equals(wallbox));
+        return Rahmen.einsetzen(JahresvergleichSeite.render(jahresvergleich.getVergleich(), influxController.isAktiv()
+                        ? null : "Für den Jahresvergleich braucht der Dienst die InfluxDB, sie ist ausgeschaltet "
+                        + "(influx.enabled=false).", "ja".equals(haushalt), "ja".equals(wallbox)),
+                signalService.kopf("jahresvergleich", ""));
     }
 
     /**
@@ -176,8 +190,9 @@ public class StblController {
      */
     @GetMapping(value = "/zustand", produces = "text/html;charset=UTF-8")
     public String zustand() {
-        return ZustandSeite.render(zustand.getErgebnis(), influxController.isAktiv() ? null
-                : "Für den Zustand braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false).");
+        return Rahmen.einsetzen(ZustandSeite.render(zustand.getErgebnis(), influxController.isAktiv() ? null
+                : "Für den Zustand braucht der Dienst die InfluxDB, sie ist ausgeschaltet (influx.enabled=false)."),
+                signalService.kopf("zustand", ""));
     }
 
     /**
@@ -202,8 +217,9 @@ public class StblController {
     @GetMapping(value = "/canbus", produces = "text/html;charset=UTF-8")
     public String canbus(@RequestParam(required = false) String knoten,
                          @RequestParam(defaultValue = "" + CanBusSeite.ANZAHL_STANDARD) int anzahl) {
-        return CanBusSeite.render(canBus.getVerbindung(), canBus.getAbfragen(), canBus.getStatistik().getRahmen(),
-                CanBusSeite.knoten(knoten), CanBusSeite.anzahl(anzahl), Instant.now());
+        return Rahmen.einsetzen(CanBusSeite.render(canBus.getVerbindung(), canBus.getAbfragen(),
+                canBus.getStatistik().getRahmen(), CanBusSeite.knoten(knoten), CanBusSeite.anzahl(anzahl),
+                Instant.now()), signalService.kopf("canbus", ""));
     }
 
     /**
@@ -213,10 +229,11 @@ public class StblController {
     public String scan(@RequestParam(defaultValue = "nein") String nullen, HttpServletRequest request) {
         // The start button sends a POST, Spring Security wants the token against forms from other sites
         Object csrf = request.getAttribute(CsrfToken.class.getName());
-        return CanBusSeite.scan(canBus.getIndexScan().status(), canBus.getIndexScan().ergebnisse(),
+        return Rahmen.einsetzen(CanBusSeite.scan(canBus.getIndexScan().status(), canBus.getIndexScan().ergebnisse(),
                 canBus.getAngefragt(), "ja".equals(nullen),
                 csrf instanceof CsrfToken token ? token.getParameterName() : null,
-                csrf instanceof CsrfToken token ? token.getToken() : null, Instant.now());
+                csrf instanceof CsrfToken token ? token.getToken() : null, Instant.now()),
+                signalService.kopf("canbus", "../"));
     }
 
     /**
@@ -319,9 +336,10 @@ public class StblController {
                                       HttpServletRequest request) {
         // Token against forms sent from other sites, checked by Spring Security for every POST
         Object csrf = request.getAttribute(CsrfToken.class.getName());
-        return KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, meldung,
+        return Rahmen.einsetzen(KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, meldung,
                 csrf instanceof CsrfToken token ? token.getParameterName() : null,
-                csrf instanceof CsrfToken token ? token.getToken() : null, testErgebnis);
+                csrf instanceof CsrfToken token ? token.getToken() : null, testErgebnis),
+                signalService.kopf("konfiguration", ""));
     }
 
     /**
