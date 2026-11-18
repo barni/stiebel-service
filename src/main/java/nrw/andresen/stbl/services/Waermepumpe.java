@@ -140,6 +140,13 @@ public class Waermepumpe {
     private volatile Instant verdichterGestopptUm;
     // Time of the last 20 s cycle with defrost signs, null if none seen since the start of the service
     private volatile Instant letzteAbtauung;
+    // A defrost stops the compressor for 1 to 2 minutes (seen 2026-11-18); a run continues across a stop up to
+    // this long with a defrost after the stop
+    static final Duration ABTAU_PAUSE = Duration.ofMinutes(5);
+    // Start of the run before the last stop as shown, defrosts included
+    private volatile Instant laufBeginnVorher;
+    // Start of the current run from the stored values after a start of the service, null if not known
+    private volatile Instant laufBeginnGespeichert;
     // Highest energy per counter (key: index of the MWh counter), the reported sum may fall, see getEnergie
     private final Map<Short, Double> hoechsteEnergie = new ConcurrentHashMap<>();
 
@@ -216,6 +223,73 @@ public class Waermepumpe {
     }
 
     /**
+     * Start of the current run as shown: like getVerdichterLaeuftSeit, but a defrost does not start a new run.
+     * Null while the compressor stands still.
+     */
+    public Instant getLaufBeginn() {
+        Instant seit = verdichterLaeuftSeit;
+        if (seit == null) {
+            return null;
+        }
+        Instant gespeichert = laufBeginnGespeichert;
+        if (gespeichert != null && !gespeichert.isAfter(seit)) {
+            return gespeichert;
+        }
+        return laufBeginn(seit, verdichterGestopptUm, letzteAbtauung, laufBeginnVorher);
+    }
+
+    /**
+     * The run before continues if the stop was at most ABTAU_PAUSE long and a defrost was seen after it
+     */
+    static Instant laufBeginn(Instant seit, Instant gestopptUm, Instant abtauung, Instant vorher) {
+        if (vorher != null && gestopptUm != null && abtauung != null && !abtauung.isBefore(gestopptUm)
+                && Duration.between(gestopptUm, seit).compareTo(ABTAU_PAUSE) <= 0) {
+            return vorher;
+        }
+        return seit;
+    }
+
+    /**
+     * Start of the current run from stored values, defrosts included: walks back from the last run over the runs
+     * before as long as a stop of at most ABTAU_PAUSE followed by a defrost lies between them
+     *
+     * @param drehzahl   stored compressor speed by time, sorted
+     * @param abtauungen times with a stored defrost
+     * @return null if the compressor does not run at the last value
+     */
+    static Instant laufBeginn(java.util.SortedMap<Instant, Double> drehzahl, List<Instant> abtauungen) {
+        List<Instant[]> laeufe = new java.util.ArrayList<>();
+        Instant start = null;
+        Instant letzte = null;
+        for (Map.Entry<Instant, Double> e : drehzahl.entrySet()) {
+            if (e.getValue() > 0) {
+                if (start == null) {
+                    start = e.getKey();
+                }
+            } else if (start != null) {
+                // start, end (first 0)
+                laeufe.add(new Instant[]{start, e.getKey()});
+                start = null;
+            }
+            letzte = e.getKey();
+        }
+        if (start == null) {
+            return null;
+        }
+        Instant beginn = start;
+        for (int i = laeufe.size() - 1; i >= 0; i--) {
+            Instant gestoppt = laeufe.get(i)[1];
+            Instant bis = beginn.plus(ABTAU_PAUSE);
+            boolean abtauung = abtauungen.stream().anyMatch(t -> !t.isBefore(gestoppt) && !t.isAfter(bis));
+            if (Duration.between(gestoppt, beginn).compareTo(ABTAU_PAUSE) > 0 || !abtauung) {
+                break;
+            }
+            beginn = laeufe.get(i)[0];
+        }
+        return letzte == null ? null : beginn;
+    }
+
+    /**
      * Time of the last stop of the compressor, null if none was seen since the start of the service
      */
     public Instant getVerdichterGestopptUm() {
@@ -229,8 +303,12 @@ public class Waermepumpe {
      *
      * @param laeuftSeit first stored speed above 0 of the current run, null if unknown or standing still
      * @param gestopptUm first stored speed 0 after the last run before now, null if unknown
+     * @param laufBeginn start of the current run with defrosts included, null if unknown
      */
-    public void vorgeschichte(Instant laeuftSeit, Instant gestopptUm) {
+    public void vorgeschichte(Instant laeuftSeit, Instant gestopptUm, Instant laufBeginn) {
+        if (verdichterLaeuftSeit != null && laufBeginn != null && laufBeginn.isBefore(verdichterLaeuftSeit)) {
+            laufBeginnGespeichert = laufBeginn;
+        }
         Instant seit = verdichterLaeuftSeit;
         if (seit != null && laeuftSeit != null && laeuftSeit.isBefore(seit)) {
             verdichterLaeuftSeit = laeuftSeit;
@@ -958,6 +1036,8 @@ public class Waermepumpe {
             ValueContainer<Double> drehzahl = getVerdichterDrehzahl();
             if (drehzahl.getValue() <= 0) {
                 if (verdichterLaeuftSeit != null) {
+                    laufBeginnVorher = getLaufBeginn();
+                    laufBeginnGespeichert = null;
                     verdichterGestopptUm = drehzahl.getTimestamp();
                 }
                 verdichterLaeuftSeit = null;

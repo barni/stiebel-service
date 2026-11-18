@@ -108,8 +108,22 @@ public class StblService {
             Instant letzterLauf = influxController.zeitpunkt(name, true, von, bis, false);
             Instant gestopptUm = letzterLauf == null ? null
                     : influxController.zeitpunkt(name, false, letzterLauf, jetzt, true);
-            wp.vorgeschichte(laeuftSeit, gestopptUm);
-            logger.info("Compressor from stored values: running since " + laeuftSeit + ", stopped at " + gestopptUm);
+            Instant laufBeginn = null;
+            if (laeuftSeit != null) {
+                // Across defrosts: the speed and the defrosts of the last 2 days
+                Instant ab = jetzt.minus(Duration.ofDays(2));
+                String bucket = influxController.getBucket();
+                java.util.SortedMap<Instant, Double> drehzahl = new java.util.TreeMap<>(influxController.werte(
+                        "from(bucket: \"" + bucket + "\") |> range(start: " + ab + ") |> filter(fn: (r) => "
+                                + "r._measurement == \"WP_" + name + "\" and r._field == \"value\")"));
+                List<Instant> abtauungen = List.copyOf(influxController.werte("from(bucket: \"" + bucket
+                        + "\") |> range(start: " + ab + ") |> filter(fn: (r) => r._measurement == \"WP_Abtauung\""
+                        + " and r._field == \"value\" and r._value > 0.0)").keySet());
+                laufBeginn = Waermepumpe.laufBeginn(drehzahl, abtauungen);
+            }
+            wp.vorgeschichte(laeuftSeit, gestopptUm, laufBeginn);
+            logger.info("Compressor from stored values: running since " + laeuftSeit + ", run with defrosts since "
+                    + laufBeginn + ", stopped at " + gestopptUm);
         } catch (Exception e) {
             logger.warn("Start and stop of the compressor could not be read: " + e.getMessage());
         }

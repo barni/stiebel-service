@@ -66,7 +66,7 @@ public class SignalService {
         Boolean laeuft = wert(wp::isVerdichterOn);
         Boolean abtauung = wert(wp::isAbtauung);
         Double schein = wert(wp::getLeistungInverter);
-        return betrieb(laeuft, abtauung, wp.getVerdichterLaeuftSeit(), wp.getVerdichterGestopptUm(),
+        return betrieb(laeuft, abtauung, wp.getLaufBeginn(), wp.getVerdichterGestopptUm(),
                 schein == null ? null : Waermepumpe.wirkleistung(schein), Instant.now());
     }
 

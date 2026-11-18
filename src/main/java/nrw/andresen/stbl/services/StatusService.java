@@ -156,7 +156,7 @@ public class StatusService {
         }
         if (laeuft) {
             List<String> zeile = new ArrayList<>();
-            Instant seit = wp.getVerdichterLaeuftSeit();
+            Instant seit = wp.getLaufBeginn();
             if (seit != null) {
                 zeile.add("seit " + SignalService.dauer(seit, jetzt));
             }
@@ -189,8 +189,8 @@ public class StatusService {
             Double reserve = wert(wp::getAbtauReserve);
             Uebersicht.Balken balken = reserve == null
                     ? new Uebersicht.Balken("Reserve bis Abtauung", "", "", 0, "neutral",
-                    "Erscheint " + Waermepumpe.ABTAU_RESERVE_AB.toMinutes() + " Minuten nach dem Start, wenn die "
-                            + "Wärmepumpe ihren Bezug gelernt hat.")
+                    "Erscheint " + Waermepumpe.ABTAU_RESERVE_AB.toMinutes() + " Minuten nach dem Start oder "
+                            + "einer Abtauung.")
                     : new Uebersicht.Balken("Reserve bis Abtauung", zahl(reserve, 1) + " von "
                     + zahl(Waermepumpe.ABTAU_SCHWELLE_K, 1) + " K", "", reserve / Waermepumpe.ABTAU_SCHWELLE_K,
                     reserve < 1 ? "achtung" : "aktiv", "Sinkt, während Eis am Verdampfer wächst; bei 0 taut die "
