@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Stored values of the last 24 hours as 10 minute means for the overview. Read at most once a minute and only when
+ * Stored values of the last 24 hours as 10 minute means for the overview, the temperatures as 2 minute means. Read at most once a minute and only when
  * the overview is opened: the page updates itself every 20 s.
  */
 @Component
@@ -21,6 +21,12 @@ public class Verlauf24h {
 
     static final Duration SPANNE = Duration.ofHours(24);
     static final Duration FENSTER = Duration.ofMinutes(10);
+    // The temperatures in 2 minute means: in 10 minutes the flow often goes from 24 to 36 degC and back at a stop or a
+    // defrost, the means of 10 minutes showed only 31 to 33 degC. Electricity and defrost stay at FENSTER, the runs
+    // are found from them.
+    static final Duration FENSTER_FEIN = Duration.ofMinutes(2);
+    static final java.util.Set<String> FEIN = java.util.Set.of("VorlaufFein", "RuecklaufFein", "VorlaufIstTemp",
+            "RuecklaufIstTemp", "AussentempWPM", "Aussentemp");
     private static final Duration GUELTIG = Duration.ofMinutes(1);
     static final List<String> REIHEN = List.of("LeistungInverter", "Abtauung", "VorlaufFein", "RuecklaufFein",
             "VorlaufIstTemp", "RuecklaufIstTemp", "AussentempWPM", "Aussentemp", "Heizungsdruck",
@@ -50,7 +56,7 @@ public class Verlauf24h {
         Map<String, InfluxController.History> reihen = new HashMap<>();
         for (String name : REIHEN) {
             try {
-                reihen.put(name, influx.history(name, SPANNE, FENSTER));
+                reihen.put(name, influx.history(name, SPANNE, FEIN.contains(name) ? FENSTER_FEIN : FENSTER));
             } catch (Exception e) {
                 logger.debug("Course of " + name + " could not be read: " + e.getMessage());
             }
