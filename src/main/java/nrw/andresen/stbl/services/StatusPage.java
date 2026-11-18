@@ -568,34 +568,7 @@ public class StatusPage {
                 + "\">seit " + SHORT_TIME.format(container.getTimestamp().atZone(zone)) + "</span>";
     }
 
-    public String render() {
-        StringBuilder html = new StringBuilder();
-        html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
-                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                // The scripts update the page in place, the meta refresh is only the fallback without JavaScript
-                .append(AKTUALISIEREN)
-                .append("<title>").append(attr(titel)).append("</title><style>").append(CSS)
-                .append(hasTooltip ? TOOLTIP_CSS : "").append(hasHistory ? HISTORY_CSS : "")
-                .append("</style></head><body data-aktualisieren=\"20\"><main>");
-
-        if (kopf != null) {
-            html.append(kopf);
-        } else {
-            html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
-                    .append(TIME.format(Instant.now(clock).atZone(zone)))
-                    .append(" · aktualisiert alle 20 s")
-                    .append(nav.stream().map(link -> " · <a class=\"nav\" href=\"" + attr(link[1]) + "\">"
-                            + attr(link[0]) + "</a>").collect(Collectors.joining()))
-                    .append("</p></div><div class=\"badges\">");
-            headerBadges.forEach(html::append);
-            html.append("</div></header>");
-        }
-        oben.forEach(html::append);
-        if (!kpis.isEmpty()) {
-            html.append("<section class=\"kpis\">");
-            kpis.forEach(kpi -> html.append(renderKpi(kpi)));
-            html.append("</section>");
-        }
+    private void bereiche(StringBuilder html) {
         for (Bereich bereich : bereiche) {
             if (bereich.klappbar) {
                 html.append("<details class=\"bereich\" data-id=\"").append(attr(bereich.titel)).append("\"")
@@ -624,6 +597,49 @@ public class StatusPage {
             }
             html.append("</section>").append(bereich.klappbar ? "</details>" : "");
         }
+    }
+
+    /**
+     * Only the areas with their cards, to be put into another page that has the base styles, e.g. the configuration
+     */
+    public String renderBereiche() {
+        StringBuilder html = new StringBuilder();
+        if (hasTooltip) {
+            html.append("<style>").append(TOOLTIP_CSS).append("</style>");
+        }
+        bereiche(html);
+        return html.toString();
+    }
+
+    public String render() {
+        StringBuilder html = new StringBuilder();
+        html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
+                .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
+                // The scripts update the page in place, the meta refresh is only the fallback without JavaScript
+                .append(AKTUALISIEREN)
+                .append("<title>").append(attr(titel)).append("</title><style>").append(CSS)
+                .append(hasTooltip ? TOOLTIP_CSS : "").append(hasHistory ? HISTORY_CSS : "")
+                .append("</style></head><body data-aktualisieren=\"20\"><main>");
+
+        if (kopf != null) {
+            html.append(kopf);
+        } else {
+            html.append("<header><div><h1>Wärmepumpe</h1><p class=\"sub\">Stand ")
+                    .append(TIME.format(Instant.now(clock).atZone(zone)))
+                    .append(" · aktualisiert alle 20 s")
+                    .append(nav.stream().map(link -> " · <a class=\"nav\" href=\"" + attr(link[1]) + "\">"
+                            + attr(link[0]) + "</a>").collect(Collectors.joining()))
+                    .append("</p></div><div class=\"badges\">");
+            headerBadges.forEach(html::append);
+            html.append("</div></header>");
+        }
+        oben.forEach(html::append);
+        if (!kpis.isEmpty()) {
+            html.append("<section class=\"kpis\">");
+            kpis.forEach(kpi -> html.append(renderKpi(kpi)));
+            html.append("</section>");
+        }
+        bereiche(html);
         html.append("</main><script>").append(BEREICH_SCRIPT).append("</script>");
         if (hasHistory) {
             html.append(HISTORY_DIALOG).append("<script>").append(HISTORY_SCRIPT).append("</script>");

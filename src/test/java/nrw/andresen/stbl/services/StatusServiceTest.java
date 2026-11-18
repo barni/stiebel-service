@@ -55,8 +55,13 @@ public class StatusServiceTest {
         assertFalse(html.contains("Vorlauf-Soll WPM"));
         String anlage = status.getAnlage();
         assertTrue(anlage.contains("Reserve bis Abtauung"));
-        assertTrue(anlage.contains("Software der Geräte"));
-        assertTrue(anlage.contains("id=\"system\""));
+        assertFalse(anlage.contains("Software der Geräte"));
+        // The service, the devices and the USB adapter are on the configuration page
+        String system = status.getSystem();
+        assertTrue(system.contains("Software der Geräte"));
+        assertTrue(system.contains("USB-Adapter"));
+        assertTrue(system.contains("id=\"system\""));
+        assertFalse(system.contains("<html"));
         assertTrue(anlage.contains("id=\"meldungen\""));
     }
 }

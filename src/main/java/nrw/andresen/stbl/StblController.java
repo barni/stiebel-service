@@ -338,7 +338,7 @@ public class StblController {
         Object csrf = request.getAttribute(CsrfToken.class.getName());
         return Rahmen.einsetzen(KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, meldung,
                 csrf instanceof CsrfToken token ? token.getParameterName() : null,
-                csrf instanceof CsrfToken token ? token.getToken() : null, testErgebnis),
+                csrf instanceof CsrfToken token ? token.getToken() : null, testErgebnis, statusService.getSystem()),
                 signalService.kopf("konfiguration", ""));
     }
 

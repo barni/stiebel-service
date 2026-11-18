@@ -99,7 +99,8 @@ public class StatusService {
     public String getAnlage() {
         StatusPage page = new StatusPage();
         page.kopf(signale.kopf("anlage", "") + "<div class=\"seitentitel\"><div><h1>Anlage</h1><p class=\"sub\">"
-                + "Alle Messwerte, Einstellungen und Meldungen; ein Klick auf einen Wert zeigt seinen Verlauf."
+                + "Alle Messwerte, Einstellungen der Wärmepumpe und Meldungen; ein Klick auf einen Wert zeigt seinen "
+                + "Verlauf."
                 + "</p></div></div>", "Wärmepumpe · Anlage");
         if (!influx.isAktiv()) {
             // Without InfluxDB: no courses of the values and none of the cards that are calculated from stored values
@@ -110,8 +111,18 @@ public class StatusService {
         fehlerliste(page);
         anlage(page);
         auswertung(page);
-        system(page);
         return page.render();
+    }
+
+    /**
+     * State of the service, the software of the devices and the USB adapter, shown on the configuration page
+     *
+     * @return HTML of the area, without page
+     */
+    public String getSystem() {
+        StatusPage page = new StatusPage().ohneVerlauf();
+        system(page);
+        return page.renderBereiche();
     }
 
     private static <T extends java.io.Serializable> T wert(java.util.concurrent.Callable<ValueContainer<T>> quelle) {
@@ -404,7 +415,7 @@ public class StatusService {
         page.textArt("Dienst", dienst.wert(), dienst.art()).info("Prüfung des Dienstes alle 15 Minuten: InfluxDB, USB-Adapter, Mail, "
                 + "Pushover.");
         page.note("<a class=\"nav\" href=\"zustand\">Zustand und Alterung</a> · "
-                + "<a class=\"nav\" href=\"anlage#system\">System</a>");
+                + "<a class=\"nav\" href=\"konfiguration#system\">System</a>");
     }
 
     private void warnungen(StatusPage page) {

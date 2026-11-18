@@ -28,6 +28,15 @@ public final class KonfigurationSeite {
      */
     public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
                                 String meldung, String csrfName, String csrfToken, String testErgebnis) {
+        return render(stand, eingabe, fehler, meldung, csrfName, csrfToken, testErgebnis, "");
+    }
+
+    /**
+     * @param system state of the service, the devices and the USB adapter, shown above the settings
+     */
+    public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
+                                String meldung, String csrfName, String csrfToken, String testErgebnis,
+                                String system) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -38,7 +47,7 @@ public final class KonfigurationSeite {
                 .append("<a class=\"nav\" href=\"wochenbericht\">Wochenbericht</a> · ")
                 .append("<a class=\"nav\" href=\"jahresvergleich\">Jahresvergleich</a> · ")
                 .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
-                .append("<a class=\"nav\" href=\"canbus\">CAN-Bus</a></nav></header>");
+                .append("<a class=\"nav\" href=\"canbus\">CAN-Bus</a></nav></header>").append(system);
         // The empty name carries a message that belongs to no setting, e.g. the file could not be written
         long ungueltig = fehler.keySet().stream().filter(name -> !name.isEmpty()).count();
         if (fehler.containsKey("")) {
