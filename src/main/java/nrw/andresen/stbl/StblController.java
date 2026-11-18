@@ -133,6 +133,14 @@ public class StblController {
 
 
 
+    /**
+     * The address of the service alone opens the overview
+     */
+    @GetMapping("/")
+    public ResponseEntity<Void> start() {
+        return ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "status").build();
+    }
+
     @RequestMapping(value = "/status", produces = "text/html;charset=UTF-8")
     public String status() throws Exception{
         return statusService.getStatus();
