@@ -10,6 +10,8 @@
     laeuft = true;
     try {
       const antwort = await fetch(location.href, {cache: 'no-store', credentials: 'same-origin'});
+      // The session ran out: load the page, which leads to the login form
+      if (antwort.status === 401) { location.reload(); return; }
       if (!antwort.ok) return;
       const neu = new DOMParser().parseFromString(await antwort.text(), 'text/html');
       const main = neu.querySelector('main');
