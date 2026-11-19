@@ -190,7 +190,10 @@ pump. The mail server gets 10 s to accept the connection and 20 s to answer (oth
 adapter stays silent it is restarted every 2 minutes, the alert about it comes for the first restart and then once
 an hour.
 
-[deploy.sh](deploy.sh) copies a new build to `/var/stbl-service` and restarts the unit `stbl`.
+[deploy.sh](deploy.sh) builds on the development computer with all tests and installs the jar on the Pi
+(`./deploy.sh pi@host`): it copies it to `/var/stbl-service` and restarts the unit `stbl`. Do not build on a Pi 3, a
+Maven build next to the running service fills its 1 GB until it no longer answers. [stbl.service](stbl.service)
+limits the heap to 192 MB; after changing the unit in `/etc/systemd/system` run `sudo systemctl daemon-reload`.
 
 ## License
 
