@@ -337,4 +337,43 @@ public class JahresvergleichTest {
         assertEquals(20, JahresvergleichSeite.schritt(90), 1e-9);
         assertEquals(1, JahresvergleichSeite.schritt(0), 1e-9);
     }
+
+    @Test
+    public void testAlleJahreUndZeitraum() {
+        Jahresvergleich.Vergleich zwei = vergleich(true);
+        // Four years that are over: the bars show all of them and the current one, none drops out on the 1st of January
+        java.util.List<Jahresvergleich.Jahressumme> summen = java.util.List.of(
+                new Jahresvergleich.Jahressumme(2022, 9000, 2500, 0), new Jahresvergleich.Jahressumme(2023, 9200, 2600, 0),
+                new Jahresvergleich.Jahressumme(2024, 9667, 2806, 0), new Jahresvergleich.Jahressumme(2025, 9635, 3016, 0));
+        assertEquals(6861, summen.get(2).haushalt(), 1e-9);
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true, true,
+                zwei.gesamt(), zwei.gesamtVorjahrGleich(), zwei.wallboxBisJetzt(), zwei.wallboxVorjahrGleich(),
+                zwei.berechnet(), null, null, summen);
+        String balken = JahresvergleichSeite.jahresbalken(v);
+        for (String jahr : java.util.List.of(">2022<", ">2023<", ">2024<", ">2025<", ">2026 Prognose<")) {
+            assertTrue(balken.contains(jahr), jahr);
+        }
+        assertEquals(4, balken.split("<tspan class=\"aenderung\"").length - 1);
+
+        // The period between two readings
+        java.time.LocalDate von = java.time.LocalDate.of(2025, 12, 1);
+        java.time.LocalDate bis = java.time.LocalDate.of(2026, 11, 30);
+        Jahresvergleich.Zeitraum z = new Jahresvergleich.Zeitraum(von, bis,
+                bis.plusDays(1).atStartOfDay(java.time.ZoneId.of("Europe/Berlin")).toInstant(), 58000.0, 67500.0, 3100,
+                900.0);
+        assertEquals(9500, z.gesamt(), 1e-9);
+        assertEquals(5500, z.haushalt(), 1e-9);
+        assertEquals(365, z.tage());
+        String karte = JahresvergleichSeite.zeitraumKarte(v, z, null, null);
+        assertTrue(karte.contains("<input type=\"date\" name=\"von\" required value=\"2025-12-01\">"));
+        assertTrue(karte.contains("<td>Zählerstand 01.12.2025 0:00</td><td>58.000,0</td>"));
+        assertTrue(karte.contains("<td>Zählerstand 30.11.2026 24:00</td><td>67.500,0</td>"));
+        assertTrue(karte.contains("<td>Netzbezug (365 Tage)</td><td>9.500 · 26,0 je Tag</td>"));
+        assertTrue(karte.contains("<td>davon Wallbox</td><td>900</td>"));
+        // Without a period only the form, without the house meter nothing
+        assertTrue(JahresvergleichSeite.zeitraumKarte(v, null, von, bis).contains("value=\"2026-11-30\""));
+        assertFalse(JahresvergleichSeite.zeitraumKarte(v, null, von, bis).contains("Zählerstand"));
+        assertEquals("", JahresvergleichSeite.zeitraumKarte(vergleich(false), null, von, bis));
+        assertTrue(JahresvergleichSeite.render(v, null, true, true, z).contains("id=\"zeitraum\""));
+    }
 }

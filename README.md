@@ -90,14 +90,17 @@ before you rely on it.
   change and the mean outdoor temperature. The current month is compared with the same days of the year before.
   With the Home Assistant counters `auswertung.haushalt.zaehler` (grid import of the house meter) and
   `auswertung.haushalt.wallbox` (kWh) in `auswertung.haushalt.bucket` the page also shows the total grid import from
-  the 1st of January against the same days of the year before, one bar per year (the current one with its forecast)
+  the 1st of January against the same days of the year before, one bar per year for all years with readings of the
+  house meter (the current one with its forecast)
   made of heating, household and wallbox, and the monthly bars stack the household electricity (grid import minus
   heating and wallbox) and the wallbox on top of the heating; `haushalt=nein` / `wallbox=nein` leave them out. The
   card "Woran liegt es?" shows the gap to the year before added up from the 1st of January, in total and per part,
   and a table against the two years before; a forecast up to the end of the year adds to each part what is still expected: heating as in the
   rest of the two years before, the household as in the rest of the year before, the wallbox at the rate of the last
   three full months. Months that are over are read once, the current
-  month every hour.
+  month every hour. "Verbrauch im Zeitraum" (`/jahresvergleich?von=2025-12-01&bis=2026-11-30`) shows the readings
+  of the house meter at the start of the first and the end of the last day, the grid import between them and its
+  parts, to compare with the electricity bill.
 - **Condition and ageing** on the page `/zustand` and as JSON from `/zustand/daten`: per heating season (July to June,
   since `auswertung.zustand.start`, default 2022-07-01) the efficiency, starts, hours per start and defrosts at the
   same outdoor temperature (0 to 5 °C and 5 to 10 °C), failed starts per 1000 mild starts and the heating pressure

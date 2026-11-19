@@ -156,10 +156,23 @@ public class StblController {
      */
     @GetMapping(value = "/jahresvergleich", produces = "text/html;charset=UTF-8")
     public String jahresvergleich(@RequestParam(required = false) String haushalt,
-                                  @RequestParam(required = false) String wallbox) {
-        return Rahmen.einsetzen(JahresvergleichSeite.render(jahresvergleich.getVergleich(), influxController.isAktiv()
+                                  @RequestParam(required = false) String wallbox,
+                                  @RequestParam(required = false) java.time.LocalDate von,
+                                  @RequestParam(required = false) java.time.LocalDate bis) {
+        Jahresvergleich.Vergleich vergleich = jahresvergleich.getVergleich();
+        Jahresvergleich.Zeitraum zeitraum = null;
+        if (von != null && bis != null && vergleich != null && influxController.isAktiv()) {
+            // Swapped days are turned round, at most 5 years at once
+            java.time.LocalDate a = von.isAfter(bis) ? bis : von;
+            java.time.LocalDate b = von.isAfter(bis) ? von : bis;
+            if (a.plusYears(5).isBefore(b)) {
+                throw new IllegalArgumentException("Höchstens 5 Jahre auf einmal");
+            }
+            zeitraum = jahresvergleich.zeitraum(a, b);
+        }
+        return Rahmen.einsetzen(JahresvergleichSeite.render(vergleich, influxController.isAktiv()
                         ? null : "Für den Jahresvergleich braucht der Dienst die InfluxDB, sie ist ausgeschaltet "
-                        + "(influx.enabled=false).", !"nein".equals(haushalt), !"nein".equals(wallbox)),
+                        + "(influx.enabled=false).", !"nein".equals(haushalt), !"nein".equals(wallbox), zeitraum),
                 signalService.kopf("jahresvergleich", ""));
     }
 
