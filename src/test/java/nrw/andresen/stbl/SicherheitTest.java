@@ -30,4 +30,11 @@ public class SicherheitTest {
         skript.addHeader("Sec-Fetch-Mode", "cors");
         assertFalse(Sicherheit.seite(skript));
     }
+
+    @Test
+    public void testSchluessel() {
+        // The same after a restart, another with a new password
+        assertTrue(Sicherheit.schluessel("u", "p").equals(Sicherheit.schluessel("u", "p")));
+        assertFalse(Sicherheit.schluessel("u", "p").equals(Sicherheit.schluessel("u", "neu")));
+    }
 }

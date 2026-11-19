@@ -19,7 +19,7 @@ before you rely on it.
   times, flow rate, calculated heat output and efficiency, fan, superheat, EXV) and every hour (settings). Measurement
   `WP_<name>`, field `value`, e.g. `WP_Hochdruck`, `WP_AbgabeWaerme` (MWh), `WP_ArbeitszahlGeschaetzt`, also the
   spread `WP_Spreizung`, `WP_LaufzeitProStart` and the efficiency of the counters `WP_EffizienzZaehler`.
-- **REST API** (HTTP basic auth sent with the request, e.g. `curl -u`; the pages use a login form), JSON `{"timestamp": ..., "value": ..., "valueString": ...}`, e.g. `/hochdruck`,
+- **REST API** (HTTP basic auth sent with the request, e.g. `curl -u`; the pages use a login form that is remembered for 30 days), JSON `{"timestamp": ..., "value": ..., "valueString": ...}`, e.g. `/hochdruck`,
   `/vorlaufIstTemp`, `/abgabeWaerme`, `/aufnahmeLeistung`, `/arbeitszahl`, `/heizungsdruck`; see `StblController` for
   all endpoints. A value that is missing or not meaningful (e.g. efficiency while the compressor stands still) is
   answered with HTTP 503 and the reason.
