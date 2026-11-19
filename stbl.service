@@ -6,7 +6,9 @@ Wants=network-online.target
 [Service]
 User=pi
 WorkingDirectory=/var/stbl-service
-ExecStart=/usr/bin/java -jar /var/stbl-service/stbl-service-0.2.0-SNAPSHOT.jar
+# The heap is limited: without a limit Java took a quarter of the 1 GB of a Pi 3 (480 MB resident), the service
+# uses about 50 MB of heap
+ExecStart=/usr/bin/java -Xmx192m -jar /var/stbl-service/stbl-service-0.2.0-SNAPSHOT.jar
 SuccessExitStatus=143
 # Start again after a crash, nobody else notices a stopped service
 Restart=on-failure
