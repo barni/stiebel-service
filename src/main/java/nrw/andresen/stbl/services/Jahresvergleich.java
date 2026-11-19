@@ -35,6 +35,8 @@ import java.util.regex.Pattern;
 public class Jahresvergleich {
 
     static final int JAHRE = 3;
+    // The bars per year look back this far, as long as the house meter has readings
+    static final int JAHRE_ZURUECK = 10;
     private static final ZoneId ZONE = ZoneId.of("Europe/Berlin");
     private static final double LAEUFT_AB_W = 50;
     private static final Pattern NAME = Pattern.compile("[A-Za-z0-9_]{1,64}");
@@ -96,13 +98,21 @@ public class Jahresvergleich {
     public record Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                             boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
                             Double wallboxVorjahrGleich, Instant berechnet, Double gesamtVorvorjahrGleich,
-                            Double wallboxVorvorjahrGleich) {
+                            Double wallboxVorvorjahrGleich, List<Jahressumme> jahressummen) {
 
         public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                          boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
                          Double wallboxVorjahrGleich, Instant berechnet) {
             this(jahre, bis, monate, mitHaushalt, mitWallbox, gesamt, gesamtVorjahrGleich, wallboxBisJetzt,
-                    wallboxVorjahrGleich, berechnet, null, null);
+                    wallboxVorjahrGleich, berechnet, null, null, List.of());
+        }
+
+        public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
+                         boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
+                         Double wallboxVorjahrGleich, Instant berechnet, Double gesamtVorvorjahrGleich,
+                         Double wallboxVorvorjahrGleich) {
+            this(jahre, bis, monate, mitHaushalt, mitWallbox, gesamt, gesamtVorjahrGleich, wallboxBisJetzt,
+                    wallboxVorjahrGleich, berechnet, gesamtVorvorjahrGleich, wallboxVorvorjahrGleich, List.of());
         }
 
         /**
@@ -252,6 +262,41 @@ public class Jahresvergleich {
     }
 
     /**
+     * One whole year that is over, from the house meter: grid import and its parts in kWh
+     */
+    public record Jahressumme(int jahr, double gesamt, double heizung, double wallbox) {
+
+        public double haushalt() {
+            return gesamt - heizung - wallbox;
+        }
+    }
+
+    /**
+     * Consumption from the start of the day von to the end of the day bis, e.g. between the readings of two bills
+     *
+     * @param standAnfang reading of the house meter at the start, null if unknown
+     * @param standEnde   reading of the house meter at the end (now if the end is still to come), null if unknown
+     * @param heizung     estimated electricity of the heating
+     * @param wallbox     from the counter of the wallbox, null without it
+     */
+    public record Zeitraum(LocalDate von, LocalDate bis, Instant ende, Double standAnfang, Double standEnde,
+                           double heizung, Double wallbox) {
+
+        public Double gesamt() {
+            return standAnfang == null || standEnde == null ? null : standEnde - standAnfang;
+        }
+
+        public Double haushalt() {
+            Double g = gesamt();
+            return g == null ? null : g - heizung - (wallbox == null ? 0 : wallbox);
+        }
+
+        public long tage() {
+            return Math.max(1, Math.round(Duration.between(von.atStartOfDay(ZONE).toInstant(), ende).toHours() / 24.0));
+        }
+    }
+
+    /**
      * Forecast of one part for the whole current year
      *
      * @param bisher   from the 1st of January up to now
@@ -353,7 +398,71 @@ public class Jahresvergleich {
                 wallboxBisJetzt[0], wallboxBisJetzt[1], Instant.now());
         return new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.mitWallbox(), v.gesamt(),
                 v.gesamtVorjahrGleich(), v.wallboxBisJetzt(), v.wallboxVorjahrGleich(), v.berechnet(), gesamt[2],
-                wallboxBisJetzt[2]);
+                wallboxBisJetzt[2], jahressummen(jahr));
+    }
+
+    /**
+     * All whole years that are over and have readings of the house meter at both ends, read once; empty without
+     * the house meter. Looks back at most JAHRE_ZURUECK years.
+     */
+    private List<Jahressumme> jahressummen(int jahr) {
+        List<Jahressumme> summen = new ArrayList<>();
+        if (hauszaehler.isEmpty()) {
+            return summen;
+        }
+        for (int j = jahr - JAHRE_ZURUECK; j < jahr; j++) {
+            Instant anfang = start(YearMonth.of(j, 1));
+            Instant ende = start(YearMonth.of(j + 1, 1));
+            Double gesamt = differenz(stand(hauszaehler, anfang), stand(hauszaehler, ende));
+            if (gesamt == null) {
+                continue;
+            }
+            double heizung = 0;
+            for (YearMonth m = YearMonth.of(j, 1); m.getYear() == j; m = m.plusMonths(1)) {
+                heizung += heizungFertig.computeIfAbsent(m, x -> strom(start(x), start(x.plusMonths(1))));
+            }
+            Double wallbox = wallboxZaehler.isEmpty() ? null
+                    : differenz(stand(wallboxZaehler, anfang), stand(wallboxZaehler, ende));
+            summen.add(new Jahressumme(j, gesamt, heizung, wallbox == null ? 0 : wallbox));
+        }
+        return summen;
+    }
+
+    /**
+     * Consumption from the start of the day von to the end of the day bis, or up to now if that is later
+     */
+    public Zeitraum zeitraum(LocalDate von, LocalDate bis) {
+        Instant jetzt = Instant.now();
+        Instant anfang = von.atStartOfDay(ZONE).toInstant();
+        Instant ende = bis.plusDays(1).atStartOfDay(ZONE).toInstant();
+        if (ende.isAfter(jetzt)) {
+            ende = jetzt;
+        }
+        Double standAnfang = hauszaehler.isEmpty() ? null : zaehlerstand(hauszaehler, anfang, jetzt);
+        Double standEnde = hauszaehler.isEmpty() ? null : zaehlerstand(hauszaehler, ende, jetzt);
+        Double wallbox = wallboxZaehler.isEmpty() ? null
+                : differenz(zaehlerstand(wallboxZaehler, anfang, jetzt), zaehlerstand(wallboxZaehler, ende, jetzt));
+        // Whole months from the cache of the comparison, the parts at the edges directly
+        double heizung = 0;
+        Instant t = anfang;
+        while (t.isBefore(ende)) {
+            YearMonth monat = YearMonth.from(t.atZone(ZONE));
+            Instant monatEnde = start(monat.plusMonths(1));
+            Instant bisHier = monatEnde.isAfter(ende) ? ende : monatEnde;
+            boolean ganz = t.equals(start(monat)) && bisHier.equals(monatEnde) && monatEnde.isBefore(jetzt);
+            heizung += ganz ? heizungFertig.computeIfAbsent(monat, x -> strom(start(x), start(x.plusMonths(1))))
+                    : strom(t, bisHier);
+            t = bisHier;
+        }
+        return new Zeitraum(von, bis, ende, standAnfang, standEnde, heizung, wallbox);
+    }
+
+    /**
+     * Reading at a point in time, interpolated; the last reading for now
+     */
+    private Double zaehlerstand(String entity, Instant zeit, Instant jetzt) {
+        return zeit.equals(jetzt) ? letzter(entity, zeit)
+                : stand(zaehler(entity, zeit, false), zaehler(entity, zeit, true), zeit);
     }
 
     /**

@@ -1,5 +1,6 @@
 package nrw.andresen.stbl.services;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -39,6 +40,14 @@ public final class JahresvergleichSeite {
      */
     public static String render(Jahresvergleich.Vergleich vergleich, String hinweis, boolean haushalt,
                                 boolean wallbox) {
+        return render(vergleich, hinweis, haushalt, wallbox, null);
+    }
+
+    /**
+     * @param zeitraum consumption of a chosen period, null if none was asked for
+     */
+    public static String render(Jahresvergleich.Vergleich vergleich, String hinweis, boolean haushalt,
+                                boolean wallbox, Jahresvergleich.Zeitraum zeitraum) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -144,7 +153,9 @@ public final class JahresvergleichSeite {
                 .append(vergleich.gesamt() != null ? " Gesamt ist der Netzbezug laut Hauszähler vom 1. Januar bis "
                         + "jetzt, verglichen mit dem Vorjahr bis zur gleichen Stunde." : "")
                 .append(" Außentemperatur: Mittel der Tagesmittel.</p>")
-                .append("</article></section><p class=\"note\">Stand ").append(ZEIT.format(vergleich.berechnet()))
+                .append("</article></section>")
+                .append(zeitraumKarte(vergleich, zeitraum, vergleich.bis().minusYears(1), vergleich.bis().minusDays(1)))
+                .append("<p class=\"note\">Stand ").append(ZEIT.format(vergleich.berechnet()))
                 .append(", stündlich neu berechnet.</p></main></body></html>");
         return html.toString();
     }
@@ -526,6 +537,50 @@ public final class JahresvergleichSeite {
         return wert(m.heizung().get(i)) + haushalt + wert(m.wallbox().get(i));
     }
 
+    private static final DateTimeFormatter TAG = DateTimeFormatter.ofPattern("dd.MM.yyyy");
+
+    /**
+     * Card to read the consumption of a chosen period, e.g. between the meter readings of two bills: a form with two
+     * days and, once asked for, the readings of the house meter at both ends and the parts in between
+     */
+    static String zeitraumKarte(Jahresvergleich.Vergleich v, Jahresvergleich.Zeitraum z, LocalDate vonVorschlag,
+                                LocalDate bisVorschlag) {
+        if (v.gesamt() == null) {
+            return "";
+        }
+        LocalDate von = z == null ? vonVorschlag : z.von();
+        LocalDate bis = z == null ? bisVorschlag : z.bis();
+        StringBuilder html = new StringBuilder("<section class=\"cards\" id=\"zeitraum\"><article class=\"card breit\">"
+                + "<h2>Verbrauch im Zeitraum</h2><p class=\"legende\">Zum Abgleich mit der Stromrechnung: die "
+                + "Zählerstände des Hauszählers zu Beginn des ersten und am Ende des letzten Tages.</p>"
+                + "<form class=\"zeitraum\" method=\"get\" action=\"jahresvergleich#zeitraum\">"
+                + "<label>von <input type=\"date\" name=\"von\" required value=\"" + von + "\"></label>"
+                + "<label>bis <input type=\"date\" name=\"bis\" required value=\"" + bis + "\"></label>"
+                + "<button type=\"submit\">Berechnen</button></form>");
+        if (z != null) {
+            List<List<String>> zeilen = new ArrayList<>();
+            boolean bisJetzt = z.ende().isBefore(z.bis().plusDays(1).atStartOfDay(java.time.ZoneId.of(
+                    "Europe/Berlin")).toInstant());
+            zeilen.add(List.of("Zählerstand " + TAG.format(z.von()) + " 0:00", zahl(z.standAnfang(), 1)));
+            zeilen.add(List.of("Zählerstand " + (bisJetzt ? "jetzt" : TAG.format(z.bis()) + " 24:00"),
+                    zahl(z.standEnde(), 1)));
+            Double gesamt = z.gesamt();
+            zeilen.add(List.of("Netzbezug (" + z.tage() + " Tage)", zahl(gesamt, 0)
+                    + (gesamt == null ? "" : " · " + zahl(gesamt / z.tage(), 1) + " je Tag")));
+            zeilen.add(List.of("davon Heizung ≈", zahl(z.heizung(), 0)));
+            if (z.wallbox() != null) {
+                zeilen.add(List.of("davon Wallbox", zahl(z.wallbox(), 0)));
+            }
+            zeilen.add(List.of("davon Haushalt", zahl(z.haushalt(), 0)));
+            html.append(tabelle(List.of(TAG.format(z.von()) + " bis " + TAG.format(z.bis()), "kWh"), zeilen))
+                    .append("<p class=\"note\">Die Zählerstände sind aus den gespeicherten Werten des Hauszählers zum "
+                            + "Tagesbeginn gerechnet (zwischen zwei Werten anteilig). Weicht die Rechnung ab, kann sie "
+                            + "einen geschätzten oder an einem anderen Tag abgelesenen Stand enthalten. Heizung ≈ ist aus "
+                            + "dem Inverter geschätzt, Haushalt der Rest.</p>");
+        }
+        return html.append("</article></section>").toString();
+    }
+
     /**
      * Card with one bar per year, the current year with its forecast, made of heating, household and wallbox: how
      * the whole consumption develops and of what it consists. Empty without the house meter.
@@ -536,8 +591,19 @@ public final class JahresvergleichSeite {
         }
         List<Jahresvergleich.Prognose> teile = v.prognose();
         List<double[]> jahre = new ArrayList<>();
-        for (int i = 0; i < J - 1; i++) {
-            jahre.add(new double[]{v.heizung(i), wert(v.haushalt(i)), wert(v.wallbox(i))});
+        List<Integer> jahreszahlen = new ArrayList<>();
+        // All years that are over with readings of the house meter, so no year drops out on the 1st of January;
+        // without them the years of the comparison
+        if (v.jahressummen() != null && !v.jahressummen().isEmpty()) {
+            for (Jahresvergleich.Jahressumme j : v.jahressummen()) {
+                jahre.add(new double[]{j.heizung(), Math.max(0, j.haushalt()), j.wallbox()});
+                jahreszahlen.add(j.jahr());
+            }
+        } else {
+            for (int i = 0; i < J - 1; i++) {
+                jahre.add(new double[]{v.heizung(i), wert(v.haushalt(i)), wert(v.wallbox(i))});
+                jahreszahlen.add(v.jahre().get(i));
+            }
         }
         double[] jetzt = new double[3];
         for (Jahresvergleich.Prognose p : teile) {
@@ -548,6 +614,8 @@ public final class JahresvergleichSeite {
             }
         }
         jahre.add(jetzt);
+        jahreszahlen.add(v.jahr());
+        int n = jahre.size();
         double max = jahre.stream().mapToDouble(t -> t[0] + t[1] + t[2]).max().orElse(0);
         if (max <= 0) {
             return "";
@@ -555,17 +623,17 @@ public final class JahresvergleichSeite {
         int zeile = 34;
         int links = 120;
         int rechts = 190;
-        int hoehe = J * zeile + 6;
+        int hoehe = n * zeile + 6;
         double breite = B - links - rechts;
         String[] klassen = {"heizung", "haushalt", "wallbox"};
         String[] namen = {"Heizung ≈", "Haushalt", "Wallbox"};
         StringBuilder svg = new StringBuilder("<div class=\"diagramm\"><svg viewBox=\"0 0 " + B + " " + hoehe
                 + "\" width=\"100%\" role=\"img\" aria-label=\"Netzbezug je Jahr\">");
-        for (int i = 0; i < J; i++) {
+        for (int i = 0; i < n; i++) {
             double[] t = jahre.get(i);
             double y = 4 + i * zeile;
-            boolean prognose = i == J - 1;
-            int jahr = v.jahre().get(i);
+            boolean prognose = i == n - 1;
+            int jahr = jahreszahlen.get(i);
             svg.append(String.format(Locale.ROOT, "<text class=\"teil\" x=\"%d\" y=\"%.1f\" text-anchor=\"end\">"
                     + "%s</text>", links - 10, y + zeile / 2.0 + 1, jahr + (prognose ? " Prognose" : "")));
             double x = links;
@@ -735,6 +803,12 @@ public final class JahresvergleichSeite {
               background: var(--card); border: 1px solid var(--line); }
             .tbl { overflow-x: auto; }
             .tbl table { font-size: 14px; }
+            .zeitraum { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 4px 0 12px; }
+            .zeitraum label { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+            .zeitraum input { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px;
+              background: var(--card); color: var(--text); }
+            .zeitraum button { font: inherit; font-weight: 600; padding: 7px 14px; border: 0; border-radius: 8px;
+              background: var(--accent); color: #fff; cursor: pointer; }
             .tbl.vorvorjahr td:nth-child(2), .tbl.vorvorjahr th:nth-child(2) { color: var(--muted); }
             .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 4px; color: var(--muted);
               font-size: 13px; }
