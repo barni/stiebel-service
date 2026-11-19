@@ -173,11 +173,6 @@ public final class JahresvergleichSeite {
             zeile.add(zahl(a.vorher(), 0));
             zeile.add(zahl(a.jetzt(), 0));
             zeile.add(differenz(a));
-            if (dreiJahre) {
-                zeile.add(a.vorvorher() == null ? "–" : vorzeichen(a.jetzt() - a.vorvorher())
-                        + zahl(Math.abs(a.jetzt() - a.vorvorher()), 0) + " kWh"
-                        + (a.prozentVorvorjahr() == null ? "" : " (" + prozent(a.prozentVorvorjahr()) + ")"));
-            }
             zeile.add(mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–");
             zeilen.add(zeile);
         }
@@ -188,10 +183,7 @@ public final class JahresvergleichSeite {
         }
         kopf.add((v.jahr() - 1) + " kWh");
         kopf.add(v.jahr() + " kWh");
-        kopf.add(dreiJahre ? "Änderung zu " + (v.jahr() - 1) : "Änderung");
-        if (dreiJahre) {
-            kopf.add("Änderung zu " + (v.jahr() - 2));
-        }
+        kopf.add("Änderung zu " + (v.jahr() - 1));
         kopf.add("Anteil an der Änderung");
         Double prozent = gesamt.prozent();
         boolean steigt = prozent != null && prozent > STEIGT_AB_PROZENT;
@@ -199,11 +191,14 @@ public final class JahresvergleichSeite {
                 + "<p class=\"ursache" + (steigt ? " steigt" : "") + "\">" + text(ursache(anteile, v.jahr())) + "</p>"
                 + "<p class=\"legende\">Abstand zu " + (v.jahr() - 1) + ", seit 1. Januar aufsummiert: über null mehr "
                 + "als " + (v.jahr() - 1) + ", unter null weniger; steigt eine Linie, wächst der Abstand gerade.</p>"
-                + abstandsverlauf(v, anteile) + tabelle(kopf, zeilen)
-                + "<p class=\"note\">Jeweils vom 1. Januar bis zum selben Tag und zur selben Stunde. Rest ist "
-                + "Netzbezug minus Heizung" + (v.mitWallbox() ? " und Wallbox" : "") + ", also der übrige Haushalt mit "
-                + "Warmwasser, Lüftung und Geräten. Der Anteil an der Änderung bezieht sich auf " + (v.jahr() - 1)
-                + ".</p></article></section>";
+                + abstandsverlauf(v, anteile)
+                // Two years before only for information, in grey: every change refers to the year before
+                + (dreiJahre ? tabelle(kopf, zeilen).replaceFirst("<div class=\"tbl\">",
+                "<div class=\"tbl vorvorjahr\">") : tabelle(kopf, zeilen))
+                + "<p class=\"note\">Jeweils vom 1. Januar bis zum selben Tag und zur selben Stunde. Änderungen "
+                + "und Anteile gegenüber " + (v.jahr() - 1) + (dreiJahre ? ", " + (v.jahr() - 2) + " zum Vergleich" : "")
+                + ". Rest ist Netzbezug minus Heizung" + (v.mitWallbox() ? " und Wallbox" : "") + ", also der übrige "
+                + "Haushalt mit Warmwasser, Lüftung und Geräten.</p></article></section>";
     }
 
     /**
@@ -740,6 +735,7 @@ public final class JahresvergleichSeite {
               background: var(--card); border: 1px solid var(--line); }
             .tbl { overflow-x: auto; }
             .tbl table { font-size: 14px; }
+            .tbl.vorvorjahr td:nth-child(2), .tbl.vorvorjahr th:nth-child(2) { color: var(--muted); }
             .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 4px; color: var(--muted);
               font-size: 13px; }
             .legende span { display: inline-flex; align-items: center; gap: 6px; }
