@@ -151,8 +151,11 @@ public class JahresvergleichTest {
         assertEquals(7935.0 - v.heizungGleich(0), rest.vorvorher(), 1e-9);
 
         String karte = JahresvergleichSeite.ursachen(v);
-        assertTrue(karte.contains("<th>2024 kWh</th><th>2025 kWh</th><th>2026 kWh</th><th>Änderung zu 2025</th>"
-                + "<th>Änderung zu 2024</th><th>Anteil an der Änderung</th>"));
+        // 2024 only for information, every change against 2025
+        assertTrue(karte.contains("<div class=\"tbl vorvorjahr\"><table><thead><tr><th>1. Januar bis 24. Oktober</th>"
+                + "<th>2024 kWh</th><th>2025 kWh</th><th>2026 kWh</th><th>Änderung zu 2025</th>"
+                + "<th>Anteil an der Änderung</th>"));
+        assertFalse(karte.contains("Änderung zu 2024"));
         assertTrue(karte.contains("<td>Gesamt</td><td>7.935</td>"));
         assertEquals(new Jahresvergleich.Anteil("x", 1, 2), new Jahresvergleich.Anteil("x", 1, 2, null));
     }

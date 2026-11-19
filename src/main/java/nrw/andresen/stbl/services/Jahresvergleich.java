@@ -288,13 +288,6 @@ public class Jahresvergleich {
         public Double prozent() {
             return vorher > 0 ? (jetzt / vorher - 1) * 100 : null;
         }
-
-        /**
-         * Change against two years before in percent, null without a value then
-         */
-        public Double prozentVorvorjahr() {
-            return vorvorher == null || vorvorher <= 0 ? null : (jetzt / vorvorher - 1) * 100;
-        }
     }
 
     public Jahresvergleich(@Value("${auswertung.haushalt.bucket:}") String haushaltBucket,
