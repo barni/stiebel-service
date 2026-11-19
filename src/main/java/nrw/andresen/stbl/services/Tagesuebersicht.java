@@ -43,7 +43,6 @@ public class Tagesuebersicht {
     private WaermebedarfVergleich vergleich;
     private volatile Tag heute;
     private volatile Tag gestern;
-    private volatile Double druckhubGestern;
     private LocalDate druckhubGespeichert;
     private volatile Instant berechnet;
 
@@ -112,13 +111,6 @@ public class Tagesuebersicht {
 
     public Tag getGestern() {
         return gestern;
-    }
-
-    /**
-     * Pressure swing of yesterday in bar per 10 K, null if yesterday was no heating day
-     */
-    public Double getDruckhubGestern() {
-        return druckhubGestern;
     }
 
     public Instant getBerechnet() {
@@ -221,7 +213,6 @@ public class Tagesuebersicht {
         Double wert = tag == null ? null : druckhub(influx.werte(minutenmittel(bucket, "WP_Heizungsdruck", von, bis)),
                 influx.werte(minutenmittel(bucket, "WP_VorlaufIstTemp", von, bis)),
                 influx.werte(minutenmittel(bucket, "WP_RuecklaufIstTemp", von, bis)), tag.laufzeitH());
-        druckhubGestern = wert;
         if (wert != null && !datum.equals(druckhubGespeichert)) {
             influx.storePoints(List.of(influx.createPoint("DruckhubJe10K", new ValueContainer<>(wert, von))));
             druckhubGespeichert = datum;

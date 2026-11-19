@@ -469,7 +469,6 @@ public class StatusService {
                 gleich == null ? "–" : zahl(gleich.arbeitszahl(), 1)));
         zeilen.add(List.of("Abtauungen", String.valueOf(heute.abtauungen()), String.valueOf(gestern.abtauungen()),
                 gleich == null ? "–" : zahl(gleich.abtauungen(), 1)));
-        zeilen.add(List.of("Druckhub ≈", "–", zahl(tagesuebersicht.getDruckhubGestern(), 2), "–"));
         page.table(List.of("", "Heute", "Gestern", "Ø gleiche Temp."), zeilen, false, Map.ofEntries(
                         Map.entry("Heute", "Von Mitternacht bis jetzt."),
                         Map.entry("Ø gleiche Temp.", "Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
@@ -493,16 +492,7 @@ public class StatusService {
                         Map.entry("Abtauungen", "Heute und gestern: vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa "
                                 + "2 Minuten). Vergleichstage: Wiederanläufe nach einer Pause unter "
                                 + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, weil die Erkennung erst "
-                                + "seit 25.09.2026 gespeichert wird."),
-                        Map.entry("Druckhub ≈", "Tagesspanne des Heizungsdrucks geteilt durch die Tagesspanne der mittleren "
-                                + "Wassertemperatur, in bar je 10 K. Nur ein grober Tageswert: innerhalb eines Tages "
-                                + "ändert sich das Wasser im Fußboden viel weniger als Vor- und Rücklauf, und der "
-                                + "Pumpendruck mischt sich ein. Für den Zustand des Ausdehnungsgefäßes zählt die "
-                                + "Druckschwankung auf der Seite Zustand (Tagesmittel über einen Monat). Nur für Tage "
-                                + "mit mindestens "
-                                + zahl(Tagesuebersicht.DRUCKHUB_MIN_LAUFZEIT_H, 0) + " h Laufzeit und "
-                                + zahl(Tagesuebersicht.DRUCKHUB_MIN_TEMPERATURHUB_K, 0) + " K Temperaturspanne, sonst "
-                                + "„–“. Wird täglich als WP_DruckhubJe10K gespeichert.")))
+                                + "seit 25.09.2026 gespeichert wird.")))
                 .note("„Ø gleiche Temp.“: Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                         + ", deren Tagesmittel höchstens " + zahl(Tagesuebersicht.AEHNLICH_K, 1)
                         + " K von gestern abweicht" + (gleich == null ? "" : " (" + gleich.tage() + " Tage)")

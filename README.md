@@ -128,7 +128,7 @@ before you rely on it.
   the default of the WPM 3 manual in its tooltip. A change is sent by mail (also one made while the service was stopped, compared with
   the last stored value).
 - **Pressure swing** of the heating circuit per day: span of the pressure divided by the span of the mean water
-  temperature in bar per 10 K, shown for yesterday and stored as `WP_DruckhubJe10K`. The value rises over the months
+  temperature in bar per 10 K, stored once a day as `WP_DruckhubJe10K` for evaluations. The value rises over the months
   when the expansion vessel loses its gas charge. Only for days with at least 12 h run time of the compressor.
 - **Version**, git commit and build time are written to the log at the start and shown on the status page together
   with the start time of the service.
