@@ -16,9 +16,16 @@ public final class Zaehlerreihe {
     // After the last reading the consumption is not known; a counter reports at least once a day
     static final java.time.Duration NACH_ENDE = java.time.Duration.ofDays(2);
     private final TreeMap<Instant, Double> stand = new TreeMap<>();
+    // After the last manual reading, while no counter follows yet, the consumption goes on at the rate of the weeks
+    // before, at most this long: readings by hand come about once a month
+    static final java.time.Duration HOCHRECHNEN = java.time.Duration.ofDays(62);
+    // The rate is taken over at least this time before the last manual reading
+    static final java.time.Duration RATE_UEBER = java.time.Duration.ofDays(28);
     // Between the last manual reading and the first reading of the counter nothing was measured
     private Instant lueckeVon;
     private Instant lueckeBis;
+    // kWh per millisecond after the last reading, null if the series ends with a counter
+    private Double rate;
 
     /**
      * @param davor  manual readings by time, may be empty
@@ -37,6 +44,7 @@ public final class Zaehlerreihe {
         }
         // The counter goes on from the last manual reading; what was used between the two is not known
         letzter = null;
+        boolean mitZaehler = false;
         for (Map.Entry<Instant, Double> e : new TreeMap<>(zaehler).entrySet()) {
             if (ende != null && !e.getKey().isAfter(ende)) {
                 continue;
@@ -48,6 +56,14 @@ public final class Zaehlerreihe {
             summe += zuwachs(letzter, e.getValue());
             letzter = e.getValue();
             stand.put(e.getKey(), summe);
+            mitZaehler = true;
+        }
+        if (!mitZaehler && ende != null) {
+            // Rate over the last readings that cover at least RATE_UEBER
+            Map.Entry<Instant, Double> anfang = stand.floorEntry(ende.minus(RATE_UEBER));
+            if (anfang != null && ende.isAfter(anfang.getKey())) {
+                rate = (stand.get(ende) - anfang.getValue()) / (ende.toEpochMilli() - anfang.getKey().toEpochMilli());
+            }
         }
     }
 
@@ -59,6 +75,13 @@ public final class Zaehlerreihe {
             return 0;
         }
         return jetzt >= vorher ? jetzt - vorher : Math.max(0, jetzt);
+    }
+
+    /**
+     * True if values after the last reading are estimated (manual readings, no counter yet)
+     */
+    public boolean isHochgerechnet() {
+        return rate != null;
     }
 
     public boolean isLeer() {
@@ -73,11 +96,17 @@ public final class Zaehlerreihe {
     }
 
     /**
-     * Reading at a point in time, interpolated between the readings around it; null before the first reading, more
-     * than NACH_ENDE after the last one and between the manual readings and the counter
+     * Reading at a point in time, interpolated between the readings around it; null before the first reading and
+     * between the manual readings and the counter. After the last reading: of manual readings without a counter
+     * yet, estimated at the rate before for up to HOCHRECHNEN; otherwise the last reading for NACH_ENDE, then null.
      */
     public Double stand(Instant zeit) {
         Map.Entry<Instant, Double> vorher = stand.floorEntry(zeit);
+        Instant letzte = stand.isEmpty() ? null : stand.lastKey();
+        if (vorher != null && rate != null && zeit.isAfter(letzte)) {
+            return zeit.isAfter(letzte.plus(HOCHRECHNEN)) ? null
+                    : vorher.getValue() + rate * (zeit.toEpochMilli() - letzte.toEpochMilli());
+        }
         if (vorher == null || zeit.isAfter(stand.lastKey().plus(NACH_ENDE))
                 || (lueckeVon != null && zeit.isAfter(lueckeVon) && zeit.isBefore(lueckeBis))) {
             return null;

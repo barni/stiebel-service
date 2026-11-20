@@ -50,4 +50,22 @@ public class ZaehlerreiheTest {
         assertNull(leer.verbrauch(t("2026-01-01"), t("2026-02-01"), true));
         assertEquals(0.0, leer.verbrauch(t("2026-01-01"), t("2026-02-01"), false), 1e-9);
     }
+
+    @Test
+    public void testHochrechnen() {
+        // Monthly readings, 2 kWh per day in the last 30 days
+        Map<Instant, Double> davor = new TreeMap<>(Map.of(t("2026-09-01"), 8181.0, t("2026-10-02"), 8233.0,
+                t("2026-11-01"), 8293.0));
+        Zaehlerreihe r = new Zaehlerreihe(davor, Map.of());
+        assertEquals(true, r.isHochgerechnet());
+        // 18 days after the last reading at the rate of October: 60 kWh in 30 days
+        assertEquals(36.0, r.verbrauch(t("2026-11-01"), t("2026-11-19"), true), 1e-9);
+        // Not longer than two months
+        assertNull(r.stand(t("2027-01-15")));
+        // With a counter after the readings nothing is estimated, the gap stays unknown
+        Zaehlerreihe mitShelly = new Zaehlerreihe(davor, Map.of(t("2026-11-20"), 0.5, t("2026-11-21"), 2.5));
+        assertEquals(false, mitShelly.isHochgerechnet());
+        assertNull(mitShelly.verbrauch(t("2026-11-01"), t("2026-11-21"), true));
+        assertEquals(2.0, mitShelly.verbrauch(t("2026-11-20"), t("2026-11-21"), true), 1e-9);
+    }
 }
