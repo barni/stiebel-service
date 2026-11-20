@@ -184,20 +184,9 @@ public final class JahresvergleichSeite {
             zeile.add(differenz(a));
             zeile.add(mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–");
             zeilen.add(zeile);
-        }
-        // Devices counted in the rest: how much of the rest they were, without a change against the year before
-        for (int k : davon(v)) {
-            Jahresvergleich.GleicheTage t = v.geraeteGleich().get(k);
-            List<String> zeile = new ArrayList<>();
-            zeile.add("davon " + v.geraete().get(k).name());
-            if (dreiJahre) {
-                zeile.add(t.vorvorjahr() == null ? "nicht gemessen" : zahl(t.vorvorjahr(), 0));
+            if (a.name().startsWith("Rest")) {
+                zeilen.addAll(davonZeilen(v, dreiJahre));
             }
-            zeile.add(t.vorjahr() == null ? "nicht gemessen" : zahl(t.vorjahr(), 0));
-            zeile.add(zahl(t.jetzt(), 0));
-            zeile.add("–");
-            zeile.add("–");
-            zeilen.add(zeile);
         }
         List<String> kopf = new ArrayList<>();
         kopf.add(zeitraum);
@@ -227,6 +216,27 @@ public final class JahresvergleichSeite {
                 + "beide Jahre Messwerte gibt.")
                 + hochgerechnet(v)
                 + "</p></article></section>";
+    }
+
+    /**
+     * Devices counted in the rest: how much of the rest they were, without a change against the year before
+     */
+    private static List<List<String>> davonZeilen(Jahresvergleich.Vergleich v, boolean dreiJahre) {
+        List<List<String>> zeilen = new ArrayList<>();
+        for (int k : davon(v)) {
+            Jahresvergleich.GleicheTage t = v.geraeteGleich().get(k);
+            List<String> zeile = new ArrayList<>();
+            zeile.add("davon " + v.geraete().get(k).name());
+            if (dreiJahre) {
+                zeile.add(t.vorvorjahr() == null ? "nicht gemessen" : zahl(t.vorvorjahr(), 0));
+            }
+            zeile.add(t.vorjahr() == null ? "nicht gemessen" : zahl(t.vorjahr(), 0));
+            zeile.add(zahl(t.jetzt(), 0));
+            zeile.add("–");
+            zeile.add("–");
+            zeilen.add(zeile);
+        }
+        return zeilen;
     }
 
     /**
@@ -824,7 +834,7 @@ public final class JahresvergleichSeite {
             return "";
         }
         int jahr = v.jahr();
-        // The lines in the order of the parts: total, devices, heating, rest
+        // The lines in the order of the parts: total, heating, rest, devices
         List<String> klassen = new ArrayList<>();
         List<String> namen = new ArrayList<>();
         for (Jahresvergleich.Anteil a : anteile) {
@@ -852,15 +862,14 @@ public final class JahresvergleichSeite {
             }
             double[] d = new double[linienAnzahl];
             d[0] = gJetzt - gVorher;
-            double rest = d[0];
+            d[1] = wert(m.heizung().get(J - 1)) - wert(m.heizung().get(J - 2));
+            double rest = d[0] - d[1];
             for (int z = 0; z < gezeigt.size(); z++) {
                 int k = gezeigt.get(z);
-                d[1 + z] = wert(m.geraet(k, J - 1)) - wert(m.geraet(k, J - 2));
-                rest -= d[1 + z];
+                d[3 + z] = wert(m.geraet(k, J - 1)) - wert(m.geraet(k, J - 2));
+                rest -= d[3 + z];
             }
-            d[linienAnzahl - 2] = wert(m.heizung().get(J - 1)) - wert(m.heizung().get(J - 2));
-            rest -= d[linienAnzahl - 2];
-            d[linienAnzahl - 1] = rest;
+            d[2] = rest;
             double x = java.time.YearMonth.of(jahr, m.monat()).atEndOfMonth().getDayOfYear() / tage;
             for (int k = 0; k < linienAnzahl; k++) {
                 summe[k] += d[k];
