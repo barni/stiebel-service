@@ -309,7 +309,7 @@ public class KonfigurationTest {
         assertTrue(html.contains("<table class=\"geraete\">"));
         assertTrue(html.contains("name=\"auswertung.geraet.1.vorher\" aria-label=\"Gerät 1: vor dem ersten Wert\">"
                 + "<option value=\"true\" selected>lief schon</option>"));
-        assertTrue(html.contains("<th>Werte vor dem Zähler</th><th>Vor dem ersten Wert</th>"));
+        assertTrue(html.contains("<th>Werte vor Einbau Zähler</th><th>Vor dem ersten Wert</th>"));
         // Settings that apply when saved carry a mark, the others not
         assertTrue(html.contains("<label for=\"warnung-heizungsdruck-min\">Heizungsdruck"), "Label");
         assertTrue(html.matches("(?s).*<label for=\"warnung-heizungsdruck-min\">[^<]*<span class=\"sofort\".*"));

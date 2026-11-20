@@ -80,6 +80,10 @@ public class MqttService {
             new Entitaet("waerme_heute", "Wärme heute", "sensor", "kWh", "energy", "total_increasing", null, 1),
             new Entitaet("starts_heute", "Starts heute", "sensor", null, null, "total_increasing",
                     "mdi:restart", 0),
+            // Forecast of the year from the year comparison, calculated every hour
+            new Entitaet("prognose_jahr", "Strom Prognose Jahr", "sensor", "kWh", null, null, "mdi:chart-line", 0),
+            new Entitaet("prognose_heizung", "Heizung Prognose Jahr (geschätzt)", "sensor", "kWh", null, null,
+                    "mdi:chart-line", 0),
             new Entitaet("warnungen", "Warnungen", "sensor", null, null, null, "mdi:alert-outline", null),
             new Entitaet("zustand", "Zustand", "sensor", null, null, null, "mdi:stethoscope", null),
             new Entitaet("dienst", "Dienst", "sensor", null, null, null, "mdi:server", null),
@@ -107,6 +111,8 @@ public class MqttService {
     private Tagesuebersicht tagesuebersicht;
     @Autowired
     private Version version;
+    @Autowired
+    private Jahresvergleich jahresvergleich;
     private MqttClient client;
     private volatile String letzterFehler;
     private volatile Instant letzteNachricht;
@@ -310,11 +316,29 @@ public class MqttService {
             rund(w, "waerme_heute", heute.waermeKWh(), 1);
             w.put("starts_heute", heute.starts());
         }
+        prognose(w, jahresvergleich == null ? null : jahresvergleich.getVergleich());
         schalter(w, "verdichter_laeuft", wert(wp::isVerdichterOn, jetzt));
         schalter(w, "abtauung", wert(wp::isAbtauung, jetzt));
         schalter(w, "evu_sperre", wert(wp::isEvuSperre, jetzt));
         w.put("warnung", ueberwachung.getWarnungen().stream().anyMatch(Warnung::isAktiv) ? "ON" : "OFF");
         return w;
+    }
+
+    /**
+     * Forecast of the whole year: the grid import (only with the house meter) and the heating
+     */
+    static void prognose(Map<String, Object> w, Jahresvergleich.Vergleich v) {
+        if (v == null) {
+            return;
+        }
+        for (Jahresvergleich.Prognose p : v.prognose()) {
+            switch (p.name()) {
+                case "Gesamt" -> rund(w, "prognose_jahr", p.jahr(), 0);
+                case "Heizung" -> rund(w, "prognose_heizung", p.jahr(), 0);
+                default -> {
+                }
+            }
+        }
     }
 
     static void rund(Map<String, Object> w, String schluessel, Double wert, int stellen) {

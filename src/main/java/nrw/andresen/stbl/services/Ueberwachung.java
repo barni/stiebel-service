@@ -57,6 +57,17 @@ public class Ueberwachung {
     private InfluxController influx;
     @Autowired
     private WaermebedarfVergleich vergleich;
+    @Autowired
+    private Geraete geraete;
+    // The values from Home Assistant the evaluations read, checked for new readings
+    @Value("${auswertung.haushalt.bucket:}")
+    private String haushaltBucket = "";
+    @Value("${auswertung.haushalt.zaehler:}")
+    private String hauszaehler = "";
+    @Value("${auswertung.aussentemp.bucket:}")
+    private String aussenBucket = "";
+    @Value("${auswertung.aussentemp.entity:}")
+    private String aussenEntity = "";
 
     private volatile double druckMin;
     private volatile double druckMax;
@@ -158,7 +169,8 @@ public class Ueberwachung {
         antwortquote = new Warnung("Antwortquote niedrig", "", Duration.ZERO);
         starts = new Warnung("Viele Verdichterstarts", "", Duration.ZERO);
         dienst = new Warnung("Dienstprüfung fehlgeschlagen", "Eine Prüfung des Dienstes schlägt fehl, z. B. "
-                + "InfluxDB nicht erreichbar oder Schreiben/Lesen nicht erlaubt.", Duration.ofMinutes(15));
+                + "InfluxDB nicht erreichbar, Schreiben/Lesen nicht erlaubt oder ein Zähler aus Home Assistant "
+                + "liefert keine Werte mehr.", Duration.ofMinutes(15));
         this.frostStunden = frostStunden;
         this.abtauungMinuten = abtauungMinuten;
         regelnSetzen();
@@ -597,6 +609,83 @@ public class Ueberwachung {
             liste.add(lesen("Außentemperatur lesen", temperaturBucket, "Lesen der Außentemperatur aus dem Bucket "
                     + temperaturBucket + " für den Vergleich der Einstellung Wärmebedarf und die Tagesübersicht."));
         }
+        // Home Assistant writes a value when it changes: the house meter and the outdoor temperature at least every
+        // hour, a device counter only while it uses electricity (the wallbox stood still for up to 4.5 days)
+        if (!leer(aussenEntity)) {
+            liste.add(aktuell("Außentemperatur aktuell", bucket(aussenBucket), "°C", aussenEntity, WERT_STILL,
+                    "Die Außentemperatur aus Home Assistant (" + aussenEntity + ") für Tagesübersicht, Zustand und "
+                            + "die Heizgradtage im Jahresvergleich."));
+        }
+        if (!leer(hauszaehler)) {
+            liste.add(aktuell("Hauszähler aktuell", bucket(haushaltBucket), "kWh", hauszaehler, WERT_STILL,
+                    "Der Netzbezug aus Home Assistant (" + hauszaehler + ") für den Jahresvergleich."));
+        }
+        if (geraete != null) {
+            for (Geraete.Geraet g : geraete.getListe()) {
+                if (!g.zaehler().isEmpty()) {
+                    liste.add(aktuell("Zähler " + g.name() + " aktuell", bucket(haushaltBucket), "kWh", g.zaehler(),
+                            GERAET_STILL, "Der Zähler " + g.zaehler() + " für den Jahresvergleich. Er meldet nur, "
+                                    + "wenn Strom fließt, deshalb erst nach " + GERAET_STILL.toDays() + " Tagen ohne "
+                                    + "Wert eine Warnung (Shelly offline, Entity umbenannt)."));
+                }
+            }
+        }
+    }
+
+    // Without a new value for this long a value from Home Assistant counts as missing
+    static final Duration WERT_STILL = Duration.ofHours(6);
+    static final Duration GERAET_STILL = Duration.ofDays(10);
+    private static final java.util.regex.Pattern ENTITY = java.util.regex.Pattern.compile("[A-Za-z0-9_]{1,64}");
+
+    private static boolean leer(String s) {
+        return s == null || s.isBlank();
+    }
+
+    private String bucket(String bucket) {
+        return leer(bucket) ? influx.getBucket() : bucket.trim();
+    }
+
+    /**
+     * Checks that a value from Home Assistant has a reading newer than maxAlter
+     */
+    private Pruefung aktuell(String name, String bucket, String einheit, String entity, Duration maxAlter,
+                             String erklaerung) {
+        String e = entity.trim();
+        if (!ENTITY.matcher(e).matches() || !ENTITY.matcher(bucket).matches()) {
+            return new Pruefung(name, false, "ungültiger Name " + e, erklaerung);
+        }
+        try {
+            Map<Instant, Double> werte = influx.werte("from(bucket: \"" + bucket + "\") |> range(start: -30d)"
+                    + " |> filter(fn: (r) => r._measurement == \"" + einheit + "\" and r._field == \"value\""
+                    + " and r.entity_id == \"" + e + "\") |> last()");
+            Instant letzte = werte.keySet().stream().max(Instant::compareTo).orElse(null);
+            return aktuellPruefung(name, letzte, Instant.now(), maxAlter, erklaerung);
+        } catch (Exception ex) {
+            return new Pruefung(name, false, "nicht lesbar: " + ex.getMessage(), erklaerung);
+        }
+    }
+
+    static Pruefung aktuellPruefung(String name, Instant letzte, Instant jetzt, Duration maxAlter, String erklaerung) {
+        if (letzte == null) {
+            return new Pruefung(name, false, "seit über 30 Tagen kein Wert", erklaerung);
+        }
+        Duration alter = Duration.between(letzte, jetzt);
+        return new Pruefung(name, alter.compareTo(maxAlter) <= 0, (alter.compareTo(maxAlter) <= 0
+                ? "letzter Wert vor " : "seit ") + dauer(alter) + (alter.compareTo(maxAlter) <= 0 ? "" : " kein Wert"),
+                erklaerung);
+    }
+
+    /**
+     * Age as "12 min", "5 h" or "3 Tagen"/"1 Tag"
+     */
+    static String dauer(Duration d) {
+        if (d.toMinutes() < 120) {
+            return Math.max(0, d.toMinutes()) + " min";
+        }
+        if (d.toHours() < 48) {
+            return d.toHours() + " h";
+        }
+        return d.toDays() + " Tagen";
     }
 
     private Pruefung lesen(String name, String bucket, String erklaerung) {

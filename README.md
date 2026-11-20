@@ -88,9 +88,9 @@ before you rely on it.
 - **Home Assistant over MQTT** when `mqtt.host` is set (with `mqtt.port`, `mqtt.benutzer`, `mqtt.passwort`, topic
   prefix `mqtt.praefix`, default `stbl`): every 30 s all values as one JSON object on `stbl/zustand` (retained),
   `stbl/status` online/offline (last will), and after every connection MQTT discovery messages under
-  `homeassistant/…/stbl/…/config`, so Home Assistant creates the device "Wärmepumpe" with 24 entities: temperatures,
+  `homeassistant/…/stbl/…/config`, so Home Assistant creates the device "Wärmepumpe" with 26 entities: temperatures,
   pressures, estimated power input, heat output, efficiency, compressor speed, flow, defrost margin, controller integral,
-  energy of today for the energy dashboard, operation, warnings, condition and service, and binary sensors for
+  energy of today for the energy dashboard, the forecast of the year (grid import and heating), operation, warnings, condition and service, and binary sensors for
   compressor, defrost, EVU block and any warning. Read only, nothing can be switched from Home Assistant.
 - **Year comparison** on the page `/jahresvergleich` and as JSON from `/jahresvergleich/daten`: estimated electric
   energy of the heating per month in the current year and the two years before, as bars and as a table with the
@@ -102,9 +102,12 @@ before you rely on it.
   made of heating, household and wallbox, and the monthly bars stack the household electricity (grid import minus
   heating and wallbox) and the wallbox on top of the heating; `haushalt=nein` / `wallbox=nein` leave them out. The
   card "Woran liegt es?" shows the gap to the year before added up from the 1st of January, in total and per part,
-  and a table against the two years before; a forecast up to the end of the year adds to each part what is still expected: heating as in the
-  rest of the two years before, the household as in the rest of the year before, the wallbox at the rate of the last
-  three full months. Months that are over are read once, the current
+  and a table against the two years before; the change of the heating is split into weather and the rest by the
+  heating degree days (VDI 3807, Gt20/15, from the daily mean outdoor temperature) of both years. A forecast up to
+  the end of the year adds to each part what is still expected: heating as in the rest of the two years before, the
+  household as in the rest of the year before, a device as in the rest of the year before if it was measured then,
+  otherwise at the rate of the last three full months. With `auswertung.strompreis` (€ per kWh) the forecast, the
+  changes and the period also show the cost, without the standing charge. Months that are over are read once, the current
   month every hour. "Verbrauch im Zeitraum" (`/jahresvergleich?von=2025-12-01&bis=2026-11-30`) shows the readings
   of the house meter at the start of the first and the end of the last day, the grid import between them and its
   parts, to compare with the electricity bill.
@@ -113,7 +116,9 @@ before you rely on it.
   the monthly bars, "Woran liegt es?", the forecast and the period; the household is the rest. `.davor` is an entity
   with earlier readings, e.g. read by hand, the counter goes on from them; a counter that starts again at 0 is
   counted on. A device that ran before its first reading (`.vorher`, default on) is part of the household until
-  then and counted in the rest of the comparison until both years have values; a new one counts 0 before.
+  then and counted in the rest of the comparison until both years have values; a new one counts 0 before. The
+  service checks every 15 minutes that the house meter and the outdoor temperature from Home Assistant had a value in
+  the last 6 hours and every device counter in the last 10 days, otherwise the warning about the service is raised.
 - **Condition and ageing** on the page `/zustand` and as JSON from `/zustand/daten`: per heating season (July to June,
   since `auswertung.zustand.start`, default 2022-07-01) the efficiency, starts, hours per start and defrosts at the
   same outdoor temperature (0 to 5 °C and 5 to 10 °C), failed starts per 1000 mild starts and the heating pressure

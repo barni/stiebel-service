@@ -155,4 +155,19 @@ public class UeberwachungTest {
         assertTrue(Konfiguration.SOFORT.contains("warnung.spannung.max"));
         assertFalse(Konfiguration.SOFORT.contains("mqtt.host"));
     }
+
+    @Test
+    public void testAktuell() {
+        Instant jetzt = Instant.parse("2026-11-20T12:00:00Z");
+        Ueberwachung.Pruefung frisch = Ueberwachung.aktuellPruefung("Hauszähler aktuell",
+                jetzt.minus(Duration.ofMinutes(12)), jetzt, Duration.ofHours(6), "");
+        assertTrue(frisch.ok());
+        assertEquals("letzter Wert vor 12 min", frisch.text());
+        Ueberwachung.Pruefung alt = Ueberwachung.aktuellPruefung("Zähler Wallbox aktuell",
+                jetzt.minus(Duration.ofDays(11)), jetzt, Duration.ofDays(10), "");
+        assertFalse(alt.ok());
+        assertEquals("seit 11 Tagen kein Wert", alt.text());
+        assertFalse(Ueberwachung.aktuellPruefung("x", null, jetzt, Duration.ofHours(6), "").ok());
+        assertEquals("5 h", Ueberwachung.dauer(Duration.ofHours(5)));
+    }
 }

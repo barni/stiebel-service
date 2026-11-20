@@ -211,7 +211,8 @@ public final class KonfigurationSeite {
                     new Teil("Ab wann ausgewertet wird", List.of("auswertung.start", "auswertung.fehlstarts.start",
                             "auswertung.zustand.start")),
                     new Teil("Außentemperatur", List.of("auswertung.aussentemp.bucket", "auswertung.aussentemp.entity")),
-                    new Teil("Hauszähler", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler")),
+                    new Teil("Hauszähler", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler",
+                            "auswertung.strompreis")),
                     new Teil("Geräte mit eigenem Zähler", GERAETE))));
 
     /**
@@ -221,12 +222,12 @@ public final class KonfigurationSeite {
                                   Map<String, String> fehler, boolean schreibbar) {
         StringBuilder html = new StringBuilder("<p class=\"hilfe\">Zum Beispiel ein Shelly an Klimaanlage oder "
                 + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Beide Spalten mit "
-                + "Werten sind Home-Assistant-Entities mit dem Zählerstand in kWh. „Werte vor dem Zähler“: Stände aus "
+                + "Werten sind Home-Assistant-Entities mit dem Zählerstand in kWh. „Werte vor Einbau Zähler“: Stände aus "
                 + "der Zeit, bevor es den Zähler gab, etwa händisch abgelesen; der Zähler setzt danach fort. „Vor dem "
                 + "ersten Wert“: „lief schon“, wenn das Gerät vor seinem ersten Wert (von Hand oder vom Zähler) "
                 + "ungemessen im Haushalt steckte; „gab es noch nicht“ etwa für eine neue Wallbox, vorher zählt sie "
                 + "0.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
-                + "<th>Zähler</th><th>Werte vor dem Zähler</th><th>Vor dem ersten Wert</th></tr></thead><tbody>");
+                + "<th>Zähler</th><th>Werte vor Einbau Zähler</th><th>Vor dem ersten Wert</th></tr></thead><tbody>");
         List<String> meldungen = new ArrayList<>();
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             html.append("<tr><td>").append(n).append("</td>");

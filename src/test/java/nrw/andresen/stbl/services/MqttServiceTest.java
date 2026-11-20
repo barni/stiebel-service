@@ -72,4 +72,18 @@ public class MqttServiceTest {
         // Missing values are left out, Home Assistant then shows unknown
         assertEquals(Map.of("druck", 1.78, "laeuft", "ON", "steht", "OFF"), w);
     }
+
+    @Test
+    public void testPrognose() {
+        Map<String, Object> w = new LinkedHashMap<>();
+        MqttService.prognose(w, null);
+        assertTrue(w.isEmpty());
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(List.of(2024, 2025, 2026),
+                java.time.LocalDate.of(2026, 11, 20), List.of(), false, List.of(), null, null, null, List.of(),
+                java.time.Instant.EPOCH, List.of());
+        MqttService.prognose(w, v);
+        assertFalse(w.containsKey("prognose_jahr"));
+        assertTrue(MqttService.ENTITAETEN.stream().anyMatch(e -> e.schluessel().equals("prognose_jahr")));
+        assertTrue(MqttService.ENTITAETEN.stream().anyMatch(e -> e.schluessel().equals("prognose_heizung")));
+    }
 }

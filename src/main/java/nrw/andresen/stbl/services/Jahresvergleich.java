@@ -59,7 +59,8 @@ public class Jahresvergleich {
     // Months that are over do not change any more and are read only once
     private final Map<YearMonth, Double> heizungFertig = new ConcurrentHashMap<>();
     private final Map<String, Optional<Double>> zaehlerFertig = new ConcurrentHashMap<>();
-    private final Map<YearMonth, Double> aussenFertig = new ConcurrentHashMap<>();
+    // Daily means of the outdoor temperature of the months that are over
+    private final Map<LocalDate, Double> aussenFertig = new ConcurrentHashMap<>();
     private volatile Vergleich ergebnis;
 
     /**
@@ -96,12 +97,18 @@ public class Jahresvergleich {
 
     /**
      * Electricity of a device from the 1st of January up to now and in the years before up to the same day and hour;
-     * null where it is not known
+     * null where it is not known. restVorjahr: from the same day and hour of the year before up to its end, null if
+     * the device was not measured yet then.
      */
-    public record GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr, boolean hochgerechnet) {
+    public record GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr, boolean hochgerechnet,
+                              Double restVorjahr) {
 
         public GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr) {
-            this(jetzt, vorjahr, vorvorjahr, false);
+            this(jetzt, vorjahr, vorvorjahr, false, null);
+        }
+
+        public GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr, boolean hochgerechnet) {
+            this(jetzt, vorjahr, vorvorjahr, hochgerechnet, null);
         }
     }
 
@@ -115,11 +122,67 @@ public class Jahresvergleich {
      * @param gesamtVorvorjahrGleich grid import two years before up to the same day and hour, null if unknown
      * @param geraeteGleich          per device its electricity on the same days
      * @param jahressummen           all whole years that are over, for the bars per year
+     * @param gradtage               per year the heating degree days from the 1st of January up to the same day,
+     *                               null where the outdoor temperature is missing; empty if not known
+     * @param preis                  price of electricity in € per kWh, null if not set
      */
     public record Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                             List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
                             Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
-                            List<Jahressumme> jahressummen) {
+                            List<Jahressumme> jahressummen, List<Double> gradtage, Double preis) {
+
+        public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
+                         List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
+                         Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
+                         List<Jahressumme> jahressummen) {
+            this(jahre, bis, monate, mitHaushalt, geraete, gesamt, gesamtVorjahrGleich, gesamtVorvorjahrGleich,
+                    geraeteGleich, berechnet, jahressummen, List.of(), null);
+        }
+
+        /**
+         * Heating degree days of the year with the given index up to the same day, null if not known
+         */
+        public Double gradtage(int i) {
+            return i < gradtage.size() ? gradtage.get(i) : null;
+        }
+
+        /**
+         * Part of the change of the heating against the same days of the year before that comes from the weather:
+         * the heating of the year before scaled by the heating degree days, minus the heating of the year before.
+         * Null without the degree days of both years.
+         */
+        public Double wetter() {
+            Double jetzt = gradtage(JAHRE - 1);
+            Double vorher = gradtage(JAHRE - 2);
+            if (jetzt == null || vorher == null || vorher <= 0) {
+                return null;
+            }
+            return heizungGleich(JAHRE - 2) * (jetzt / vorher - 1);
+        }
+
+        /**
+         * Change of the heating against the same days of the year before without the weather, null if not known
+         */
+        public Double bereinigt() {
+            Double w = wetter();
+            return w == null ? null : heizungGleich(JAHRE - 1) - heizungGleich(JAHRE - 2) - w;
+        }
+
+        /**
+         * Expected electricity of a device from now up to the end of the year: as in the rest of the year before if
+         * it was measured then, else as in the rest of the year before from its whole year, else at the rate of the
+         * last three months that are over
+         */
+        public double erwartet(int k) {
+            GleicheTage t = geraeteGleich.get(k);
+            if (t.restVorjahr() != null) {
+                return t.restVorjahr();
+            }
+            Double vorjahr = geraet(k, JAHRE - 2);
+            long restTage = LocalDate.of(jahr() + 1, 1, 1).toEpochDay() - bis.toEpochDay();
+            return geraete.get(k).vorherDa() && vorjahr != null && t.vorjahr() != null
+                    ? Math.max(0, vorjahr - t.vorjahr()) : jeTag(k) * restTage;
+        }
 
         /**
          * Devices with values on the same days of this year and the year before: they get their own part in the
@@ -232,14 +295,10 @@ public class Jahresvergleich {
                         restVorjahr));
             }
             if (!anteile.isEmpty()) {
-                // Days up to the end of the year, today included
-                long restTage = LocalDate.of(jahr() + 1, 1, 1).toEpochDay() - bis.toEpochDay();
                 for (int k : gezeigt) {
-                    GleicheTage t = geraeteGleich.get(k);
                     Double vorjahr = geraet(k, JAHRE - 2);
-                    double erwartet = geraete.get(k).vorherDa() && vorjahr != null
-                            ? Math.max(0, vorjahr - t.vorjahr()) : jeTag(k) * restTage;
-                    teile.add(new Prognose(geraete.get(k).name(), t.jetzt(), erwartet, vorjahr == null ? 0 : vorjahr));
+                    teile.add(new Prognose(geraete.get(k).name(), geraeteGleich.get(k).jetzt(), erwartet(k),
+                            vorjahr == null ? 0 : vorjahr));
                 }
             }
             if (teile.size() > 1) {
@@ -406,10 +465,24 @@ public class Jahresvergleich {
         }
     }
 
+    // Price of electricity in € per kWh, null if not set
+    private Double preis;
+
     public Jahresvergleich(@Value("${auswertung.haushalt.bucket:}") String haushaltBucket,
                            @Value("${auswertung.haushalt.zaehler:}") String hauszaehler) {
         this.haushaltBucket = haushaltBucket.trim();
         this.hauszaehler = hauszaehler.trim();
+    }
+
+    @Value("${auswertung.strompreis:}")
+    void setPreis(String preis) {
+        String p = preis == null ? "" : preis.trim().replace(',', '.');
+        try {
+            this.preis = p.isEmpty() ? null : Double.valueOf(p);
+        } catch (NumberFormatException e) {
+            logger.warn("auswertung.strompreis is no number: " + preis);
+            this.preis = null;
+        }
     }
 
     /**
@@ -465,22 +538,33 @@ public class Jahresvergleich {
                     r.verbrauch(start(YearMonth.of(jahr, 1)), jetzt.toInstant(), g.vorherDa()),
                     r.verbrauch(start(YearMonth.of(jahr - 1, 1)), jetzt.minusYears(1).toInstant(), g.vorherDa()),
                     r.verbrauch(start(YearMonth.of(jahr - 2, 1)), jetzt.minusYears(2).toInstant(), g.vorherDa()),
-                    r.isHochgerechnet()));
+                    r.isHochgerechnet(),
+                    // Only if it was measured then: before its first value it is not known (vorherDa true)
+                    r.verbrauch(jetzt.minusYears(1).toInstant(), start(YearMonth.of(jahr, 1)), true)));
         }
         // The outdoor temperature of the months that are over is read once too
-        YearMonth ab = aussenFertig.isEmpty() || !aussenFertig.containsKey(laufend.minusMonths(1)) ? erster : laufend;
-        Map<YearMonth, Double> aussen = new TreeMap<>(aussenFertig);
-        monatsmittel(vergleich.aussentemperatur(start(ab), jetzt.toInstant())).forEach((monat, wert) -> {
-            aussen.put(monat, wert);
-            if (monat.isBefore(laufend)) {
-                aussenFertig.put(monat, wert);
+        boolean fertig = aussenFertig.keySet().stream().anyMatch(t -> YearMonth.from(t).equals(laufend.minusMonths(1)));
+        YearMonth ab = fertig ? laufend : erster;
+        Map<LocalDate, Double> tage = new TreeMap<>(aussenFertig);
+        vergleich.aussentemperatur(start(ab), jetzt.toInstant()).forEach((tag, wert) -> {
+            tage.put(tag, wert);
+            if (YearMonth.from(tag).isBefore(laufend)) {
+                aussenFertig.put(tag, wert);
             }
         });
+        Map<YearMonth, Double> aussen = monatsmittel(tage);
         // Grid import from the 1st of January up to now and up to the same hour in the years before
         Double[] gesamt = bisJetzt(hauszaehler, jetzt);
-        return vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, geraeteMonate),
+        Vergleich v = vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, geraeteMonate),
                 !hauszaehler.isEmpty(), liste, geraeteMonate, aussen, gesamt[0], gesamt[1], gesamt[2],
                 geraeteGleich, Instant.now(), jahressummen(jahr, liste));
+        List<Double> gradtage = new ArrayList<>();
+        for (int j : v.jahre()) {
+            gradtage.add(gradtage(tage, LocalDate.of(j, 1, 1), jetzt.toLocalDate().withYear(j)));
+        }
+        return new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.geraete(), v.gesamt(),
+                v.gesamtVorjahrGleich(), v.gesamtVorvorjahrGleich(), v.geraeteGleich(), v.berechnet(),
+                v.jahressummen(), java.util.Collections.unmodifiableList(gradtage), preis);
     }
 
     /**
@@ -737,6 +821,33 @@ public class Jahresvergleich {
         // One reading per table, e.g. after Home Assistant changed a tag; sorted by time
         List<Map.Entry<Instant, Double>> liste = new ArrayList<>(werte.entrySet());
         return liste.isEmpty() ? null : liste.get(nachher ? 0 : liste.size() - 1);
+    }
+
+    // Heating degree days after VDI 3807 (Gt20/15): on a day below 15 °C the difference to 20 °C
+    static final double HEIZGRENZE = 15;
+    static final double INNEN = 20;
+    // Share of the days that needs a value, otherwise the degree days are not known
+    static final double MIN_ABDECKUNG = 0.9;
+
+    /**
+     * Heating degree days from the day von up to the day before bis (the day bis is not over yet); null if the
+     * daily means of more than a tenth of the days are missing. The missing days count as the mean of the others.
+     */
+    static Double gradtage(Map<LocalDate, Double> tage, LocalDate von, LocalDate bis) {
+        long anzahl = bis.toEpochDay() - von.toEpochDay();
+        if (anzahl <= 0) {
+            return null;
+        }
+        double summe = 0;
+        int mitWert = 0;
+        for (LocalDate t = von; t.isBefore(bis); t = t.plusDays(1)) {
+            Double grad = tage.get(t);
+            if (grad != null) {
+                summe += grad < HEIZGRENZE ? INNEN - grad : 0;
+                mitWert++;
+            }
+        }
+        return mitWert < anzahl * MIN_ABDECKUNG ? null : summe * anzahl / mitWert;
     }
 
     /**

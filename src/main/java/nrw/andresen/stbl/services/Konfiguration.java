@@ -138,13 +138,16 @@ public class Konfiguration {
             new Feld("auswertung.haushalt.zaehler", AUSWERTUNG, "Entity des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "Home-Assistant-Entity mit dem Zählerstand des Netzbezugs in kWh. Damit zeigt der Jahresvergleich "
                     + "den Netzbezug und den Haushaltsstrom (Netzbezug minus Heizung und Geräte). Leer: kein Haushaltsstrom."),
+            new Feld("auswertung.strompreis", AUSWERTUNG, "Strompreis", "€/kWh", Typ.ZAHL, null, 0, 2,
+                    "Arbeitspreis je kWh, zum Beispiel 0,32. Damit zeigt der Jahresvergleich auch die Kosten in Euro, "
+                    + "ohne Grundpreis. Leer: keine Kosten."),
             new Feld("auswertung.geraet.1.name", AUSWERTUNG, "Gerät 1: Name", "", Typ.TEXT, "", 0, 0,
                     "Verbraucher mit eigenem Zähler, zum Beispiel Wallbox oder ein Shelly an Klimaanlage oder Warmwasser. Sie erscheinen im Jahresvergleich als eigener Teil und werden vom Haushaltsstrom abgezogen. Leer: kein Gerät 1."),
             new Feld("auswertung.geraet.1.zaehler", AUSWERTUNG, "Gerät 1: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.1.davor", AUSWERTUNG, "Gerät 1: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+            new Feld("auswertung.geraet.1.davor", AUSWERTUNG, "Gerät 1: Entity der Werte vor Einbau Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Einbau des Zählers, zum Beispiel "
                     + "händisch abgelesen; der Zähler setzt danach fort."),
             new Feld("auswertung.geraet.1.vorher", AUSWERTUNG, "Gerät 1: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
@@ -154,8 +157,8 @@ public class Konfiguration {
             new Feld("auswertung.geraet.2.zaehler", AUSWERTUNG, "Gerät 2: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.2.davor", AUSWERTUNG, "Gerät 2: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+            new Feld("auswertung.geraet.2.davor", AUSWERTUNG, "Gerät 2: Entity der Werte vor Einbau Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Einbau des Zählers, zum Beispiel "
                     + "händisch abgelesen; der Zähler setzt danach fort."),
             new Feld("auswertung.geraet.2.vorher", AUSWERTUNG, "Gerät 2: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
@@ -165,8 +168,8 @@ public class Konfiguration {
             new Feld("auswertung.geraet.3.zaehler", AUSWERTUNG, "Gerät 3: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.3.davor", AUSWERTUNG, "Gerät 3: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+            new Feld("auswertung.geraet.3.davor", AUSWERTUNG, "Gerät 3: Entity der Werte vor Einbau Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Einbau des Zählers, zum Beispiel "
                     + "händisch abgelesen; der Zähler setzt danach fort."),
             new Feld("auswertung.geraet.3.vorher", AUSWERTUNG, "Gerät 3: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
@@ -176,8 +179,8 @@ public class Konfiguration {
             new Feld("auswertung.geraet.4.zaehler", AUSWERTUNG, "Gerät 4: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.4.davor", AUSWERTUNG, "Gerät 4: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+            new Feld("auswertung.geraet.4.davor", AUSWERTUNG, "Gerät 4: Entity der Werte vor Einbau Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Einbau des Zählers, zum Beispiel "
                     + "händisch abgelesen; der Zähler setzt danach fort."),
             new Feld("auswertung.geraet.4.vorher", AUSWERTUNG, "Gerät 4: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
@@ -187,8 +190,8 @@ public class Konfiguration {
             new Feld("auswertung.geraet.5.zaehler", AUSWERTUNG, "Gerät 5: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.5.davor", AUSWERTUNG, "Gerät 5: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+            new Feld("auswertung.geraet.5.davor", AUSWERTUNG, "Gerät 5: Entity der Werte vor Einbau Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Einbau des Zählers, zum Beispiel "
                     + "händisch abgelesen; der Zähler setzt danach fort."),
             new Feld("auswertung.geraet.5.vorher", AUSWERTUNG, "Gerät 5: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
