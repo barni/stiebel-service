@@ -176,33 +176,39 @@ public class Jahresvergleich {
          * years.
          */
         public Double wetter() {
+            List<Double> teile = wetterMonate();
+            return teile == null ? null : teile.stream().mapToDouble(Double::doubleValue).sum();
+        }
+
+        /**
+         * The weather part of the heating per month (index 0 January), 0 for a month without reference; empty if
+         * only the whole year is known, null without the degree days of both years
+         */
+        public List<Double> wetterMonate() {
             Double jetzt = gradtage(JAHRE - 1);
             Double vorher = gradtage(JAHRE - 2);
             if (jetzt == null || vorher == null || vorher <= 0) {
                 return null;
             }
             if (gradtageMonate.isEmpty()) {
-                return heizungGleich(JAHRE - 2) * (jetzt / vorher - 1);
+                return List.of(heizungGleich(JAHRE - 2) * (jetzt / vorher - 1));
             }
-            double summe = 0;
+            List<Double> teile = new ArrayList<>();
             for (int m = 0; m < Math.min(12, gradtageMonate.size()); m++) {
                 List<Double> g = gradtageMonate.get(m);
                 Double gJetzt = g.get(JAHRE - 1);
                 Double gVorher = g.get(JAHRE - 2);
                 Double hVorher = m < monate.size() ? monate.get(m).heizungGleich().get(JAHRE - 2) : null;
                 if (hVorher == null) {
-                    continue;
-                }
-                if (gJetzt == null || gVorher == null) {
+                    teile.add(0.0);
+                } else if (gJetzt == null || gVorher == null) {
                     // Too many days without the outdoor temperature: the ratio of the whole year
-                    summe += hVorher * (jetzt / vorher - 1);
-                    continue;
-                }
-                if (gVorher >= MIN_GRADTAGE) {
-                    summe += hVorher * (gJetzt / gVorher - 1);
+                    teile.add(hVorher * (jetzt / vorher - 1));
+                } else {
+                    teile.add(gVorher >= MIN_GRADTAGE ? hVorher * (gJetzt / gVorher - 1) : 0.0);
                 }
             }
-            return summe;
+            return teile;
         }
 
         /**

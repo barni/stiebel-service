@@ -497,8 +497,8 @@ public class JahresvergleichTest {
         String karte = JahresvergleichSeite.ursachen(v);
         assertTrue(karte.contains("<td>davon Wetter</td><td></td><td></td><td>+95 kWh</td><td>–</td>"), karte);
         assertTrue(karte.contains("<td>davon wetterbereinigt</td><td></td><td></td><td>+5 kWh</td>"));
-        assertTrue(karte.contains("Das Wetter war kälter als 2025: 2.200 statt 2.000 Heizgradtage (+10,0 %). Das "
-                + "erklärt +95 kWh der Heizung; wetterbereinigt braucht sie 5 kWh mehr."), karte);
+        assertTrue(karte.contains("Das Wetter war kälter als 2025: 2.200 statt 2.000 Heizgradtage (+10,0 %). Damit "
+                + "erklärt es +95 kWh der Heizung; wetterbereinigt braucht sie 5 kWh mehr."), karte);
         // The weather rows follow the heating
         assertTrue(karte.indexOf("<td>Heizung ≈</td>") < karte.indexOf("davon Wetter"));
         assertTrue(karte.indexOf("davon Wetter") < karte.indexOf("<td>Rest (Haushalt)</td>"));
@@ -551,6 +551,14 @@ public class JahresvergleichTest {
                 null, monate);
         // Heating of January 2025: 100 kWh, 10 % more
         assertEquals(10, v.wetter(), 1e-9);
+        // Over the year as cold, the month that weighs most is named
+        Jahresvergleich.Vergleich gleich = new Jahresvergleich.Vergleich(ohne.jahre(), ohne.bis(), ohne.monate(),
+                ohne.mitHaushalt(), ohne.geraete(), ohne.gesamt(), ohne.gesamtVorjahrGleich(), null,
+                ohne.geraeteGleich(), ohne.berechnet(), ohne.jahressummen(), java.util.List.of(2000.0, 2000.0, 2005.0),
+                null, monate);
+        assertEquals("Über das Jahr etwa gleich kalt wie 2025 (2.005 statt 2.000 Heizgradtage), aber anders "
+                + "verteilt: der Januar war kälter (+10 kWh). Zusammen erklärt das Wetter +10 kWh der Heizung; "
+                + "wetterbereinigt braucht sie 90 kWh mehr.", JahresvergleichSeite.wetterSatz(gleich));
         assertEquals(1050 - 950 - 10, v.bereinigt(), 1e-9);
         assertEquals(v.wetter(), v.mitPreis(0.3).wetter(), 1e-9);
         // A month without the outdoor temperature: the ratio of the whole year (+7 % of April 2025, 100 kWh)

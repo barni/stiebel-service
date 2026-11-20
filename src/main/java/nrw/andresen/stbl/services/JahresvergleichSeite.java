@@ -253,12 +253,39 @@ public final class JahresvergleichSeite {
         double prozent = (jetzt / vorher - 1) * 100;
         double wetter = v.wetter();
         double bereinigt = v.bereinigt();
-        String art = Math.abs(prozent) < 1 ? "etwa gleich kalt wie" : prozent > 0 ? "kälter als" : "milder als";
-        return "Das Wetter war " + art + " " + (v.jahr() - 1) + ": " + zahl(jetzt, 0) + " statt " + zahl(vorher, 0)
-                + " Heizgradtage (" + prozent(prozent) + "). Das erklärt " + vorzeichen(wetter)
-                + zahl(Math.abs(wetter), 0) + " kWh der Heizung; wetterbereinigt braucht sie " + (Math.abs(bereinigt)
-                < 0.5 ? "gleich viel." : zahl(Math.abs(bereinigt), 0) + " kWh " + (bereinigt > 0 ? "mehr." : "weniger."));
+        String vorjahr = String.valueOf(v.jahr() - 1);
+        String gradtage = zahl(jetzt, 0) + " statt " + zahl(vorher, 0) + " Heizgradtage";
+        String folge = vorzeichen(wetter) + zahl(Math.abs(wetter), 0)
+                + " kWh der Heizung; wetterbereinigt braucht sie " + (Math.abs(bereinigt) < 0.5 ? "gleich viel."
+                : zahl(Math.abs(bereinigt), 0) + " kWh " + (bereinigt > 0 ? "mehr." : "weniger."));
+        if (Math.abs(prozent) >= 1) {
+            return "Das Wetter war " + (prozent > 0 ? "kälter" : "milder") + " als " + vorjahr + ": " + gradtage
+                    + " (" + prozent(prozent) + "). Damit erklärt es " + folge;
+        }
+        // About as cold over the year, but the cold came in other months: name the months that weigh most
+        List<Double> teile = v.wetterMonate();
+        int kaelter = -1;
+        int milder = -1;
+        for (int m = 0; m < teile.size() && teile.size() > 1; m++) {
+            if (teile.get(m) >= 5 && (kaelter < 0 || teile.get(m) > teile.get(kaelter))) {
+                kaelter = m;
+            }
+            if (teile.get(m) <= -5 && (milder < 0 || teile.get(m) < teile.get(milder))) {
+                milder = m;
+            }
+        }
+        String verteilt = kaelter < 0 && milder < 0 ? "" : ", aber anders verteilt:"
+                + (kaelter < 0 ? "" : " der " + MONATSNAMEN[kaelter] + " war kälter ("
+                + vorzeichen(teile.get(kaelter)) + zahl(Math.abs(teile.get(kaelter)), 0) + " kWh)")
+                + (kaelter >= 0 && milder >= 0 ? "," : "")
+                + (milder < 0 ? "" : " der " + MONATSNAMEN[milder] + " milder ("
+                + vorzeichen(teile.get(milder)) + zahl(Math.abs(teile.get(milder)), 0) + " kWh)");
+        return "Über das Jahr etwa gleich kalt wie " + vorjahr + " (" + gradtage + ")" + verteilt + ". Zusammen "
+                + "erklärt das Wetter " + folge;
     }
+
+    private static final String[] MONATSNAMEN = {"Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
+            "August", "September", "Oktober", "November", "Dezember"};
 
     /**
      * Cost of an amount of electricity, e.g. " · +217 €"; empty without a price
