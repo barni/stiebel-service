@@ -553,11 +553,11 @@ public class JahresvergleichTest {
         assertEquals(10, v.wetter(), 1e-9);
         assertEquals(1050 - 950 - 10, v.bereinigt(), 1e-9);
         assertEquals(v.wetter(), v.mitPreis(0.3).wetter(), 1e-9);
-        // A month with heating but without the outdoor temperature: not known
+        // A month without the outdoor temperature: the ratio of the whole year (+7 % of April 2025, 100 kWh)
         monate.set(3, java.util.Arrays.asList(200.0, null, 200.0));
-        assertNull(new Jahresvergleich.Vergleich(ohne.jahre(), ohne.bis(), ohne.monate(), ohne.mitHaushalt(),
+        assertEquals(10 + 7, new Jahresvergleich.Vergleich(ohne.jahre(), ohne.bis(), ohne.monate(), ohne.mitHaushalt(),
                 ohne.geraete(), ohne.gesamt(), ohne.gesamtVorjahrGleich(), null, ohne.geraeteGleich(),
                 ohne.berechnet(), ohne.jahressummen(), java.util.List.of(2000.0, 2000.0, 2140.0), null, monate)
-                .wetter());
+                .wetter(), 1e-9);
     }
 }

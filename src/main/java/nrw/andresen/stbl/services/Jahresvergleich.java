@@ -171,8 +171,9 @@ public class Jahresvergleich {
          * Part of the change of the heating against the same days of the year before that comes from the weather.
          * Month by month the heating of the year before is scaled by the heating degree days: a colder November
          * weighs more than a milder September. A month with fewer than MIN_GRADTAGE in the year before has no
-         * reference and counts without weather. Without the months the whole year is scaled. Null without the
-         * degree days of both years.
+         * reference and counts without weather; a month with too many days without the outdoor temperature is
+         * scaled like the whole year, as is everything without the months. Null without the degree days of both
+         * years.
          */
         public Double wetter() {
             Double jetzt = gradtage(JAHRE - 1);
@@ -189,11 +190,12 @@ public class Jahresvergleich {
                 Double gJetzt = g.get(JAHRE - 1);
                 Double gVorher = g.get(JAHRE - 2);
                 Double hVorher = m < monate.size() ? monate.get(m).heizungGleich().get(JAHRE - 2) : null;
-                if (gJetzt == null || gVorher == null || hVorher == null) {
-                    // A month without the outdoor temperature: not known
-                    if (m < monate.size() && monate.get(m).heizungGleich().get(JAHRE - 1) != null) {
-                        return null;
-                    }
+                if (hVorher == null) {
+                    continue;
+                }
+                if (gJetzt == null || gVorher == null) {
+                    // Too many days without the outdoor temperature: the ratio of the whole year
+                    summe += hVorher * (jetzt / vorher - 1);
                     continue;
                 }
                 if (gVorher >= MIN_GRADTAGE) {
