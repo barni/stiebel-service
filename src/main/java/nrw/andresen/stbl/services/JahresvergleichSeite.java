@@ -124,11 +124,11 @@ public final class JahresvergleichSeite {
                 .append("der laufende Monat ist heller, er ist noch nicht vorbei</span></p>");
         List<String> schalter = new ArrayList<>();
         if (vergleich.mitHaushalt()) {
-            schalter.add("<a class=\"nav\" href=\"" + adresse(!mitHaushalt, mitGeraete) + "\">Haushaltsstrom "
+            schalter.add("<a class=\"nav bleiben\" href=\"" + adresse(!mitHaushalt, mitGeraete) + "\">Haushaltsstrom "
                     + (mitHaushalt ? "ausblenden" : "einblenden") + "</a>");
         }
         if (!vergleich.geraete().isEmpty()) {
-            schalter.add("<a class=\"nav\" href=\"" + adresse(mitHaushalt, !mitGeraete) + "\">Geräte "
+            schalter.add("<a class=\"nav bleiben\" href=\"" + adresse(mitHaushalt, !mitGeraete) + "\">Geräte "
                     + (mitGeraete ? "ausblenden" : "einblenden") + "</a>");
         }
         if (!schalter.isEmpty()) {
@@ -154,7 +154,7 @@ public final class JahresvergleichSeite {
                 .append("</article></section>")
                 .append(zeitraumKarte(vergleich, zeitraum, vergleich.bis().minusYears(1), vergleich.bis().minusDays(1)))
                 .append("<p class=\"note\">Stand ").append(ZEIT.format(vergleich.berechnet()))
-                .append(", stündlich neu berechnet.</p></main></body></html>");
+                .append(", stündlich neu berechnet.</p></main>").append(POSITION).append("</body></html>");
         return html.toString();
     }
 
@@ -955,6 +955,22 @@ public final class JahresvergleichSeite {
 
     // The colors of the devices are the page's own, light and dark like the tokens of the status page; chosen
     // so that each stays apart from heating (teal) and household (amber), also for colour blindness
+    // The switches load the page again; it opens at the same place instead of at the top
+    private static final String POSITION = """
+            <script>
+            (() => {
+              try {
+                const y = sessionStorage.getItem('jahresvergleich-y');
+                if (y !== null) { sessionStorage.removeItem('jahresvergleich-y'); scrollTo(0, +y); }
+              } catch (e) {}
+              document.addEventListener('click', e => {
+                if (e.target.closest && e.target.closest('a.bleiben')) {
+                  try { sessionStorage.setItem('jahresvergleich-y', String(scrollY)); } catch (x) {}
+                }
+              });
+            })();
+            </script>""";
+
     private static final String CSS = """
             :root { --g0: #6d5bd0; --g1: #38bdf8; --g2: #1e293b; --g3: #84cc16; --g4: #db2777; }
             @media (prefers-color-scheme: dark) { :root { --g0: #a99bf0; --g1: #2563eb; --g2: #f1f5f9; --g3: #a3e635; --g4: #f472b6; } }
