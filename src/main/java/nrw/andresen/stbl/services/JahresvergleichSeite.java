@@ -885,10 +885,11 @@ public final class JahresvergleichSeite {
         return svg.append("</svg></div>").toString();
     }
 
-    // The colors of the devices are the page's own, light and dark like the tokens of the status page
+    // The colors of the devices are the page's own, light and dark like the tokens of the status page; chosen
+    // so that each stays apart from heating (teal) and household (amber), also for colour blindness
     private static final String CSS = """
-            :root { --g0: #6d5bd0; --g1: #2563eb; --g2: #be185d; --g3: #4d7c0f; --g4: #475569; }
-            @media (prefers-color-scheme: dark) { :root { --g0: #a99bf0; --g1: #60a5fa; --g2: #f472b6; --g3: #a3e635; --g4: #cbd5e1; } }
+            :root { --g0: #6d5bd0; --g1: #38bdf8; --g2: #1e293b; --g3: #84cc16; --g4: #db2777; }
+            @media (prefers-color-scheme: dark) { :root { --g0: #a99bf0; --g1: #2563eb; --g2: #f1f5f9; --g3: #a3e635; --g4: #f472b6; } }
             .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
             .nav:hover, .nav:focus { text-decoration: underline; }
             .meldung { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-weight: 600;
