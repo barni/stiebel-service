@@ -210,8 +210,7 @@ public final class KonfigurationSeite {
                     new Teil("Ab wann ausgewertet wird", List.of("auswertung.start", "auswertung.fehlstarts.start",
                             "auswertung.zustand.start")),
                     new Teil("Außentemperatur", List.of("auswertung.aussentemp.bucket", "auswertung.aussentemp.entity")),
-                    new Teil("Stromzähler", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler",
-                            "auswertung.haushalt.wallbox")),
+                    new Teil("Hauszähler", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler")),
                     new Teil("Geräte mit eigenem Zähler", GERAETE))));
 
     /**
@@ -223,7 +222,7 @@ public final class KonfigurationSeite {
                 + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Zähler und Werte davor "
                 + "sind Home-Assistant-Entities mit dem Zählerstand in kWh; Werte davor sind frühere, etwa händisch "
                 + "abgelesene Stände. „Vorher da“: Das Gerät lief schon vor dem ersten Wert und steckte bis dahin im "
-                + "Haushalt.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
+                + "Haushalt; „nein, neu“ etwa für eine neue Wallbox, vorher zählt sie 0.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
                 + "<th>Zähler</th><th>Werte davor</th><th>Vorher da</th></tr></thead><tbody>");
         List<String> meldungen = new ArrayList<>();
         for (int n = 1; n <= Geraete.ANZAHL; n++) {

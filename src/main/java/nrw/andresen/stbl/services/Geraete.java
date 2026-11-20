@@ -7,14 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Devices with their own energy counter that the year comparison shows as parts of the grid import: the wallbox
- * (auswertung.haushalt.wallbox, came new) and up to ANZAHL more (auswertung.geraet.N.*), e.g. Shellys at the air
- * conditioning or the water heater
+ * Devices with their own energy counter that the year comparison shows as parts of the grid import, up to ANZAHL
+ * (auswertung.geraet.N.*), e.g. the wallbox or Shellys at the air conditioning or the water heater. The former
+ * setting auswertung.haushalt.wallbox is still read as a wallbox that came new, unless a device uses its counter.
  */
 @Component
 public class Geraete {
 
-    static final int ANZAHL = 4;
+    static final int ANZAHL = 5;
 
     /**
      * @param zaehlerDavor entity with earlier readings, e.g. read by hand, empty for none
@@ -38,10 +38,6 @@ public class Geraete {
 
     static List<Geraet> lesen(Environment env) {
         List<Geraet> liste = new ArrayList<>();
-        String wallbox = env.getProperty("auswertung.haushalt.wallbox", "").trim();
-        if (!wallbox.isEmpty()) {
-            liste.add(new Geraet("Wallbox", wallbox, "", false));
-        }
         for (int n = 1; n <= ANZAHL; n++) {
             String name = env.getProperty("auswertung.geraet." + n + ".name", "").trim();
             String zaehler = env.getProperty("auswertung.geraet." + n + ".zaehler", "").trim();
@@ -51,6 +47,11 @@ public class Geraete {
             }
             liste.add(new Geraet(name, zaehler, davor,
                     !"false".equals(env.getProperty("auswertung.geraet." + n + ".vorher", "true").trim())));
+        }
+        // The former setting of the wallbox, as long as it is not in the table
+        String wallbox = env.getProperty("auswertung.haushalt.wallbox", "").trim();
+        if (!wallbox.isEmpty() && liste.stream().noneMatch(g -> g.zaehler().equals(wallbox))) {
+            liste.addFirst(new Geraet("Wallbox", wallbox, "", false));
         }
         return liste;
     }

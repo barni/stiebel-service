@@ -133,15 +133,13 @@ public class Konfiguration {
                     0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, der erst "
                     + "seit 09/2026 gespeichert wird."),
             new Feld("auswertung.haushalt.bucket", AUSWERTUNG, "Bucket des Hauszählers", "", Typ.NAME, "", 0, 0,
-                    "InfluxDB-Bucket mit Hauszähler und Wallbox aus Home Assistant. Leer: Bucket des Dienstes."),
+                    "InfluxDB-Bucket mit dem Hauszähler und den Zählern der Geräte aus Home Assistant. Leer: Bucket des "
+                    + "Dienstes."),
             new Feld("auswertung.haushalt.zaehler", AUSWERTUNG, "Entity des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "Home-Assistant-Entity mit dem Zählerstand des Netzbezugs in kWh. Damit zeigt der Jahresvergleich "
-                    + "den Haushaltsstrom (Netzbezug minus Heizung und Wallbox). Leer: kein Haushaltsstrom."),
-            new Feld("auswertung.haushalt.wallbox", AUSWERTUNG, "Entity der Wallbox", "", Typ.NAME, "", 0, 0,
-                    "Home-Assistant-Entity mit dem Zählerstand der Wallbox in kWh, wird vom Haushaltsstrom abgezogen. "
-                    + "Leer: keine Wallbox."),
+                    + "den Netzbezug und den Haushaltsstrom (Netzbezug minus Heizung und Geräte). Leer: kein Haushaltsstrom."),
             new Feld("auswertung.geraet.1.name", AUSWERTUNG, "Gerät 1: Name", "", Typ.TEXT, "", 0, 0,
-                    "Weitere Verbraucher mit eigenem Zähler, zum Beispiel ein Shelly an Klimaanlage oder Warmwasser. Sie erscheinen im Jahresvergleich als eigener Teil und werden vom Haushaltsstrom abgezogen. Leer: kein Gerät 1."),
+                    "Verbraucher mit eigenem Zähler, zum Beispiel Wallbox oder ein Shelly an Klimaanlage oder Warmwasser. Sie erscheinen im Jahresvergleich als eigener Teil und werden vom Haushaltsstrom abgezogen. Leer: kein Gerät 1."),
             new Feld("auswertung.geraet.1.zaehler", AUSWERTUNG, "Gerät 1: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
@@ -182,6 +180,17 @@ public class Konfiguration {
                     0, 0, "Optional: Entity mit früheren, zum Beispiel händisch abgelesenen Zählerständen in kWh; der "
                     + "Zähler setzt danach fort."),
             new Feld("auswertung.geraet.4.vorher", AUSWERTUNG, "Gerät 4: vorher schon vorhanden", "", Typ.SCHALTER,
+                    "true", 0, 0, "An: Das Gerät lief schon vor dem ersten Zählerstand und steckte bis dahin im "
+                    + "Haushaltsstrom. Aus: Es kam neu hinzu, vorher zählt es 0."),
+            new Feld("auswertung.geraet.5.name", AUSWERTUNG, "Gerät 5: Name", "", Typ.TEXT, "", 0, 0,
+                    "Leer: kein Gerät 5."),
+            new Feld("auswertung.geraet.5.zaehler", AUSWERTUNG, "Gerät 5: Entity des Zählers", "", Typ.NAME, "", 0,
+                    0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
+                    + "wieder bei 0 anfängt, wird weitergezählt."),
+            new Feld("auswertung.geraet.5.davor", AUSWERTUNG, "Gerät 5: Entity der Werte davor", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit früheren, zum Beispiel händisch abgelesenen Zählerständen in kWh; der "
+                    + "Zähler setzt danach fort."),
+            new Feld("auswertung.geraet.5.vorher", AUSWERTUNG, "Gerät 5: vorher schon vorhanden", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor dem ersten Zählerstand und steckte bis dahin im "
                     + "Haushaltsstrom. Aus: Es kam neu hinzu, vorher zählt es 0."),
             new Feld("influx.enabled", INFLUX, "InfluxDB verwenden", "", Typ.SCHALTER, "true", 0, 0,
