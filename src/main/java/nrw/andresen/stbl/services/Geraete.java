@@ -26,6 +26,8 @@ public class Geraete {
 
     private final List<Geraet> liste;
 
+    // Two constructors: Spring needs to be told which one it uses, without it the service did not start
+    @org.springframework.beans.factory.annotation.Autowired
     public Geraete(Environment env) {
         this(lesen(env));
     }
