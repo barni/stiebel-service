@@ -214,16 +214,18 @@ public final class KonfigurationSeite {
                     new Teil("Geräte mit eigenem Zähler", GERAETE))));
 
     /**
-     * The devices as table, one row each: name, counter, earlier readings, ran before
+     * The devices as table, one row each: name, counter, readings before the counter, ran before the first value
      */
     private static String geraete(Map<String, Konfiguration.Wert> werte, Map<String, String> eingabe,
                                   Map<String, String> fehler, boolean schreibbar) {
         StringBuilder html = new StringBuilder("<p class=\"hilfe\">Zum Beispiel ein Shelly an Klimaanlage oder "
-                + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Zähler und Werte davor "
-                + "sind Home-Assistant-Entities mit dem Zählerstand in kWh; Werte davor sind frühere, etwa händisch "
-                + "abgelesene Stände. „Vorher da“: Das Gerät lief schon vor dem ersten Wert und steckte bis dahin im "
-                + "Haushalt; „nein, neu“ etwa für eine neue Wallbox, vorher zählt sie 0.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
-                + "<th>Zähler</th><th>Werte davor</th><th>Vorher da</th></tr></thead><tbody>");
+                + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Beide Spalten mit "
+                + "Werten sind Home-Assistant-Entities mit dem Zählerstand in kWh. „Werte vor dem Zähler“: Stände aus "
+                + "der Zeit, bevor es den Zähler gab, etwa händisch abgelesen; der Zähler setzt danach fort. „Vor dem "
+                + "ersten Wert“: „lief schon“, wenn das Gerät vor seinem ersten Wert (von Hand oder vom Zähler) "
+                + "ungemessen im Haushalt steckte; „gab es noch nicht“ etwa für eine neue Wallbox, vorher zählt sie "
+                + "0.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
+                + "<th>Zähler</th><th>Werte vor dem Zähler</th><th>Vor dem ersten Wert</th></tr></thead><tbody>");
         List<String> meldungen = new ArrayList<>();
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             html.append("<tr><td>").append(n).append("</td>");
@@ -244,8 +246,8 @@ public final class KonfigurationSeite {
                     boolean an = eingabe.get(name) != null ? eingabe.get(name).equals("true")
                             : Boolean.parseBoolean(wert.datei());
                     html.append("<select").append(attribute).append("><option value=\"true\"")
-                            .append(an ? " selected" : "").append(">ja</option><option value=\"false\"")
-                            .append(an ? "" : " selected").append(">nein, neu</option></select>");
+                            .append(an ? " selected" : "").append(">lief schon</option><option value=\"false\"")
+                            .append(an ? "" : " selected").append(">gab es noch nicht</option></select>");
                 } else {
                     html.append("<input type=\"text\"").append(attribute).append(" value=\"").append(text(angezeigt))
                             .append("\">");

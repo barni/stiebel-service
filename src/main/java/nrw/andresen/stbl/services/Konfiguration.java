@@ -143,56 +143,56 @@ public class Konfiguration {
             new Feld("auswertung.geraet.1.zaehler", AUSWERTUNG, "Gerät 1: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.1.davor", AUSWERTUNG, "Gerät 1: Entity der Werte davor", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit früheren, zum Beispiel händisch abgelesenen Zählerständen in kWh; der "
-                    + "Zähler setzt danach fort."),
-            new Feld("auswertung.geraet.1.vorher", AUSWERTUNG, "Gerät 1: vorher schon vorhanden", "", Typ.SCHALTER,
-                    "true", 0, 0, "An: Das Gerät lief schon vor dem ersten Zählerstand und steckte bis dahin im "
-                    + "Haushaltsstrom. Aus: Es kam neu hinzu, vorher zählt es 0."),
+            new Feld("auswertung.geraet.1.davor", AUSWERTUNG, "Gerät 1: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+                    + "händisch abgelesen; der Zähler setzt danach fort."),
+            new Feld("auswertung.geraet.1.vorher", AUSWERTUNG, "Gerät 1: vor dem ersten Wert", "", Typ.SCHALTER,
+                    "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
+                    + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
             new Feld("auswertung.geraet.2.name", AUSWERTUNG, "Gerät 2: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 2."),
             new Feld("auswertung.geraet.2.zaehler", AUSWERTUNG, "Gerät 2: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.2.davor", AUSWERTUNG, "Gerät 2: Entity der Werte davor", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit früheren, zum Beispiel händisch abgelesenen Zählerständen in kWh; der "
-                    + "Zähler setzt danach fort."),
-            new Feld("auswertung.geraet.2.vorher", AUSWERTUNG, "Gerät 2: vorher schon vorhanden", "", Typ.SCHALTER,
-                    "true", 0, 0, "An: Das Gerät lief schon vor dem ersten Zählerstand und steckte bis dahin im "
-                    + "Haushaltsstrom. Aus: Es kam neu hinzu, vorher zählt es 0."),
+            new Feld("auswertung.geraet.2.davor", AUSWERTUNG, "Gerät 2: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+                    + "händisch abgelesen; der Zähler setzt danach fort."),
+            new Feld("auswertung.geraet.2.vorher", AUSWERTUNG, "Gerät 2: vor dem ersten Wert", "", Typ.SCHALTER,
+                    "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
+                    + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
             new Feld("auswertung.geraet.3.name", AUSWERTUNG, "Gerät 3: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 3."),
             new Feld("auswertung.geraet.3.zaehler", AUSWERTUNG, "Gerät 3: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.3.davor", AUSWERTUNG, "Gerät 3: Entity der Werte davor", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit früheren, zum Beispiel händisch abgelesenen Zählerständen in kWh; der "
-                    + "Zähler setzt danach fort."),
-            new Feld("auswertung.geraet.3.vorher", AUSWERTUNG, "Gerät 3: vorher schon vorhanden", "", Typ.SCHALTER,
-                    "true", 0, 0, "An: Das Gerät lief schon vor dem ersten Zählerstand und steckte bis dahin im "
-                    + "Haushaltsstrom. Aus: Es kam neu hinzu, vorher zählt es 0."),
+            new Feld("auswertung.geraet.3.davor", AUSWERTUNG, "Gerät 3: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+                    + "händisch abgelesen; der Zähler setzt danach fort."),
+            new Feld("auswertung.geraet.3.vorher", AUSWERTUNG, "Gerät 3: vor dem ersten Wert", "", Typ.SCHALTER,
+                    "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
+                    + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
             new Feld("auswertung.geraet.4.name", AUSWERTUNG, "Gerät 4: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 4."),
             new Feld("auswertung.geraet.4.zaehler", AUSWERTUNG, "Gerät 4: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.4.davor", AUSWERTUNG, "Gerät 4: Entity der Werte davor", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit früheren, zum Beispiel händisch abgelesenen Zählerständen in kWh; der "
-                    + "Zähler setzt danach fort."),
-            new Feld("auswertung.geraet.4.vorher", AUSWERTUNG, "Gerät 4: vorher schon vorhanden", "", Typ.SCHALTER,
-                    "true", 0, 0, "An: Das Gerät lief schon vor dem ersten Zählerstand und steckte bis dahin im "
-                    + "Haushaltsstrom. Aus: Es kam neu hinzu, vorher zählt es 0."),
+            new Feld("auswertung.geraet.4.davor", AUSWERTUNG, "Gerät 4: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+                    + "händisch abgelesen; der Zähler setzt danach fort."),
+            new Feld("auswertung.geraet.4.vorher", AUSWERTUNG, "Gerät 4: vor dem ersten Wert", "", Typ.SCHALTER,
+                    "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
+                    + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
             new Feld("auswertung.geraet.5.name", AUSWERTUNG, "Gerät 5: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 5."),
             new Feld("auswertung.geraet.5.zaehler", AUSWERTUNG, "Gerät 5: Entity des Zählers", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity mit dem Zählerstand in kWh, etwa klimaanlage_energy. Ein Zähler, der "
                     + "wieder bei 0 anfängt, wird weitergezählt."),
-            new Feld("auswertung.geraet.5.davor", AUSWERTUNG, "Gerät 5: Entity der Werte davor", "", Typ.NAME, "",
-                    0, 0, "Optional: Entity mit früheren, zum Beispiel händisch abgelesenen Zählerständen in kWh; der "
-                    + "Zähler setzt danach fort."),
-            new Feld("auswertung.geraet.5.vorher", AUSWERTUNG, "Gerät 5: vorher schon vorhanden", "", Typ.SCHALTER,
-                    "true", 0, 0, "An: Das Gerät lief schon vor dem ersten Zählerstand und steckte bis dahin im "
-                    + "Haushaltsstrom. Aus: Es kam neu hinzu, vorher zählt es 0."),
+            new Feld("auswertung.geraet.5.davor", AUSWERTUNG, "Gerät 5: Entity der Werte vor dem Zähler", "", Typ.NAME, "",
+                    0, 0, "Optional: Entity mit Zählerständen in kWh aus der Zeit vor dem Zähler, zum Beispiel "
+                    + "händisch abgelesen; der Zähler setzt danach fort."),
+            new Feld("auswertung.geraet.5.vorher", AUSWERTUNG, "Gerät 5: vor dem ersten Wert", "", Typ.SCHALTER,
+                    "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
+                    + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
             new Feld("influx.enabled", INFLUX, "InfluxDB verwenden", "", Typ.SCHALTER, "true", 0, 0,
                     "Aus: Es wird nichts gespeichert, Verläufe und Auswertungen fehlen auf der Statusseite."),
             new Feld("influx.url", INFLUX, "Adresse", "", Typ.URL, "", 0, 0,
