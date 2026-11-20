@@ -138,6 +138,13 @@ public class Konfiguration {
             new Feld("auswertung.haushalt.zaehler", AUSWERTUNG, "Entity des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "Home-Assistant-Entity mit dem Zählerstand des Netzbezugs in kWh. Damit zeigt der Jahresvergleich "
                     + "den Netzbezug und den Haushaltsstrom (Netzbezug minus Heizung und Geräte). Leer: kein Haushaltsstrom."),
+            new Feld("auswertung.pv.ertrag", AUSWERTUNG, "Entity des PV-Ertrags", "", Typ.NAME, "", 0, 0,
+                    "Home-Assistant-Entity mit dem Gesamtertrag der eigenen PV-Anlage in kWh, etwa solar_yieldtotal. "
+                    + "Damit zählt der im Haus verbrauchte PV-Strom zum Verbrauch und zum Haushalt. Leer: nur der "
+                    + "Netzbezug."),
+            new Feld("auswertung.pv.einspeisung", AUSWERTUNG, "Entity der Einspeisung", "", Typ.NAME, "", 0, 0,
+                    "Optional: Home-Assistant-Entity mit dem Zählerstand der Einspeisung ins Netz in kWh; sie wird "
+                    + "vom PV-Ertrag abgezogen. Leer: der ganze Ertrag gilt als im Haus verbraucht."),
             new Feld("auswertung.strompreis", AUSWERTUNG, "Strompreis", "€/kWh", Typ.ZAHL, null, 0, 2,
                     "Arbeitspreis je kWh, zum Beispiel 0,2873, bis zu vier Nachkommastellen. Damit zeigt der Jahresvergleich auch die Kosten in Euro, "
                     + "ohne Grundpreis. Leer: keine Kosten."),

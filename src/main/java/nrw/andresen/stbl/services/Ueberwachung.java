@@ -68,6 +68,8 @@ public class Ueberwachung {
     private String aussenBucket = "";
     @Value("${auswertung.aussentemp.entity:}")
     private String aussenEntity = "";
+    @Value("${auswertung.pv.ertrag:}")
+    private String pvErtrag = "";
 
     private volatile double druckMin;
     private volatile double druckMax;
@@ -619,6 +621,12 @@ public class Ueberwachung {
         if (!leer(hauszaehler)) {
             liste.add(aktuell("Hauszähler aktuell", bucket(haushaltBucket), "kWh", hauszaehler, WERT_STILL,
                     "Der Netzbezug aus Home Assistant (" + hauszaehler + ") für den Jahresvergleich."));
+        }
+        if (!leer(pvErtrag)) {
+            liste.add(aktuell("PV-Ertrag aktuell", bucket(haushaltBucket), "kWh", pvErtrag, GERAET_STILL,
+                    "Der Ertrag der PV-Anlage (" + pvErtrag + ") für den Verbrauch im Jahresvergleich. Im Winter "
+                            + "meldet er selten, deshalb erst nach " + GERAET_STILL.toDays() + " Tagen ohne Wert eine "
+                            + "Warnung."));
         }
         if (geraete != null) {
             for (Geraete.Geraet g : geraete.getListe()) {
