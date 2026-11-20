@@ -693,6 +693,21 @@ public final class JahresvergleichSeite {
                 jetzt[k] = p.jahr();
             }
         }
+        // Devices measured this year but counted in the rest of the comparison (no values in the year before):
+        // their own part here, taken out of the household, so the bar shows where the electricity goes
+        if (!v.prognose().isEmpty()) {
+            long restTage = LocalDate.of(v.jahr() + 1, 1, 1).toEpochDay() - v.bis().toEpochDay();
+            List<Integer> gezeigt = v.gezeigt();
+            for (int k = 0; k < anzahl; k++) {
+                Double bisher = v.geraeteGleich().get(k).jetzt();
+                if (gezeigt.contains(k) || bisher == null) {
+                    continue;
+                }
+                double jahr = bisher + v.jeTag(k) * restTage;
+                jetzt[2 + k] = jahr;
+                jetzt[1] = Math.max(0, jetzt[1] - jahr);
+            }
+        }
         jahre.add(jetzt);
         jahreszahlen.add(v.jahr());
         int n = jahre.size();
@@ -885,10 +900,11 @@ public final class JahresvergleichSeite {
         return svg.append("</svg></div>").toString();
     }
 
-    // The colors of the devices are the page's own, light and dark like the tokens of the status page
+    // The colors of the devices are the page's own, light and dark like the tokens of the status page; chosen
+    // so that each stays apart from heating (teal) and household (amber), also for colour blindness
     private static final String CSS = """
-            :root { --g0: #6d5bd0; --g1: #2563eb; --g2: #be185d; --g3: #4d7c0f; --g4: #475569; }
-            @media (prefers-color-scheme: dark) { :root { --g0: #a99bf0; --g1: #60a5fa; --g2: #f472b6; --g3: #a3e635; --g4: #cbd5e1; } }
+            :root { --g0: #6d5bd0; --g1: #38bdf8; --g2: #1e293b; --g3: #84cc16; --g4: #db2777; }
+            @media (prefers-color-scheme: dark) { :root { --g0: #a99bf0; --g1: #2563eb; --g2: #f1f5f9; --g3: #a3e635; --g4: #f472b6; } }
             .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
             .nav:hover, .nav:focus { text-decoration: underline; }
             .meldung { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-weight: 600;

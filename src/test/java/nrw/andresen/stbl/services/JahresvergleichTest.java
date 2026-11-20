@@ -406,6 +406,9 @@ public class JahresvergleichTest {
         assertEquals(7800 - 1050 - 830, anteile.get(3).jetzt(), 1e-9);
         String karte = JahresvergleichSeite.ursachen(v);
         assertTrue(karte.contains("Klimaanlage zählt zum Rest, bis es für beide Jahre Messwerte gibt."));
+        // In the bar of the current year it has its own part all the same, taken out of the household
+        String balken = JahresvergleichSeite.jahresbalken(v);
+        assertTrue(balken.contains("2026 (Prognose): Klimaanlage 300 kWh von"));
         // A value estimated after the last reading by hand is named
         Jahresvergleich.Vergleich ww = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true,
                 java.util.List.of(new Geraete.Geraet("Warmwasser", "", "warmwasser_manuell", true)), zwei.gesamt(),
