@@ -540,18 +540,18 @@ public final class JahresvergleichSeite {
                         + (m.laufend() && i < J - 1 && m.heizungGleich().get(i) != null
                         ? "; bis zum gleichen Tag " + zahl(m.heizungGleich().get(i), 0) + " kWh" : "");
                 double x = x0 + i * balken + 1;
-                svg.append(balken("j" + i + (laufend ? " laufend" : ""), x, balken - 2, 0, heizung, oben, titel));
+                svg.append(balken("j" + i + (laufend ? " laufend" : ""), x, balken - 2, 0, heizung, oben, titel, "Heizung"));
                 double unten = heizung;
                 if (haushalt != null && haushalt > 0) {
                     svg.append(balken("haushalt j" + i + (laufend ? " laufend" : ""), x, balken - 2, unten,
-                            unten + haushalt, oben, titel));
+                            unten + haushalt, oben, titel, "Haushalt"));
                     unten += haushalt;
                 }
                 for (int k = 0; k < anzahl; k++) {
                     Double g = m.geraet(k, i);
                     if (g != null && g > 0) {
                         svg.append(balken("geraet g" + k + " j" + i + (laufend ? " laufend" : ""), x, balken - 2,
-                                unten, unten + g, oben, titel));
+                                unten, unten + g, oben, titel, v.geraete().get(k).name()));
                         unten += g;
                     }
                 }
@@ -562,12 +562,16 @@ public final class JahresvergleichSeite {
         return svg.append("</svg></div>").toString();
     }
 
+    /**
+     * A part of a stacked bar; teil names the part in the text, the tooltip shows it bold
+     */
     private static String balken(String klasse, double x, double breite, double von, double bis, double oben,
-                                 String titel) {
+                                 String titel, String teil) {
         double y = y(bis, oben);
         double hoehe = Math.max(0, y(von, oben) - y);
         return String.format(Locale.ROOT, "<rect class=\"%s\" x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" "
-                + "rx=\"2\" data-wert=\"%s\"></rect>", klasse, x, y, breite, hoehe, text(titel));
+                + "rx=\"2\" data-wert=\"%s\" data-teil=\"%s\"></rect>", klasse, x, y, breite, hoehe, text(titel),
+                text(teil));
     }
 
     private static double y(double wert, double oben) {
