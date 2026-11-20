@@ -60,7 +60,7 @@ public class MqttService {
             new Entitaet("vorlauf", "Vorlauf", "sensor", "°C", "temperature", "measurement", null, 1),
             new Entitaet("ruecklauf", "Rücklauf", "sensor", "°C", "temperature", "measurement", null, 1),
             new Entitaet("heizungsdruck", "Heizungsdruck", "sensor", "bar", "pressure", "measurement", null, 2),
-            new Entitaet("strom", "Strom (geschätzt)", "sensor", "W", "power", "measurement", null, 0),
+            new Entitaet("leistung", "Leistungsaufnahme (geschätzt)", "sensor", "W", "power", "measurement", null, 0),
             new Entitaet("waermeleistung", "Wärmeleistung", "sensor", "kW", "power", "measurement", null, 2),
             new Entitaet("arbeitszahl", "Arbeitszahl (geschätzt)", "sensor", null, null, "measurement",
                     "mdi:gauge", 1),
@@ -75,7 +75,7 @@ public class MqttService {
                     "mdi:sigma", 0),
             // Totals of today for the energy dashboard; they start at 0 at midnight, which Home Assistant counts as
             // a new cycle of the meter
-            new Entitaet("strom_heute", "Strom heute (geschätzt)", "sensor", "kWh", "energy", "total_increasing",
+            new Entitaet("strom_heute", "Stromverbrauch heute (geschätzt)", "sensor", "kWh", "energy", "total_increasing",
                     null, 2),
             new Entitaet("waerme_heute", "Wärme heute", "sensor", "kWh", "energy", "total_increasing", null, 1),
             new Entitaet("starts_heute", "Starts heute", "sensor", null, null, "total_increasing",
@@ -295,7 +295,7 @@ public class MqttService {
         rund(w, "ruecklauf", ruecklauf != null ? ruecklauf : wert(wp::getRuecklaufIstTemp, jetzt), 1);
         rund(w, "heizungsdruck", wert(wp::getHeizungsdruck, jetzt), 2);
         Double schein = wert(wp::getLeistungInverter, jetzt);
-        rund(w, "strom", schein == null ? null : Waermepumpe.wirkleistung(schein), 0);
+        rund(w, "leistung", schein == null ? null : Waermepumpe.wirkleistung(schein), 0);
         rund(w, "waermeleistung", wert(wp::getWaermeleistung, jetzt), 2);
         rund(w, "arbeitszahl", wert(wp::getArbeitszahl, jetzt), 1);
         rund(w, "drehzahl", wert(wp::getVerdichterDrehzahl, jetzt), 0);
