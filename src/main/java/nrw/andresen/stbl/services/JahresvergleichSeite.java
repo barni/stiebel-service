@@ -693,6 +693,21 @@ public final class JahresvergleichSeite {
                 jetzt[k] = p.jahr();
             }
         }
+        // Devices measured this year but counted in the rest of the comparison (no values in the year before):
+        // their own part here, taken out of the household, so the bar shows where the electricity goes
+        if (!v.prognose().isEmpty()) {
+            long restTage = LocalDate.of(v.jahr() + 1, 1, 1).toEpochDay() - v.bis().toEpochDay();
+            List<Integer> gezeigt = v.gezeigt();
+            for (int k = 0; k < anzahl; k++) {
+                Double bisher = v.geraeteGleich().get(k).jetzt();
+                if (gezeigt.contains(k) || bisher == null) {
+                    continue;
+                }
+                double jahr = bisher + v.jeTag(k) * restTage;
+                jetzt[2 + k] = jahr;
+                jetzt[1] = Math.max(0, jetzt[1] - jahr);
+            }
+        }
         jahre.add(jetzt);
         jahreszahlen.add(v.jahr());
         int n = jahre.size();

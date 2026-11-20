@@ -90,7 +90,7 @@ public class Jahresvergleich {
          * Electricity of the device g in the year with index i, null if not known
          */
         public Double geraet(int g, int i) {
-            return geraete.get(g).get(i);
+            return g < geraete.size() ? geraete.get(g).get(i) : null;
         }
     }
 
