@@ -209,7 +209,7 @@ public class Ueberwachung {
                 + " bar, 10 Minuten lang bei laufendem Verdichter (2024 bis 2026 bei Frost mindestens 3,2 bar). "
                 + "Hinweis auf zu wenig Kältemittel oder einen vereisten Verdampfer.", Duration.ofMinutes(10));
         heissgas.regel("Heißgastemperatur über " + (int) heissgasMax
-                + " °C, 5 Minuten lang (seit 10/2026 höchstens 88 °C). Hinweis auf zu wenig Kältemittel; der "
+                + " °C, 5 Minuten lang (im November 2026 bei Frost bis 91 °C). Hinweis auf zu wenig Kältemittel; der "
                 + "Verdichter wird zu heiß.", Duration.ofMinutes(5));
         abtauung.regel("Eine Abtauung läuft länger als " + abtauungMinuten
                 + " Minuten (sonst 2 bis 6 Minuten). Verdampfer auf Eis und den Ablauf des Tauwassers prüfen.",
