@@ -113,7 +113,7 @@ public class Konfiguration {
                     "Warnung, wenn der Niederdruck 10 Minuten lang bei laufendem Verdichter darunter liegt "
                     + "(Kältemittel, Vereisung). Bisher mindestens 3,2 bar."),
             new Feld("warnung.heissgas.max", WARNUNGEN, "Heißgas höchstens", "°C", Typ.ZAHL, "110", 70, 140,
-                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt. Bisher höchstens 88 °C."),
+                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt. Im November 2026 bei Frost bis 91 °C."),
             new Feld("warnung.abtauung.minuten", WARNUNGEN, "Abtauung höchstens", "min", Typ.GANZZAHL, "15", 5, 60,
                     "Warnung, wenn eine Abtauung länger dauert. Sonst dauert sie 2 bis 6 Minuten."),
             new Feld("warnung.spannung.min", WARNUNGEN, "Spannung Inverter mindestens", "V", Typ.ZAHL, "195", 150,

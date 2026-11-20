@@ -142,7 +142,7 @@ public final class IndexBeschreibung {
                     + "Regler-Integral: Ist-Temperatur des Heizkreises in 0,1 °C (HKISTTEMP in "
                     + "OneESP32ToRuleThemAll). Keine Materialnummer. Im Stillstand am 16.11.2026 gleich dem Rücklauf "
                     + "WPM (254 = 25,4 °C), beim Heizen bis 30,7 °C, am 16.11.2026 nie mehr als 0,2 K vom Rücklauf WPM "
-                    + "entfernt. Deshalb nicht eigens gespeichert (bis 16.11.2026 abends als WP_HeizkreisIstWPM)."),
+                    + "entfernt. Deshalb nicht eigens gespeichert."),
             entry((short) 0x0199, "Softwarenummer des Geräts, stündlich vom Manager (0x180) und von der Außeneinheit "
                     + "(0x500) gelesen: 390 und 446 (Bus-Scan 16.11.2026). Beim Abgleich schreibt der Manager 331 an "
                     + "die Wärmepumpe und die Wärmepumpe meldet 70, also wohl eine andere Zählung."),
@@ -227,8 +227,7 @@ public final class IndexBeschreibung {
             entry((short) 0x0053, "Heizkreispumpe (ha-stiebel-control). Hier immer 0." + KONSTANT),
             entry((short) 0x01D2, "Pumpenstatus als Bitfeld (ha-stiebel-control): 4352 (0x1100), solange die "
                     + "Umwälzpumpe läuft, 4096 (0x1000) im Stillstand (17.11.2026), Bit 0x0100 ist also die Pumpe. "
-                    + "Das zeigt auch der Volumenstrom, deshalb nicht abgefragt (bis 17.11.2026 als "
-                    + "WP_Roh_Pumpenstatus gespeichert)."),
+                    + "Das zeigt auch der Volumenstrom, deshalb nicht abgefragt."),
             entry((short) 0x0059, "Status des Heizkreises (ha-stiebel-control). Hier immer 0." + KONSTANT),
             entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (ha-stiebel-control). Der Manager 0x480 antwortet "
                     + "0x8000 (nicht verfügbar). Beim Abgleich schreibt der Manager 0 an die Wärmepumpe."),
