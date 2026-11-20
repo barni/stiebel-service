@@ -535,4 +535,29 @@ public class JahresvergleichTest {
         assertEquals(ohne.erwartet(0), still.erwartet(0), 1e-9);
         assertTrue(v.prognose().stream().anyMatch(p -> p.name().equals("Wallbox") && Math.abs(p.erwartet() - 12) < 1e-9));
     }
+
+    @Test
+    public void testWetterJeMonat() {
+        Jahresvergleich.Vergleich ohne = vergleich(true);
+        java.util.List<java.util.List<Double>> monate = new java.util.ArrayList<>();
+        for (int m = 1; m <= 10; m++) {
+            // January 10 % colder; February below 20 degree days in the year before, no reference; the rest equal
+            monate.add(m == 1 ? java.util.Arrays.asList(500.0, 500.0, 550.0)
+                    : m == 2 ? java.util.Arrays.asList(10.0, 10.0, 100.0) : java.util.Arrays.asList(200.0, 200.0, 200.0));
+        }
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(ohne.jahre(), ohne.bis(), ohne.monate(),
+                ohne.mitHaushalt(), ohne.geraete(), ohne.gesamt(), ohne.gesamtVorjahrGleich(), null,
+                ohne.geraeteGleich(), ohne.berechnet(), ohne.jahressummen(), java.util.List.of(2000.0, 2000.0, 2140.0),
+                null, monate);
+        // Heating of January 2025: 100 kWh, 10 % more
+        assertEquals(10, v.wetter(), 1e-9);
+        assertEquals(1050 - 950 - 10, v.bereinigt(), 1e-9);
+        assertEquals(v.wetter(), v.mitPreis(0.3).wetter(), 1e-9);
+        // A month with heating but without the outdoor temperature: not known
+        monate.set(3, java.util.Arrays.asList(200.0, null, 200.0));
+        assertNull(new Jahresvergleich.Vergleich(ohne.jahre(), ohne.bis(), ohne.monate(), ohne.mitHaushalt(),
+                ohne.geraete(), ohne.gesamt(), ohne.gesamtVorjahrGleich(), null, ohne.geraeteGleich(),
+                ohne.berechnet(), ohne.jahressummen(), java.util.List.of(2000.0, 2000.0, 2140.0), null, monate)
+                .wetter());
+    }
 }
