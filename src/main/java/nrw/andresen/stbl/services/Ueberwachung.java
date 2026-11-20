@@ -262,8 +262,27 @@ public class Ueberwachung {
                 + String.format(Locale.GERMANY, format, wert) + einheit;
     }
 
+    /**
+     * The checks of the last run; the line of MQTT always with the current state, it changes every 30 s
+     */
     public List<Pruefung> getPruefungen() {
-        return pruefungen;
+        List<Pruefung> liste = pruefungen;
+        if (!mqtt.isKonfiguriert() || liste.isEmpty()) {
+            return liste;
+        }
+        List<Pruefung> aktuell = new ArrayList<>(liste.stream().filter(p -> !p.name().equals(MQTT)).toList());
+        aktuell.add(mqttPruefung());
+        return aktuell;
+    }
+
+    static final String MQTT = "Home Assistant (MQTT)";
+
+    private Pruefung mqttPruefung() {
+        Instant letzte = mqtt.getLetzteNachricht();
+        String fehler = mqtt.getLetzterFehler();
+        return new Pruefung(MQTT, fehler == null, fehler != null ? "Fehler: " + fehler
+                : letzte == null ? "verbindet …" : "OK, gesendet " + SignalService.UHRZEIT.format(letzte),
+                "Werte alle 30 s an den MQTT-Broker, in Home Assistant als Gerät „Wärmepumpe“.");
     }
 
     public Instant getGeprueft() {
@@ -468,10 +487,7 @@ public class Ueberwachung {
         }
         // Home Assistant over MQTT is optional too
         if (mqtt.isKonfiguriert()) {
-            liste.add(new Pruefung("Home Assistant (MQTT)", mqtt.getLetzterFehler() == null,
-                    mqtt.getLetzterFehler() != null ? "Fehler: " + mqtt.getLetzterFehler()
-                            : mqtt.getLetzteNachricht() == null ? "noch nicht gesendet" : "OK",
-                    "Werte alle 30 s an den MQTT-Broker, in Home Assistant als Gerät „Wärmepumpe“."));
+            liste.add(mqttPruefung());
         }
         pruefungen = liste;
         geprueft = Instant.now();

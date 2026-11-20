@@ -140,9 +140,10 @@ public class MqttService {
     }
 
     /**
-     * Every 30 s, starting a minute after the start when the first values are there
+     * Every 30 s, starting 10 s after the start: the connection is checked at once, missing values are sent once
+     * the CAN bus has answered
      */
-    @Scheduled(initialDelay = 60000, fixedRate = 30000)
+    @Scheduled(initialDelay = 10000, fixedRate = 30000)
     public synchronized void senden() {
         if (!isKonfiguriert()) {
             return;
