@@ -92,7 +92,10 @@ public class Ueberwachung {
     private final Deque<Messung> druckVerlauf = new ArrayDeque<>();
     // Last minute with the compressor running, at first the first check after the start of the service
     private Instant letzterLauf;
+    // Snapshot of all checks of the last run every 15 minutes, used for the warning about the service
     private volatile List<Pruefung> pruefungen = List.of();
+    // Checks over the network (InfluxDB reachable and readable) of the last run
+    private volatile List<Pruefung> netz = List.of();
     // Last known value of each setting and the last changes as text, the newest first
     private final Map<String, Double> einstellungen = new HashMap<>();
     private final Deque<String> einstellungsaenderungen = new ArrayDeque<>();
@@ -263,16 +266,43 @@ public class Ueberwachung {
     }
 
     /**
-     * The checks of the last run; the line of MQTT always with the current state, it changes every 30 s
+     * The checks over the network from the last run every 15 minutes, the others (writing to InfluxDB, USB adapter,
+     * mail, Pushover, MQTT) with the current state: they only read what the service already knows. Empty before
+     * the first run 30 s after the start.
      */
     public List<Pruefung> getPruefungen() {
-        List<Pruefung> liste = pruefungen;
-        if (!mqtt.isKonfiguriert() || liste.isEmpty()) {
-            return liste;
+        if (geprueft == null) {
+            return List.of();
         }
-        List<Pruefung> aktuell = new ArrayList<>(liste.stream().filter(p -> !p.name().equals(MQTT)).toList());
-        aktuell.add(mqttPruefung());
-        return aktuell;
+        List<Pruefung> liste = new ArrayList<>(netz);
+        liste.addAll(laufend());
+        return liste;
+    }
+
+    /**
+     * Checks from the state of the service, cheap enough for every page
+     */
+    private List<Pruefung> laufend() {
+        List<Pruefung> liste = new ArrayList<>();
+        if (influx.isAktiv()) {
+            liste.add(schreiben());
+        }
+        liste.add(adapter());
+        boolean mailOk = mail.isKonfiguriert() && mail.getLetzterFehler() == null;
+        liste.add(new Pruefung("Mail", mailOk, !mail.isKonfiguriert() ? "nicht eingerichtet"
+                : mail.getLetzterFehler() == null ? "OK" : "letzte Mail fehlgeschlagen: " + mail.getLetzterFehler(),
+                "Warnmails an stbl.mail.to über spring.mail.host. Ohne Mail stehen die Warnungen nur hier."));
+        // Pushover and MQTT are optional, they are only listed once they are set up
+        if (pushover.isKonfiguriert()) {
+            liste.add(new Pruefung("Pushover", pushover.getLetzterFehler() == null,
+                    pushover.getLetzterFehler() == null ? "OK"
+                            : "letzte Nachricht fehlgeschlagen: " + pushover.getLetzterFehler(),
+                    "Warnungen zusätzlich als Push-Nachricht über pushover.net."));
+        }
+        if (mqtt.isKonfiguriert()) {
+            liste.add(mqttPruefung());
+        }
+        return liste;
     }
 
     static final String MQTT = "Home Assistant (MQTT)";
@@ -392,7 +422,10 @@ public class Ueberwachung {
         } catch (Exception e) {
             // no current value, keep the state
         }
-        List<String> fehler = pruefungen.stream().filter(p -> !p.ok() && !p.name().equals("Mail"))
+        // Not for the mail (it would report itself) and MQTT: Home Assistant restarts after every update, the
+        // connection comes back by itself
+        List<String> fehler = pruefungen.stream().filter(p -> !p.ok() && !p.name().equals("Mail")
+                        && !p.name().equals(MQTT))
                 .map(p -> p.name() + ": " + p.text()).toList();
         melden(dienst, !fehler.isEmpty(), String.join("; ", fehler), jetzt);
     }
@@ -465,7 +498,8 @@ public class Ueberwachung {
     }
 
     /**
-     * Checks InfluxDB (if it is used), the USBtin, the mail and Pushover (if it is set up) 30 s after the start and then every 15 minutes
+     * Checks InfluxDB over the network (if it is used) 30 s after the start and then every 15 minutes, and keeps a
+     * snapshot of all checks for the warning about the service
      */
     @Scheduled(initialDelay = 30000, fixedRate = 900000)
     public void dienstPruefen() {
@@ -473,24 +507,10 @@ public class Ueberwachung {
         if (influx.isAktiv()) {
             influxPruefen(liste);
         }
-        liste.add(adapter());
-        boolean mailOk = mail.isKonfiguriert() && mail.getLetzterFehler() == null;
-        liste.add(new Pruefung("Mail", mailOk, !mail.isKonfiguriert() ? "nicht eingerichtet"
-                : mail.getLetzterFehler() == null ? "OK" : "letzte Mail fehlgeschlagen: " + mail.getLetzterFehler(),
-                "Warnmails an stbl.mail.to über spring.mail.host. Ohne Mail stehen die Warnungen nur hier."));
-        // Pushover is optional, it is only listed once it is set up
-        if (pushover.isKonfiguriert()) {
-            liste.add(new Pruefung("Pushover", pushover.getLetzterFehler() == null,
-                    pushover.getLetzterFehler() == null ? "OK"
-                            : "letzte Nachricht fehlgeschlagen: " + pushover.getLetzterFehler(),
-                    "Warnungen zusätzlich als Push-Nachricht über pushover.net."));
-        }
-        // Home Assistant over MQTT is optional too
-        if (mqtt.isKonfiguriert()) {
-            liste.add(mqttPruefung());
-        }
-        pruefungen = liste;
+        netz = List.copyOf(liste);
         geprueft = Instant.now();
+        liste.addAll(laufend());
+        pruefungen = liste;
     }
 
     private void influxPruefen(List<Pruefung> liste) {
@@ -509,7 +529,6 @@ public class Ueberwachung {
             liste.add(lesen("Außentemperatur lesen", temperaturBucket, "Lesen der Außentemperatur aus dem Bucket "
                     + temperaturBucket + " für den Vergleich der Einstellung Wärmebedarf und die Tagesübersicht."));
         }
-        liste.add(schreiben());
     }
 
     private Pruefung lesen(String name, String bucket, String erklaerung) {

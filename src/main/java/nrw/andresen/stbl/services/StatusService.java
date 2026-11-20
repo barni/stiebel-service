@@ -412,8 +412,8 @@ public class StatusService {
                     .info("Vergleich der Heizsaisons bei gleicher Außentemperatur, alle 6 Stunden neu berechnet.");
         }
         Rahmen.Signal dienst = SignalService.dienst(ueberwachung.getPruefungen(), null);
-        page.textArt("Dienst", dienst.wert(), dienst.art()).info("Prüfung des Dienstes alle 15 Minuten: InfluxDB, USB-Adapter, Mail, "
-                + "Pushover.");
+        page.textArt("Dienst", dienst.wert(), dienst.art()).info("Prüfungen des Dienstes: Erreichbarkeit der InfluxDB alle 15 Minuten, "
+                + "Schreiben, USB-Adapter, Mail, Pushover und MQTT laufend.");
         page.note("<a class=\"nav\" href=\"zustand\">Zustand und Alterung</a> · "
                 + "<a class=\"nav\" href=\"konfiguration#system\">System</a>");
     }
@@ -841,8 +841,9 @@ public class StatusService {
             page.textArt(pruefung.name(), pruefung.text(), pruefung.ok() ? "ok" : keineMail ? "neutral" : "warn")
                     .info(pruefung.erklaerung());
         }
-        page.note("Geprüft " + (ueberwachung.getGeprueft() == null ? "noch nicht"
-                        : zeitpunkt(ueberwachung.getGeprueft())) + ", alle 15 Minuten neu.")
+        page.note(ueberwachung.getGeprueft() == null ? "Erste Prüfung 30 s nach dem Start."
+                        : influx.isAktiv() ? "Erreichbarkeit der InfluxDB geprüft " + zeitpunkt(ueberwachung.getGeprueft())
+                        + ", alle 15 Minuten; die übrigen Zeilen zeigen den aktuellen Stand." : "Aktueller Stand.")
                 .card("Software der Geräte")
                 .text("Wärmepumpenmanager", wp.getSoftwareManager())
                 .info("Softwarenummer und -version des Wärmepumpenmanagers (0x180, 0x0199/0x019A), stündlich "
