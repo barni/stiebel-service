@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class JahresvergleichTest {
 
     private static final LocalDate HEUTE = LocalDate.of(2026, 10, 24);
+    // The wallbox came new in May 2026
+    private static final Geraete.Geraet WALLBOX = new Geraete.Geraet("Wallbox", "wallbox_energy", "", false);
 
     /**
      * Heating 2024 with 90 kWh per month, 2025 with 100, 2026 up to September 110 and October so far 60 against 50
@@ -45,9 +47,12 @@ public class JahresvergleichTest {
         Map<YearMonth, Double> aussen = Map.of(YearMonth.of(2024, 1), 3.1, YearMonth.of(2025, 1), 2.9,
                 YearMonth.of(2026, 1), 2.8);
         return Jahresvergleich.vergleich(2026, HEUTE, heizung, Map.of(2024, 40.0, 2025, 50.0),
-                mitHaushalt ? haushalt : Map.of(), mitHaushalt, mitHaushalt ? wallbox : Map.of(), mitHaushalt, aussen,
-                mitHaushalt ? 7800.0 : null, mitHaushalt ? 8000.0 : null, mitHaushalt ? 830.0 : null,
-                mitHaushalt ? 0.0 : null, Instant.parse("2026-10-24T09:00:00Z"));
+                mitHaushalt ? haushalt : Map.of(), mitHaushalt,
+                mitHaushalt ? java.util.List.of(WALLBOX) : java.util.List.of(),
+                mitHaushalt ? java.util.List.of(wallbox) : java.util.List.of(), aussen,
+                mitHaushalt ? 7800.0 : null, mitHaushalt ? 8000.0 : null, null,
+                mitHaushalt ? java.util.List.of(new Jahresvergleich.GleicheTage(830.0, 0.0, null)) : java.util.List.of(),
+                Instant.parse("2026-10-24T09:00:00Z"), java.util.List.of());
     }
 
     @Test
@@ -88,10 +93,10 @@ public class JahresvergleichTest {
         assertNull(vergleich(false).haushalt(1));
         assertEquals(-2.5, v.gesamtAenderung(), 1e-9);
         assertNull(vergleich(false).gesamtAenderung());
-        assertEquals(5 * 150 + 80, v.wallbox(2), 1e-9);
-        assertNull(v.wallbox(1));
-        assertNull(vergleich(false).wallbox(2));
-        assertEquals(80.0, okt.wallbox().get(2));
+        assertEquals(5 * 150 + 80, v.geraet(0, 2), 1e-9);
+        assertNull(v.geraet(0, 1));
+        assertTrue(vergleich(false).geraete().isEmpty());
+        assertEquals(80.0, okt.geraet(0, 2));
     }
 
     @Test
@@ -114,12 +119,13 @@ public class JahresvergleichTest {
                 new Jahresvergleich.Anteil("Wallbox", 0, 651), new Jahresvergleich.Anteil("Heizung", 1982, 2014),
                 new Jahresvergleich.Anteil("Rest (Haushalt)", 5153, 5149));
         assertEquals("Der Stromverbrauch ist gegenüber denselben Tagen 2025 um 679 kWh (9,5 %) gestiegen, vor allem "
-                + "durch die Wallbox (+651 kWh).", JahresvergleichSeite.ursache(mehr, 2026));
+                + "bei Wallbox (+651 kWh).", JahresvergleichSeite.ursache(mehr, 2026));
         assertEquals("Der Stromverbrauch ist etwa gleich geblieben wie in denselben Tagen 2025.",
                 JahresvergleichSeite.ursache(java.util.List.of(new Jahresvergleich.Anteil("Gesamt", 7135, 7160)), 2026));
 
         String karte = JahresvergleichSeite.ursachen(new Jahresvergleich.Vergleich(java.util.List.of(2024, 2025, 2026),
-                HEUTE, java.util.List.of(), true, true, 7814.0, 7135.0, 651.0, 0.0, Instant.EPOCH));
+                HEUTE, java.util.List.of(), true, java.util.List.of(WALLBOX), 7814.0, 7135.0, null,
+                java.util.List.of(new Jahresvergleich.GleicheTage(651.0, 0.0, null)), Instant.EPOCH, java.util.List.of()));
         assertTrue(karte.contains("<h2>Woran liegt es?</h2>"));
         // A rise above 5 % is marked
         assertTrue(karte.contains("<p class=\"ursache steigt\">"));
@@ -136,9 +142,9 @@ public class JahresvergleichTest {
     @Test
     public void testAufteilungDreiJahre() {
         Jahresvergleich.Vergleich zwei = vergleich(true);
-        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true, true,
-                zwei.gesamt(), zwei.gesamtVorjahrGleich(), zwei.wallboxBisJetzt(), zwei.wallboxVorjahrGleich(),
-                zwei.berechnet(), 7935.0, null);
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true,
+                zwei.geraete(), zwei.gesamt(), zwei.gesamtVorjahrGleich(), 7935.0,
+                java.util.List.of(new Jahresvergleich.GleicheTage(830.0, 0.0, 0.0)), zwei.berechnet(), java.util.List.of());
         java.util.List<Jahresvergleich.Anteil> anteile = v.aufteilung();
         Jahresvergleich.Anteil gesamt = anteile.get(0);
         assertEquals(7935.0, gesamt.vorvorher(), 1e-9);
@@ -178,7 +184,7 @@ public class JahresvergleichTest {
         assertEquals(0, rest.erwartet(), 1e-9);
         // Wallbox: July to September 450 kWh in 92 days, 69 days left including today
         Jahresvergleich.Prognose wallbox = p.get(3);
-        assertEquals(450.0 / 92, v.wallboxJeTag(), 1e-9);
+        assertEquals(450.0 / 92, v.jeTag(0), 1e-9);
         assertEquals(830 + 450.0 / 92 * 69, wallbox.jahr(), 1e-9);
         assertNull(wallbox.aenderung());
         // The total is the sum of the parts
@@ -209,14 +215,14 @@ public class JahresvergleichTest {
         bezug.put(juni, 555.0);
         bezug.put(juli, null);
         Map<YearMonth, Double> haushalt = Jahresvergleich.haushalt(bezug, Map.of(mai, 94.0, juni, 25.0),
-                Map.of(mai, 129.0));
+                java.util.List.of(Map.of(mai, 129.0)));
         assertEquals(710 - 94 - 129, haushalt.get(mai), 1e-9);
         // No wallbox value: without wallbox
         assertEquals(555 - 25, haushalt.get(juni), 1e-9);
         // Grid import unknown
         assertFalse(haushalt.containsKey(juli));
         // Not below 0
-        assertEquals(0, Jahresvergleich.haushalt(Map.of(mai, 50.0), Map.of(mai, 94.0), Map.of()).get(mai), 1e-9);
+        assertEquals(0, Jahresvergleich.haushalt(Map.of(mai, 50.0), Map.of(mai, 94.0), java.util.List.of()).get(mai), 1e-9);
     }
 
     @Test
@@ -280,7 +286,7 @@ public class JahresvergleichTest {
         assertEquals(2, html.split("<tspan class=\"aenderung\"").length - 1);
         assertTrue(html.contains("<h2>Woran liegt es?</h2><p class=\"ursache\">"));
         assertTrue(html.contains("<polyline class=\"abstand gesamt\""));
-        assertTrue(html.contains("<polyline class=\"abstand wallbox\""));
+        assertTrue(html.contains("<polyline class=\"abstand g0\""));
         assertFalse(html.contains("Haushalt 2025 ganzes Jahr"));
         // The table: grid import per year first, then the heating
         assertTrue(html.contains("<th>Gesamt 2026 kWh</th><th>Änderung</th><th>Heizung ≈ 2024 kWh</th>"));
@@ -292,14 +298,14 @@ public class JahresvergleichTest {
         assertEquals(1, html.split("<rect class=\"j2 laufend\"").length - 1);
         assertFalse(html.contains("<rect class=\"haushalt"));
         assertTrue(html.contains("data-wert=\"Okt 2025: Heizung 100 kWh; bis zum gleichen Tag 50 kWh\""));
-        assertTrue(html.contains("href=\"jahresvergleich?wallbox=nein\">Haushaltsstrom einblenden</a>"));
-        assertTrue(html.contains("href=\"jahresvergleich?haushalt=nein\">Wallbox einblenden</a>"));
-        assertFalse(html.contains("<rect class=\"wallbox"));
+        assertTrue(html.contains("href=\"jahresvergleich?geraete=nein\">Haushaltsstrom einblenden</a>"));
+        assertTrue(html.contains("href=\"jahresvergleich?haushalt=nein\">Geräte einblenden</a>"));
+        assertFalse(html.contains("<rect class=\"geraet"));
 
         String mit = JahresvergleichSeite.render(vergleich(true), null, true, false);
-        assertTrue(mit.contains("href=\"jahresvergleich?haushalt=nein&amp;wallbox=nein\">Haushaltsstrom ausblenden</a>"));
+        assertTrue(mit.contains("href=\"jahresvergleich?haushalt=nein&amp;geraete=nein\">Haushaltsstrom ausblenden</a>"));
         // The other switch keeps the household shown
-        assertTrue(mit.contains("href=\"jahresvergleich\">Wallbox einblenden</a>"));
+        assertTrue(mit.contains("href=\"jahresvergleich\">Geräte einblenden</a>"));
         assertEquals(12, mit.split("<rect class=\"haushalt j1\"").length - 1);
         assertEquals(1, mit.split("<rect class=\"haushalt j2 laufend\"").length - 1);
         assertTrue(mit.contains("data-wert=\"Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh\""));
@@ -307,17 +313,17 @@ public class JahresvergleichTest {
         // Shown by default
         String beide = JahresvergleichSeite.render(vergleich(true), null, true, true);
         assertTrue(beide.contains("href=\"jahresvergleich?haushalt=nein\">Haushaltsstrom ausblenden</a>"));
-        assertTrue(beide.contains("href=\"jahresvergleich?wallbox=nein\">Wallbox ausblenden</a>"));
+        assertTrue(beide.contains("href=\"jahresvergleich?geraete=nein\">Geräte ausblenden</a>"));
         // The wallbox sits on top of the household: October 2026 from 60 + 200 to 340 kWh
-        assertEquals(5, beide.split("<rect class=\"wallbox j2\"").length - 1);
-        assertEquals(1, beide.split("<rect class=\"wallbox j2 laufend\"").length - 1);
+        assertEquals(5, beide.split("<rect class=\"geraet g0 j2\"").length - 1);
+        assertEquals(1, beide.split("<rect class=\"geraet g0 j2 laufend\"").length - 1);
         assertTrue(beide.contains("data-wert=\"Okt 2026 bis 24.: Heizung 60 kWh, Haushalt 200 kWh, Wallbox 80 kWh\""));
 
         // Without the house meter only the heating, as before
         String ohne = JahresvergleichSeite.render(vergleich(false), null, true, true);
         assertFalse(ohne.contains("Haushaltsstrom einblenden"));
-        assertFalse(ohne.contains("Wallbox einblenden"));
-        assertFalse(ohne.contains("<rect class=\"wallbox"));
+        assertFalse(ohne.contains("Geräte einblenden"));
+        assertFalse(ohne.contains("<rect class=\"geraet"));
         assertFalse(ohne.contains("<rect class=\"haushalt"));
         assertTrue(ohne.contains("wenn in der Konfiguration der Hauszähler eingetragen ist"));
         assertFalse(ohne.contains("Gesamt Veränderung"));
@@ -343,12 +349,14 @@ public class JahresvergleichTest {
         Jahresvergleich.Vergleich zwei = vergleich(true);
         // Four years that are over: the bars show all of them and the current one, none drops out on the 1st of January
         java.util.List<Jahresvergleich.Jahressumme> summen = java.util.List.of(
-                new Jahresvergleich.Jahressumme(2022, 9000, 2500, 0), new Jahresvergleich.Jahressumme(2023, 9200, 2600, 0),
-                new Jahresvergleich.Jahressumme(2024, 9667, 2806, 0), new Jahresvergleich.Jahressumme(2025, 9635, 3016, 0));
+                new Jahresvergleich.Jahressumme(2022, 9000, 2500, java.util.List.of(0.0)),
+                new Jahresvergleich.Jahressumme(2023, 9200, 2600, java.util.List.of(0.0)),
+                new Jahresvergleich.Jahressumme(2024, 9667, 2806, java.util.List.of(0.0)),
+                new Jahresvergleich.Jahressumme(2025, 9635, 3016, java.util.List.of(0.0)));
         assertEquals(6861, summen.get(2).haushalt(), 1e-9);
-        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true, true,
-                zwei.gesamt(), zwei.gesamtVorjahrGleich(), zwei.wallboxBisJetzt(), zwei.wallboxVorjahrGleich(),
-                zwei.berechnet(), null, null, summen);
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true,
+                zwei.geraete(), zwei.gesamt(), zwei.gesamtVorjahrGleich(), null, zwei.geraeteGleich(), zwei.berechnet(),
+                summen);
         String balken = JahresvergleichSeite.jahresbalken(v);
         for (String jahr : java.util.List.of(">2022<", ">2023<", ">2024<", ">2025<", ">2026 Prognose<")) {
             assertTrue(balken.contains(jahr), jahr);
@@ -360,7 +368,7 @@ public class JahresvergleichTest {
         java.time.LocalDate bis = java.time.LocalDate.of(2026, 11, 30);
         Jahresvergleich.Zeitraum z = new Jahresvergleich.Zeitraum(von, bis,
                 bis.plusDays(1).atStartOfDay(java.time.ZoneId.of("Europe/Berlin")).toInstant(), 58000.0, 67500.0, 3100,
-                900.0);
+                java.util.List.of("Wallbox", "Warmwasser"), java.util.Arrays.asList(900.0, null));
         assertEquals(9500, z.gesamt(), 1e-9);
         assertEquals(5500, z.haushalt(), 1e-9);
         assertEquals(365, z.tage());
@@ -370,10 +378,60 @@ public class JahresvergleichTest {
         assertTrue(karte.contains("<td>Zählerstand 30.11.2026 24:00</td><td>67.500,0</td>"));
         assertTrue(karte.contains("<td>Netzbezug (365 Tage)</td><td>9.500 · 26,0 je Tag</td>"));
         assertTrue(karte.contains("<td>davon Wallbox</td><td>900</td>"));
+        // A device without values in the period counts to the household
+        assertTrue(karte.contains("<td>davon Warmwasser</td><td>nicht gemessen</td>"));
+        assertTrue(karte.contains("<td>davon Haushalt mit Warmwasser</td><td>5.500</td>"));
         // Without a period only the form, without the house meter nothing
         assertTrue(JahresvergleichSeite.zeitraumKarte(v, null, von, bis).contains("value=\"2026-11-30\""));
         assertFalse(JahresvergleichSeite.zeitraumKarte(v, null, von, bis).contains("Zählerstand"));
         assertEquals("", JahresvergleichSeite.zeitraumKarte(vergleich(false), null, von, bis));
         assertTrue(JahresvergleichSeite.render(v, null, true, true, z).contains("id=\"zeitraum\""));
+    }
+
+    @Test
+    public void testGeraetErstSeitDiesemJahr() {
+        Jahresvergleich.Vergleich zwei = vergleich(true);
+        // Air conditioning measured only since this year, it ran before: counted in the rest for the comparison
+        Geraete.Geraet klima = new Geraete.Geraet("Klimaanlage", "klima_energy", "", true);
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true,
+                java.util.List.of(WALLBOX, klima), zwei.gesamt(), zwei.gesamtVorjahrGleich(), null,
+                java.util.List.of(new Jahresvergleich.GleicheTage(830.0, 0.0, null),
+                        new Jahresvergleich.GleicheTage(300.0, null, null)), zwei.berechnet(), java.util.List.of());
+        assertEquals(java.util.List.of(0), v.gezeigt());
+        assertEquals(java.util.List.of("Klimaanlage"), v.imRest());
+        java.util.List<Jahresvergleich.Anteil> anteile = v.aufteilung();
+        assertEquals(java.util.List.of("Gesamt", "Wallbox", "Heizung", "Rest (Haushalt mit Klimaanlage)"),
+                anteile.stream().map(Jahresvergleich.Anteil::name).toList());
+        // The rest keeps the air conditioning in both years, so it compares like with like
+        assertEquals(7800 - 1050 - 830, anteile.get(3).jetzt(), 1e-9);
+        String karte = JahresvergleichSeite.ursachen(v);
+        assertTrue(karte.contains("Klimaanlage zählt zum Rest, bis es für beide Jahre Messwerte gibt."));
+    }
+
+    @Test
+    public void testGeraeteLesen() {
+        org.springframework.mock.env.MockEnvironment env = new org.springframework.mock.env.MockEnvironment()
+                .withProperty("auswertung.haushalt.wallbox", "wallbox_energy")
+                .withProperty("auswertung.geraet.1.name", "Warmwasser")
+                .withProperty("auswertung.geraet.1.zaehler", "warmwasser_energy")
+                .withProperty("auswertung.geraet.1.davor", "warmwasser_manuell")
+                .withProperty("auswertung.geraet.2.name", "Klimaanlage")
+                .withProperty("auswertung.geraet.2.zaehler", "klima_energy")
+                .withProperty("auswertung.geraet.2.vorher", "false")
+                .withProperty("auswertung.geraet.3.name", "ohne Zähler");
+        java.util.List<Geraete.Geraet> liste = Geraete.lesen(env);
+        assertEquals(java.util.List.of(new Geraete.Geraet("Wallbox", "wallbox_energy", "", false),
+                new Geraete.Geraet("Warmwasser", "warmwasser_energy", "warmwasser_manuell", true),
+                new Geraete.Geraet("Klimaanlage", "klima_energy", "", false)), liste);
+    }
+
+    @Test
+    public void testReiheFlux() {
+        String flux = Jahresvergleich.reiheFlux("home_assistant", "warmwasser_energy", true);
+        assertTrue(flux.contains("r.entity_id == \"warmwasser_energy\""));
+        assertTrue(flux.contains("aggregateWindow(every: 1d, fn: last"));
+        assertTrue(flux.contains("Europe/Berlin"));
+        assertFalse(Jahresvergleich.reiheFlux("home_assistant", "warmwasser_manuell", false).contains("aggregateWindow"));
+        assertThrows(IllegalArgumentException.class, () -> Jahresvergleich.reiheFlux("x", "a\" or true", false));
     }
 }

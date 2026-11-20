@@ -165,7 +165,7 @@ public class StblController {
 
     @GetMapping(value = "/jahresvergleich", produces = "text/html;charset=UTF-8")
     public String jahresvergleich(@RequestParam(required = false) String haushalt,
-                                  @RequestParam(required = false) String wallbox,
+                                  @RequestParam(required = false) String geraete,
                                   @RequestParam(required = false) java.time.LocalDate von,
                                   @RequestParam(required = false) java.time.LocalDate bis) {
         Jahresvergleich.Vergleich vergleich = jahresvergleich.getVergleich();
@@ -181,7 +181,7 @@ public class StblController {
         }
         return Rahmen.einsetzen(JahresvergleichSeite.render(vergleich, influxController.isAktiv()
                         ? null : "Für den Jahresvergleich braucht der Dienst die InfluxDB, sie ist ausgeschaltet "
-                        + "(influx.enabled=false).", !"nein".equals(haushalt), !"nein".equals(wallbox), zeitraum),
+                        + "(influx.enabled=false).", !"nein".equals(haushalt), !"nein".equals(geraete), zeitraum),
                 signalService.kopf("jahresvergleich", ""));
     }
 
