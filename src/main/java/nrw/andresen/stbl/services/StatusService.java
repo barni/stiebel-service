@@ -162,7 +162,7 @@ public class StatusService {
             }
             Double schein = wert(wp::getLeistungInverter);
             if (schein != null && schein > 0) {
-                zeile.add("Strom ≈ " + SignalService.kw(Waermepumpe.wirkleistung(schein)) + " kW");
+                zeile.add("Leistung ≈ " + SignalService.kw(Waermepumpe.wirkleistung(schein)) + " kW");
             }
             Double waerme = wert(wp::getWaermeleistung);
             if (waerme != null) {
@@ -280,7 +280,7 @@ public class StatusService {
                 lauf++;
             }
         }
-        kacheln.add(new Uebersicht.Kachel("Strom jetzt ≈", jetztSchein == null ? "–"
+        kacheln.add(new Uebersicht.Kachel("Leistung jetzt ≈", jetztSchein == null ? "–"
                 : zahl(Waermepumpe.wirkleistung(jetztSchein), 0), "W", d == null ? "Wirkleistung des Verdichters"
                 : "24 h: " + zahl(kWh, 1) + " kWh" + (lauf == 0 ? "" : " · im Lauf Ø " + zahl(imLauf / lauf, 0) + " W"),
                 schein.time(), w, 0, 1000, "strom", d == null ? null : StatusService.WIRKLEISTUNG, 0));
