@@ -9,7 +9,7 @@ import java.util.Locale;
 
 /**
  * HTML of the page with the electricity of the heating per month in the last three years, optionally with the
- * household electricity and the wallbox stacked on top, linked with the other pages
+ * household electricity and the devices (e.g. the wallbox) stacked on top, linked with the other pages
  */
 public final class JahresvergleichSeite {
 
@@ -36,18 +36,18 @@ public final class JahresvergleichSeite {
      * @param vergleich null while it is not calculated yet
      * @param hinweis   shown instead of the comparison, e.g. that InfluxDB is switched off; null for the comparison
      * @param haushalt  show the household electricity too, only if the house meter is configured
-     * @param wallbox   show the wallbox too, only if its counter is configured
+     * @param geraete   show the devices too, only if they are configured
      */
     public static String render(Jahresvergleich.Vergleich vergleich, String hinweis, boolean haushalt,
-                                boolean wallbox) {
-        return render(vergleich, hinweis, haushalt, wallbox, null);
+                                boolean geraete) {
+        return render(vergleich, hinweis, haushalt, geraete, null);
     }
 
     /**
      * @param zeitraum consumption of a chosen period, null if none was asked for
      */
     public static String render(Jahresvergleich.Vergleich vergleich, String hinweis, boolean haushalt,
-                                boolean wallbox, Jahresvergleich.Zeitraum zeitraum) {
+                                boolean geraete, Jahresvergleich.Zeitraum zeitraum) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -66,7 +66,7 @@ public final class JahresvergleichSeite {
             return html.toString();
         }
         boolean mitHaushalt = haushalt && vergleich.mitHaushalt();
-        boolean mitWallbox = wallbox && vergleich.mitWallbox();
+        boolean mitGeraete = geraete && !vergleich.geraete().isEmpty();
         List<Integer> jahre = vergleich.jahre();
         int jahr = vergleich.jahr();
         // With the house meter the tiles below say the same as the sentence
@@ -104,13 +104,6 @@ public final class JahresvergleichSeite {
                 html.append(kpi("Haushalt " + jahre.get(i) + " ganzes Jahr", zahl(vergleich.haushalt(i), 0), "kWh"));
             }
         }
-        if (mitWallbox && vergleich.gesamt() == null) {
-            html.append(kpi("Wallbox " + jahr + " bis " + DATUM.format(vergleich.bis()),
-                    zahl(vergleich.wallbox(J - 1), 0), "kWh"));
-            for (int i = J - 2; i >= 0; i--) {
-                html.append(kpi("Wallbox " + jahre.get(i) + " ganzes Jahr", zahl(vergleich.wallbox(i), 0), "kWh"));
-            }
-        }
         // Without the house meter the forecast of the heating follows its tiles
         html.append("</section>").append(vergleich.gesamt() == null ? prognose(vergleich) : "")
                 .append("<section class=\"cards\"><article class=\"card breit\"><h2>Strom je Monat</h2>")
@@ -121,35 +114,40 @@ public final class JahresvergleichSeite {
         if (mitHaushalt) {
             html.append("<span><i class=\"sw haushalt\"></i>Haushalt</span>");
         }
-        if (mitWallbox) {
-            html.append("<span><i class=\"sw wallbox\"></i>Wallbox</span>");
+        if (mitGeraete) {
+            for (int k = 0; k < vergleich.geraete().size(); k++) {
+                html.append("<span><i class=\"sw g").append(k).append("\"></i>")
+                        .append(text(vergleich.geraete().get(k).name())).append("</span>");
+            }
         }
-        html.append("<span>").append(mitHaushalt || mitWallbox ? "übereinander auf der Heizung, " : "")
+        html.append("<span>").append(mitHaushalt || mitGeraete ? "übereinander auf der Heizung, " : "")
                 .append("der laufende Monat ist heller, er ist noch nicht vorbei</span></p>");
         List<String> schalter = new ArrayList<>();
         if (vergleich.mitHaushalt()) {
-            schalter.add("<a class=\"nav\" href=\"" + adresse(!mitHaushalt, mitWallbox) + "\">Haushaltsstrom "
+            schalter.add("<a class=\"nav\" href=\"" + adresse(!mitHaushalt, mitGeraete) + "\">Haushaltsstrom "
                     + (mitHaushalt ? "ausblenden" : "einblenden") + "</a>");
         }
-        if (vergleich.mitWallbox()) {
-            schalter.add("<a class=\"nav\" href=\"" + adresse(mitHaushalt, !mitWallbox) + "\">Wallbox "
-                    + (mitWallbox ? "ausblenden" : "einblenden") + "</a>");
+        if (!vergleich.geraete().isEmpty()) {
+            schalter.add("<a class=\"nav\" href=\"" + adresse(mitHaushalt, !mitGeraete) + "\">Geräte "
+                    + (mitGeraete ? "ausblenden" : "einblenden") + "</a>");
         }
         if (!schalter.isEmpty()) {
             html.append("<p class=\"umschalten\">").append(String.join(" · ", schalter)).append("</p>");
         }
-        html.append(diagramm(vergleich, mitHaushalt, mitWallbox))
+        html.append(diagramm(vergleich, mitHaushalt, mitGeraete))
                 .append("</article><article class=\"card breit\"><h2>Die Monate</h2>")
-                .append(tabelle(kopf(vergleich, mitHaushalt, mitWallbox), zeilen(vergleich, mitHaushalt, mitWallbox)))
+                .append(tabelle(kopf(vergleich, mitHaushalt), zeilen(vergleich, mitHaushalt)))
                 .append("<p class=\"note\">Heizung ist die geschätzte Wirkleistung des Verdichter-Inverters aus der ")
                 .append("gespeicherten Scheinleistung, wie in der Tagesübersicht, ohne Pumpe und Regelung. Der Zähler ")
                 .append("der Wärmepumpe zeigt etwa 15 % weniger. Die Änderung vergleicht ").append(jahr)
                 .append(" mit ").append(jahr - 1).append(", im laufenden Monat dieselben Tage bis zur gleichen Stunde.")
-                .append(vergleich.mitHaushalt() ? " Haushalt ist der Netzbezug laut Hauszähler minus Heizung und "
-                        + "Wallbox; Strom aus der eigenen PV-Anlage ist nicht enthalten." : " Den Haushaltsstrom "
+                .append(vergleich.mitHaushalt() ? " Haushalt ist der Netzbezug laut Hauszähler minus Heizung"
+                        + (vergleich.geraete().isEmpty() ? "" : " und " + namen(vergleich))
+                        + "; Strom aus der eigenen PV-Anlage ist nicht enthalten." : " Den Haushaltsstrom "
                         + "zeigt die Seite, wenn in der Konfiguration der Hauszähler eingetragen ist.")
-                .append(vergleich.mitWallbox() ? " Wallbox ist der Zählerstand der Wallbox, nur Ladungen zu Hause."
-                        : "")
+                .append(vergleich.geraete().isEmpty() ? "" : " " + namen(vergleich)
+                        + ": Zählerstände der Geräte; vor ihrem ersten Wert zählt ein Gerät, das es schon gab, zum "
+                        + "Haushalt.")
                 .append(vergleich.gesamt() != null ? " Gesamt ist der Netzbezug laut Hauszähler vom 1. Januar bis "
                         + "jetzt, verglichen mit dem Vorjahr bis zur gleichen Stunde." : "")
                 .append(" Außentemperatur: Mittel der Tagesmittel.</p>")
@@ -208,8 +206,12 @@ public final class JahresvergleichSeite {
                 "<div class=\"tbl vorvorjahr\">") : tabelle(kopf, zeilen))
                 + "<p class=\"note\">Jeweils vom 1. Januar bis zum selben Tag und zur selben Stunde. Änderungen "
                 + "und Anteile gegenüber " + (v.jahr() - 1) + (dreiJahre ? ", " + (v.jahr() - 2) + " zum Vergleich" : "")
-                + ". Rest ist Netzbezug minus Heizung" + (v.mitWallbox() ? " und Wallbox" : "") + ", also der übrige "
-                + "Haushalt mit Warmwasser, Lüftung und Geräten.</p></article></section>";
+                + ". Rest ist Netzbezug minus Heizung" + (v.gezeigt().isEmpty() ? "" : " und "
+                + String.join(", ", v.gezeigt().stream().map(k -> v.geraete().get(k).name()).toList()))
+                + ", also der übrige Haushalt mit Lüftung und Geräten."
+                + (v.imRest().isEmpty() ? "" : " " + String.join(", ", v.imRest()) + " zählt zum Rest, bis es für "
+                + "beide Jahre Messwerte gibt.")
+                + "</p></article></section>";
     }
 
     /**
@@ -241,7 +243,8 @@ public final class JahresvergleichSeite {
                 (jahr - 1) + " kWh", "Änderung"), zeilen)
                 + "<p class=\"note\">Erwartet bis 31.12.: Heizung wie im Rest der Vorjahre (Mittel aus "
                 + (jahr - 1) + " und " + (jahr - 2) + "), der übrige Haushalt wie im Rest von " + (jahr - 1)
-                + ", die Wallbox mit dem Verbrauch je Tag der letzten drei vollen Monate. Ein kalter oder milder "
+                + (v.geraete().isEmpty() ? "" : ", Geräte, die es schon gab, wie im Rest von " + (jahr - 1)
+                + ", neue mit dem Verbrauch je Tag der letzten drei vollen Monate") + ". Ein kalter oder milder "
                 + "Winter verschiebt die Heizung um einige hundert kWh.</p></article></section>";
     }
 
@@ -266,15 +269,40 @@ public final class JahresvergleichSeite {
         }
         return "Der Stromverbrauch ist gegenüber denselben Tagen " + (jahr - 1) + " um "
                 + zahl(Math.abs(gesamt.differenz()), 0) + " kWh (" + zahl(Math.abs(prozent), 1) + " %) "
-                + (mehr ? "gestiegen, vor allem durch " : "gesunken, vor allem ") + teil(treiber.name(), mehr) + " ("
+                + (mehr ? "gestiegen, vor allem " : "gesunken, vor allem ") + teil(treiber.name(), mehr) + " ("
                 + vorzeichen(treiber.differenz()) + zahl(Math.abs(treiber.differenz()), 0) + " kWh).";
     }
 
     private static String teil(String name, boolean mehr) {
         if (name.startsWith("Rest")) {
-            return mehr ? "den übrigen Haushalt" : "beim übrigen Haushalt";
+            return mehr ? "durch den übrigen Haushalt" : "beim übrigen Haushalt";
         }
-        return (mehr ? "die " : "bei der ") + name;
+        return "bei " + geschaetzt(name);
+    }
+
+    /**
+     * Names of the devices, e.g. "Wallbox, Klimaanlage"
+     */
+    static String namen(Jahresvergleich.Vergleich v) {
+        return String.join(", ", v.geraete().stream().map(Geraete.Geraet::name).toList());
+    }
+
+    /**
+     * CSS class of a part: gesamt, heizung, haushalt (also the rest) or g0 … g4 for the devices
+     */
+    static String klasse(Jahresvergleich.Vergleich v, String name) {
+        if (name.equals("Gesamt")) {
+            return "gesamt";
+        }
+        if (name.equals("Heizung")) {
+            return "heizung";
+        }
+        for (int k = 0; k < v.geraete().size(); k++) {
+            if (v.geraete().get(k).name().equals(name)) {
+                return "g" + k;
+            }
+        }
+        return "haushalt";
     }
 
     private static String differenz(Jahresvergleich.Anteil a) {
@@ -293,14 +321,14 @@ public final class JahresvergleichSeite {
     /**
      * Address of this page with the given layers shown
      */
-    static String adresse(boolean haushalt, boolean wallbox) {
+    static String adresse(boolean haushalt, boolean geraete) {
         // Both are shown unless switched off, the page is about the whole grid import
         List<String> parameter = new ArrayList<>();
         if (!haushalt) {
             parameter.add("haushalt=nein");
         }
-        if (!wallbox) {
-            parameter.add("wallbox=nein");
+        if (!geraete) {
+            parameter.add("geraete=nein");
         }
         return "jahresvergleich" + (parameter.isEmpty() ? "" : "?" + String.join("&amp;", parameter));
     }
@@ -323,7 +351,7 @@ public final class JahresvergleichSeite {
                 + zahl(v.heizung(J - 3), 0) + " kWh (" + (jahr - 2) + ").";
     }
 
-    static List<String> kopf(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
+    static List<String> kopf(Jahresvergleich.Vergleich v, boolean mitHaushalt) {
         List<String> kopf = new ArrayList<>();
         kopf.add("Monat");
         if (v.gesamt() != null) {
@@ -339,18 +367,15 @@ public final class JahresvergleichSeite {
         if (mitHaushalt) {
             v.jahre().forEach(j -> kopf.add("Haushalt " + j + " kWh"));
         }
-        if (mitWallbox) {
-            v.jahre().forEach(j -> kopf.add("Wallbox " + j + " kWh"));
-        }
         v.jahre().forEach(j -> kopf.add("Außen " + j + " °C"));
         return kopf;
     }
 
     /**
-     * Rows of the table: month, heating per year, change, household and wallbox per year if shown, outdoor
+     * Rows of the table: month, heating per year, change, household per year if shown, outdoor
      * temperature per year
      */
-    static List<List<String>> zeilen(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
+    static List<List<String>> zeilen(Jahresvergleich.Vergleich v, boolean mitHaushalt) {
         List<List<String>> zeilen = new ArrayList<>();
         for (Jahresvergleich.Monat m : v.monate()) {
             List<String> zeile = new ArrayList<>();
@@ -382,11 +407,6 @@ public final class JahresvergleichSeite {
                     zeile.add(zahl(m.haushalt().get(i), 0) + (i == J - 1 ? bisHeute(v, m, m.haushalt().get(i)) : ""));
                 }
             }
-            if (mitWallbox) {
-                for (int i = 0; i < J; i++) {
-                    zeile.add(zahl(m.wallbox().get(i), 0) + (i == J - 1 ? bisHeute(v, m, m.wallbox().get(i)) : ""));
-                }
-            }
             for (int i = 0; i < J; i++) {
                 zeile.add(zahl(m.aussen().get(i), 1));
             }
@@ -401,21 +421,26 @@ public final class JahresvergleichSeite {
 
     /**
      * Bars per month as inline SVG, one per year with the current year in the accent color, the household and the
-     * wallbox stacked on top if shown, a tooltip per bar
+     * devices stacked on top if shown, a tooltip per bar
      */
-    static String diagramm(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitWallbox) {
+    static String diagramm(Jahresvergleich.Vergleich v, boolean mitHaushalt, boolean mitGeraete) {
+        int anzahl = mitGeraete ? v.geraete().size() : 0;
         double max = 0;
         for (Jahresvergleich.Monat m : v.monate()) {
             for (int i = 0; i < J; i++) {
-                max = Math.max(max, wert(m.heizung().get(i)) + (mitHaushalt ? wert(m.haushalt().get(i)) : 0)
-                        + (mitWallbox ? wert(m.wallbox().get(i)) : 0));
+                double summe = wert(m.heizung().get(i)) + (mitHaushalt ? wert(m.haushalt().get(i)) : 0);
+                for (int k = 0; k < anzahl; k++) {
+                    summe += wert(m.geraet(k, i));
+                }
+                max = Math.max(max, summe);
             }
         }
         double schritt = schritt(max);
         double oben = Math.max(schritt, Math.ceil(max / schritt) * schritt);
         StringBuilder svg = new StringBuilder("<div class=\"diagramm\"><svg viewBox=\"0 0 " + B + " " + H
                 + "\" width=\"100%\" role=\"img\" aria-label=\"Strom der Heizung" + (mitHaushalt ? ", des Haushalts" : "")
-                + (mitWallbox ? ", der Wallbox" : "") + " je Monat, " + v.jahre().get(0) + " bis " + v.jahr() + "\">");
+                + (anzahl > 0 ? ", " + text(namen(v)) : "") + " je Monat, " + v.jahre().get(0) + " bis " + v.jahr()
+                + "\">");
         for (double t = 0; t <= oben + schritt / 2; t += schritt) {
             double y = y(t, oben);
             svg.append(String.format(Locale.ROOT, "<line class=\"gitter\" x1=\"%d\" x2=\"%d\" y1=\"%.1f\" y2=\"%.1f\"/>",
@@ -437,11 +462,17 @@ public final class JahresvergleichSeite {
                 int jahr = v.jahre().get(i);
                 boolean laufend = m.laufend() && i == J - 1;
                 Double haushalt = mitHaushalt ? m.haushalt().get(i) : null;
-                Double wallbox = mitWallbox ? m.wallbox().get(i) : null;
+                StringBuilder teile = new StringBuilder();
+                for (int k = 0; k < anzahl; k++) {
+                    Double g = m.geraet(k, i);
+                    if (g != null) {
+                        teile.append(", ").append(v.geraete().get(k).name()).append(" ").append(zahl(g, 0))
+                                .append(" kWh");
+                    }
+                }
                 String titel = m.name() + " " + jahr + (laufend ? " bis " + v.bis().getDayOfMonth() + "." : "")
                         + ": Heizung " + zahl(heizung, 0) + " kWh"
-                        + (haushalt == null ? "" : ", Haushalt " + zahl(haushalt, 0) + " kWh")
-                        + (wallbox == null ? "" : ", Wallbox " + zahl(wallbox, 0) + " kWh")
+                        + (haushalt == null ? "" : ", Haushalt " + zahl(haushalt, 0) + " kWh") + teile
                         + (m.aussen().get(i) == null ? "" : ", außen " + zahl(m.aussen().get(i), 1) + " °C")
                         + (m.laufend() && i < J - 1 && m.heizungGleich().get(i) != null
                         ? "; bis zum gleichen Tag " + zahl(m.heizungGleich().get(i), 0) + " kWh" : "");
@@ -453,9 +484,13 @@ public final class JahresvergleichSeite {
                             unten + haushalt, oben, titel));
                     unten += haushalt;
                 }
-                if (wallbox != null && wallbox > 0) {
-                    svg.append(balken("wallbox j" + i + (laufend ? " laufend" : ""), x, balken - 2, unten,
-                            unten + wallbox, oben, titel));
+                for (int k = 0; k < anzahl; k++) {
+                    Double g = m.geraet(k, i);
+                    if (g != null && g > 0) {
+                        svg.append(balken("geraet g" + k + " j" + i + (laufend ? " laufend" : ""), x, balken - 2,
+                                unten, unten + g, oben, titel));
+                        unten += g;
+                    }
                 }
             }
         }
@@ -527,14 +562,18 @@ public final class JahresvergleichSeite {
     }
 
     /**
-     * Grid import of a month: heating, household and wallbox together, null without the house meter
+     * Grid import of a month: heating, household and the devices together, null without the house meter
      */
     static Double gesamt(Jahresvergleich.Monat m, int i) {
         Double haushalt = m.haushalt().get(i);
         if (haushalt == null) {
             return null;
         }
-        return wert(m.heizung().get(i)) + haushalt + wert(m.wallbox().get(i));
+        double summe = wert(m.heizung().get(i)) + haushalt;
+        for (int k = 0; k < m.geraete().size(); k++) {
+            summe += wert(m.geraet(k, i));
+        }
+        return summe;
     }
 
     private static final DateTimeFormatter TAG = DateTimeFormatter.ofPattern("dd.MM.yyyy");
@@ -568,10 +607,16 @@ public final class JahresvergleichSeite {
             zeilen.add(List.of("Netzbezug (" + z.tage() + " Tage)", zahl(gesamt, 0)
                     + (gesamt == null ? "" : " · " + zahl(gesamt / z.tage(), 1) + " je Tag")));
             zeilen.add(List.of("davon Heizung ≈", zahl(z.heizung(), 0)));
-            if (z.wallbox() != null) {
-                zeilen.add(List.of("davon Wallbox", zahl(z.wallbox(), 0)));
+            List<String> unbekannt = new ArrayList<>();
+            for (int k = 0; k < z.namen().size(); k++) {
+                Double g = z.geraete().get(k);
+                if (g == null) {
+                    unbekannt.add(z.namen().get(k));
+                }
+                zeilen.add(List.of("davon " + z.namen().get(k), g == null ? "nicht gemessen" : zahl(g, 0)));
             }
-            zeilen.add(List.of("davon Haushalt", zahl(z.haushalt(), 0)));
+            zeilen.add(List.of("davon Haushalt" + (unbekannt.isEmpty() ? "" : " mit " + String.join(", ", unbekannt)),
+                    zahl(z.haushalt(), 0)));
             html.append(tabelle(List.of(TAG.format(z.von()) + " bis " + TAG.format(z.bis()), "kWh"), zeilen))
                     .append("<p class=\"note\">Die Zählerstände sind aus den gespeicherten Werten des Hauszählers zum "
                             + "Tagesbeginn gerechnet (zwischen zwei Werten anteilig). Weicht die Rechnung ab, kann sie "
@@ -582,33 +627,53 @@ public final class JahresvergleichSeite {
     }
 
     /**
-     * Card with one bar per year, the current year with its forecast, made of heating, household and wallbox: how
-     * the whole consumption develops and of what it consists. Empty without the house meter.
+     * Card with one bar per year, the current year with its forecast, made of heating, household and the devices:
+     * how the whole consumption develops and of what it consists. Empty without the house meter.
      */
     static String jahresbalken(Jahresvergleich.Vergleich v) {
         if (v.gesamt() == null) {
             return "";
         }
-        List<Jahresvergleich.Prognose> teile = v.prognose();
+        int anzahl = v.geraete().size();
+        // Parts: heating, household, then the devices
+        List<String> klassen = new ArrayList<>(List.of("heizung", "haushalt"));
+        List<String> namen = new ArrayList<>(List.of("Heizung ≈", "Haushalt"));
+        for (int k = 0; k < anzahl; k++) {
+            klassen.add("g" + k);
+            namen.add(v.geraete().get(k).name());
+        }
+        int teile = klassen.size();
         List<double[]> jahre = new ArrayList<>();
         List<Integer> jahreszahlen = new ArrayList<>();
         // All years that are over with readings of the house meter, so no year drops out on the 1st of January;
-        // without them the years of the comparison
+        // without them the years of the comparison. A device not measured then is part of the household.
         if (v.jahressummen() != null && !v.jahressummen().isEmpty()) {
             for (Jahresvergleich.Jahressumme j : v.jahressummen()) {
-                jahre.add(new double[]{j.heizung(), Math.max(0, j.haushalt()), j.wallbox()});
+                double[] t = new double[teile];
+                t[0] = j.heizung();
+                t[1] = Math.max(0, j.haushalt());
+                for (int k = 0; k < anzahl && k < j.geraete().size(); k++) {
+                    t[2 + k] = wert(j.geraete().get(k));
+                }
+                jahre.add(t);
                 jahreszahlen.add(j.jahr());
             }
         } else {
             for (int i = 0; i < J - 1; i++) {
-                jahre.add(new double[]{v.heizung(i), wert(v.haushalt(i)), wert(v.wallbox(i))});
+                double[] t = new double[teile];
+                t[0] = v.heizung(i);
+                t[1] = wert(v.haushalt(i));
+                for (int k = 0; k < anzahl; k++) {
+                    t[2 + k] = wert(v.geraet(k, i));
+                }
+                jahre.add(t);
                 jahreszahlen.add(v.jahre().get(i));
             }
         }
-        double[] jetzt = new double[3];
-        for (Jahresvergleich.Prognose p : teile) {
-            int k = teil(p.name()).equals("heizung") ? 0 : teil(p.name()).equals("haushalt") ? 1
-                    : teil(p.name()).equals("wallbox") ? 2 : -1;
+        double[] jetzt = new double[teile];
+        for (Jahresvergleich.Prognose p : v.prognose()) {
+            String kl = klasse(v, p.name());
+            int k = klassen.indexOf(kl);
             if (k >= 0) {
                 jetzt[k] = p.jahr();
             }
@@ -616,7 +681,7 @@ public final class JahresvergleichSeite {
         jahre.add(jetzt);
         jahreszahlen.add(v.jahr());
         int n = jahre.size();
-        double max = jahre.stream().mapToDouble(t -> t[0] + t[1] + t[2]).max().orElse(0);
+        double max = jahre.stream().mapToDouble(JahresvergleichSeite::summe).max().orElse(0);
         if (max <= 0) {
             return "";
         }
@@ -625,8 +690,6 @@ public final class JahresvergleichSeite {
         int rechts = 190;
         int hoehe = n * zeile + 6;
         double breite = B - links - rechts;
-        String[] klassen = {"heizung", "haushalt", "wallbox"};
-        String[] namen = {"Heizung ≈", "Haushalt", "Wallbox"};
         StringBuilder svg = new StringBuilder("<div class=\"diagramm\"><svg viewBox=\"0 0 " + B + " " + hoehe
                 + "\" width=\"100%\" role=\"img\" aria-label=\"Netzbezug je Jahr\">");
         for (int i = 0; i < n; i++) {
@@ -637,24 +700,23 @@ public final class JahresvergleichSeite {
             svg.append(String.format(Locale.ROOT, "<text class=\"teil\" x=\"%d\" y=\"%.1f\" text-anchor=\"end\">"
                     + "%s</text>", links - 10, y + zeile / 2.0 + 1, jahr + (prognose ? " Prognose" : "")));
             double x = links;
-            double summe = t[0] + t[1] + t[2];
-            for (int k = 0; k < 3; k++) {
+            double summe = summe(t);
+            for (int k = 0; k < teile; k++) {
                 if (t[k] <= 0) {
                     continue;
                 }
                 double w = t[k] / max * breite;
-                String titel = jahr + (prognose ? " (Prognose)" : "") + ": " + namen[k] + " " + zahl(t[k], 0)
+                String titel = jahr + (prognose ? " (Prognose)" : "") + ": " + namen.get(k) + " " + zahl(t[k], 0)
                         + " kWh von " + zahl(summe, 0) + " kWh";
                 svg.append(String.format(Locale.ROOT, "<rect class=\"teil %s%s\" x=\"%.1f\" y=\"%.1f\" "
-                        + "width=\"%.1f\" height=\"%d\" data-wert=\"%s\"></rect>", klassen[k],
+                        + "width=\"%.1f\" height=\"%d\" data-wert=\"%s\"></rect>", klassen.get(k),
                         prognose ? " prognose" : "", x, y + 4, Math.max(1, w - 2), zeile - 10, text(titel)));
                 x += w;
             }
             // Change against the year before, the current year with its forecast
             String aenderung = "";
             if (i > 0) {
-                double[] v0 = jahre.get(i - 1);
-                double vorher = v0[0] + v0[1] + v0[2];
+                double vorher = summe(jahre.get(i - 1));
                 if (vorher > 0) {
                     aenderung = "<tspan class=\"aenderung\" dx=\"10\">" + prozent((summe / vorher - 1) * 100)
                             + "</tspan>";
@@ -663,33 +725,52 @@ public final class JahresvergleichSeite {
             svg.append(String.format(Locale.ROOT, "<text class=\"wert\" x=\"%.1f\" y=\"%.1f\">%s kWh%s</text>",
                     x + 6, y + zeile / 2.0 + 1, (prognose ? "≈ " : "") + zahl(summe, 0), aenderung));
         }
+        StringBuilder legende = new StringBuilder();
+        for (int k = 0; k < teile; k++) {
+            legende.append("<span><i class=\"sw ").append(k == 0 ? "teil-heizung" : klassen.get(k)).append("\"></i>")
+                    .append(text(namen.get(k))).append("</span>");
+        }
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Netzbezug je Jahr</h2>"
-                + "<p class=\"legende\"><span><i class=\"sw teil-heizung\"></i>Heizung ≈</span><span><i class=\"sw "
-                + "haushalt\"></i>Haushalt</span><span><i class=\"sw wallbox\"></i>Wallbox</span><span>"
+                + "<p class=\"legende\">" + legende + "<span>"
                 + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten; "
-                + "% gegenüber dem Vorjahr"
+                + "% gegenüber dem Vorjahr; ein Gerät vor seinem ersten Messwert steckt im Haushalt"
                 + "</span></p>" + svg + "</svg></div></article></section>";
+    }
+
+    private static double summe(double[] werte) {
+        double s = 0;
+        for (double w : werte) {
+            s += w;
+        }
+        return s;
     }
 
     /**
      * Gap to the year before added up from the 1st of January, one line for the whole grid import and one per
      * part: when the gap grows and through which part. Uses the months that are over and the same days of the
-     * current month.
+     * current month; the rest is the grid import minus the other parts.
      */
     static String abstandsverlauf(Jahresvergleich.Vergleich v, List<Jahresvergleich.Anteil> anteile) {
         if (v.monate().size() < 12 || anteile.isEmpty()) {
             return "";
         }
         int jahr = v.jahr();
-        String[] klassen = {"gesamt", "heizung", "haushalt", "wallbox"};
-        // Values per line: x as part of the year, y the gap so far
+        // The lines in the order of the parts: total, devices, heating, rest
+        List<String> klassen = new ArrayList<>();
+        List<String> namen = new ArrayList<>();
+        for (Jahresvergleich.Anteil a : anteile) {
+            klassen.add(klasse(v, a.name()));
+            namen.add(a.name().startsWith("Rest") ? "Haushalt" : geschaetzt(a.name()));
+        }
+        List<Integer> gezeigt = v.gezeigt();
+        int linienAnzahl = anteile.size();
         List<List<double[]>> linien = new ArrayList<>();
-        for (int k = 0; k < 4; k++) {
+        for (int k = 0; k < linienAnzahl; k++) {
             List<double[]> l = new ArrayList<>();
-            l.add(new double[]{0, 0});
+            l.add(new double[]{0, 0, -1});
             linien.add(l);
         }
-        double[] summe = new double[4];
+        double[] summe = new double[linienAnzahl];
         double tage = java.time.Year.of(jahr).length();
         for (Jahresvergleich.Monat m : v.monate()) {
             if (m.laufend() || m.monat() > v.bis().getMonthValue()) {
@@ -700,23 +781,28 @@ public final class JahresvergleichSeite {
             if (gJetzt == null || gVorher == null) {
                 return "";
             }
-            double h = wert(m.heizung().get(J - 1)) - wert(m.heizung().get(J - 2));
-            double w = wert(m.wallbox().get(J - 1)) - wert(m.wallbox().get(J - 2));
-            double hh = wert(m.haushalt().get(J - 1)) - wert(m.haushalt().get(J - 2));
-            double[] d = {gJetzt - gVorher, h, hh, w};
+            double[] d = new double[linienAnzahl];
+            d[0] = gJetzt - gVorher;
+            double rest = d[0];
+            for (int z = 0; z < gezeigt.size(); z++) {
+                int k = gezeigt.get(z);
+                d[1 + z] = wert(m.geraet(k, J - 1)) - wert(m.geraet(k, J - 2));
+                rest -= d[1 + z];
+            }
+            d[linienAnzahl - 2] = wert(m.heizung().get(J - 1)) - wert(m.heizung().get(J - 2));
+            rest -= d[linienAnzahl - 2];
+            d[linienAnzahl - 1] = rest;
             double x = java.time.YearMonth.of(jahr, m.monat()).atEndOfMonth().getDayOfYear() / tage;
-            for (int k = 0; k < 4; k++) {
+            for (int k = 0; k < linienAnzahl; k++) {
                 summe[k] += d[k];
                 linien.get(k).add(new double[]{x, summe[k], m.monat()});
             }
         }
         // The last point: the same days up to now, as in the table
         double xHeute = v.bis().getDayOfYear() / tage;
-        for (Jahresvergleich.Anteil a : anteile) {
-            int k = java.util.Arrays.asList(klassen).indexOf(teil(a.name()));
-            linien.get(k).add(new double[]{xHeute, a.differenz(), 0});
+        for (int k = 0; k < linienAnzahl; k++) {
+            linien.get(k).add(new double[]{xHeute, anteile.get(k).differenz(), 0});
         }
-        boolean mitWallbox = anteile.stream().anyMatch(a -> teil(a.name()).equals("wallbox"));
         double min = 0;
         double max = 0;
         for (List<double[]> l : linien) {
@@ -747,27 +833,23 @@ public final class JahresvergleichSeite {
                     + "text-anchor=\"middle\">%s</text>", LINKS + mitte * breite, H - 8,
                     v.monate().get(monat - 1).name()));
         }
-        String[] namen = {"Gesamt", "Heizung ≈", mitWallbox ? "Haushalt" : "Haushalt und Wallbox", "Wallbox"};
         List<double[]> etiketten = new ArrayList<>();
-        for (int k = 0; k < 4; k++) {
+        for (int k = 0; k < linienAnzahl; k++) {
             List<double[]> l = linien.get(k);
-            if (k == 3 && !mitWallbox) {
-                continue;
-            }
             StringBuilder p = new StringBuilder();
             for (double[] x : l) {
                 p.append(p.isEmpty() ? "" : " ").append(String.format(Locale.ROOT, "%.1f,%.1f", LINKS + x[0] * breite,
                         yv.applyAsDouble(x[1])));
             }
-            svg.append("<polyline class=\"abstand ").append(klassen[k]).append("\" points=\"").append(p)
+            svg.append("<polyline class=\"abstand ").append(klassen.get(k)).append("\" points=\"").append(p)
                     .append("\"/>");
             for (int i = 1; i < l.size(); i++) {
                 double[] x = l.get(i);
                 String wann = x[2] == 0 ? "bis " + DATUM.format(v.bis())
                         : "bis Ende " + v.monate().get((int) x[2] - 1).name();
                 svg.append(String.format(Locale.ROOT, "<circle class=\"abstand %s\" cx=\"%.1f\" cy=\"%.1f\" "
-                        + "r=\"3.5\" data-wert=\"%s\"></circle>", klassen[k], LINKS + x[0] * breite,
-                        yv.applyAsDouble(x[1]), text(namen[k] + " " + wann + ": " + vorzeichen(x[1])
+                        + "r=\"3.5\" data-wert=\"%s\"></circle>", klassen.get(k), LINKS + x[0] * breite,
+                        yv.applyAsDouble(x[1]), text(namen.get(k) + " " + wann + ": " + vorzeichen(x[1])
                                 + zahl(Math.abs(x[1]), 0) + " kWh gegenüber " + (jahr - 1))));
             }
             double[] ende = l.get(l.size() - 1);
@@ -782,21 +864,16 @@ public final class JahresvergleichSeite {
         for (double[] e : etiketten) {
             int k = (int) e[1];
             svg.append(String.format(Locale.ROOT, "<text class=\"etikett %s\" x=\"%.1f\" y=\"%.1f\">%s %s</text>",
-                    klassen[k], e[3] + 8, e[0] + 4, text(namen[k].replace(" ≈", "")),
+                    klassen.get(k), e[3] + 8, e[0] + 4, text(namen.get(k).replace(" ≈", "")),
                     vorzeichen(e[2]) + zahl(Math.abs(e[2]), 0)));
         }
         return svg.append("</svg></div>").toString();
     }
 
-    private static String teil(String name) {
-        return name.equals("Gesamt") ? "gesamt" : name.equals("Wallbox") ? "wallbox"
-                : name.equals("Heizung") ? "heizung" : "haushalt";
-    }
-
-    // The color of the wallbox is the page's own, light and dark like the tokens of the status page
+    // The colors of the devices are the page's own, light and dark like the tokens of the status page
     private static final String CSS = """
-            :root { --wallbox: #6d5bd0; }
-            @media (prefers-color-scheme: dark) { :root { --wallbox: #a99bf0; } }
+            :root { --g0: #6d5bd0; --g1: #2563eb; --g2: #be185d; --g3: #4d7c0f; --g4: #475569; }
+            @media (prefers-color-scheme: dark) { :root { --g0: #a99bf0; --g1: #60a5fa; --g2: #f472b6; --g3: #a3e635; --g4: #cbd5e1; } }
             .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
             .nav:hover, .nav:focus { text-decoration: underline; }
             .meldung { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; font-weight: 600;
@@ -822,7 +899,6 @@ public final class JahresvergleichSeite {
             .sw.j1 { background: var(--muted); opacity: 0.65; }
             .sw.j2 { background: var(--accent); }
             .sw.haushalt { background: var(--stale); }
-            .sw.wallbox { background: var(--wallbox); }
             .diagramm rect.j0 { fill: var(--muted); fill-opacity: 0.3; }
             .diagramm rect.j1 { fill: var(--muted); fill-opacity: 0.65; }
             .diagramm rect.j2 { fill: var(--accent); }
@@ -831,11 +907,6 @@ public final class JahresvergleichSeite {
             .diagramm rect.haushalt.j1 { fill-opacity: 0.6; }
             .diagramm rect.haushalt.j2 { fill-opacity: 0.9; }
             .diagramm rect.laufend { fill-opacity: 0.5; }
-            .diagramm rect.wallbox { fill: var(--wallbox); }
-            .diagramm rect.wallbox.j0 { fill-opacity: 0.35; }
-            .diagramm rect.wallbox.j1 { fill-opacity: 0.6; }
-            .diagramm rect.wallbox.j2 { fill-opacity: 0.9; }
-            .diagramm rect.haushalt.laufend, .diagramm rect.wallbox.laufend { fill-opacity: 0.45; }
             .diagramm rect:hover { stroke: var(--text); stroke-width: 1; }
             .diagramm .gitter { stroke: var(--line); stroke-width: 1; }
             .diagramm .achslinie { stroke: var(--muted); stroke-width: 1; }
@@ -844,24 +915,44 @@ public final class JahresvergleichSeite {
             .diagramm polyline.abstand.gesamt { stroke: var(--text); stroke-width: 3; }
             .diagramm polyline.abstand.heizung { stroke: var(--accent); }
             .diagramm polyline.abstand.haushalt { stroke: var(--stale); }
-            .diagramm polyline.abstand.wallbox { stroke: var(--wallbox); }
             .diagramm circle.abstand { stroke: var(--card); stroke-width: 1.5; }
             .diagramm circle.abstand.gesamt { fill: var(--text); }
             .diagramm circle.abstand.heizung { fill: var(--accent); }
             .diagramm circle.abstand.haushalt { fill: var(--stale); }
-            .diagramm circle.abstand.wallbox { fill: var(--wallbox); }
             .diagramm .etikett { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--text); }
             .diagramm .etikett.heizung { fill: var(--accent); }
             .diagramm .etikett.haushalt { fill: var(--stale); }
-            .diagramm .etikett.wallbox { fill: var(--wallbox); }
             .diagramm rect.teil.heizung { fill: var(--accent); }
             .diagramm rect.teil.haushalt { fill: var(--stale); }
-            .diagramm rect.teil.wallbox { fill: var(--wallbox); }
             .diagramm rect.teil.prognose { fill-opacity: 0.55; }
             .diagramm .teil { font-size: 13px; fill: var(--text); }
             .diagramm .aenderung { font-weight: 500; fill: var(--muted); }
             .diagramm .wert { font-size: 13px; fill: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
             .sw.teil-heizung { background: var(--accent); }
+            .sw.g0, .diagramm rect.teil.g0 { background: var(--g0); fill: var(--g0); }
+            .diagramm rect.geraet.g0, .diagramm circle.abstand.g0 { fill: var(--g0); }
+            .diagramm polyline.abstand.g0 { stroke: var(--g0); }
+            .diagramm .etikett.g0 { fill: var(--g0); }
+            .sw.g1, .diagramm rect.teil.g1 { background: var(--g1); fill: var(--g1); }
+            .diagramm rect.geraet.g1, .diagramm circle.abstand.g1 { fill: var(--g1); }
+            .diagramm polyline.abstand.g1 { stroke: var(--g1); }
+            .diagramm .etikett.g1 { fill: var(--g1); }
+            .sw.g2, .diagramm rect.teil.g2 { background: var(--g2); fill: var(--g2); }
+            .diagramm rect.geraet.g2, .diagramm circle.abstand.g2 { fill: var(--g2); }
+            .diagramm polyline.abstand.g2 { stroke: var(--g2); }
+            .diagramm .etikett.g2 { fill: var(--g2); }
+            .sw.g3, .diagramm rect.teil.g3 { background: var(--g3); fill: var(--g3); }
+            .diagramm rect.geraet.g3, .diagramm circle.abstand.g3 { fill: var(--g3); }
+            .diagramm polyline.abstand.g3 { stroke: var(--g3); }
+            .diagramm .etikett.g3 { fill: var(--g3); }
+            .sw.g4, .diagramm rect.teil.g4 { background: var(--g4); fill: var(--g4); }
+            .diagramm rect.geraet.g4, .diagramm circle.abstand.g4 { fill: var(--g4); }
+            .diagramm polyline.abstand.g4 { stroke: var(--g4); }
+            .diagramm .etikett.g4 { fill: var(--g4); }
+            .diagramm rect.geraet.j0 { fill-opacity: 0.35; }
+            .diagramm rect.geraet.j1 { fill-opacity: 0.6; }
+            .diagramm rect.geraet.j2 { fill-opacity: 0.9; }
+            .diagramm rect.geraet.laufend, .diagramm rect.haushalt.laufend { fill-opacity: 0.45; }
             """;
 
     /**

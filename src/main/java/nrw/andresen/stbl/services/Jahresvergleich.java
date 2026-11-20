@@ -52,7 +52,10 @@ public class Jahresvergleich {
     private WaermebedarfVergleich vergleich;
     private final String haushaltBucket;
     private final String hauszaehler;
-    private final String wallboxZaehler;
+    @Autowired
+    private Geraete geraete;
+    // Readings of the devices, read again with every calculation
+    private volatile Map<String, Zaehlerreihe> reihen = Map.of();
     // Months that are over do not change any more and are read only once
     private final Map<YearMonth, Double> heizungFertig = new ConcurrentHashMap<>();
     private final Map<String, Optional<Double>> zaehlerFertig = new ConcurrentHashMap<>();
@@ -65,12 +68,13 @@ public class Jahresvergleich {
      *
      * @param heizungGleich the years before up to the same day and hour, differs from heizung only in the current
      *                      month
-     * @param haushalt      household electricity, all null without the house meter
-     * @param wallbox       electricity of the wallbox, all null without its counter
+     * @param haushalt      household electricity (grid import minus heating minus the devices with a value), all
+     *                      null without the house meter
+     * @param geraete       per device of Vergleich.geraete its electricity per year, null where it is not known
      * @param laufend       the month is not over yet
      */
     public record Monat(int monat, String name, List<Double> heizung, List<Double> heizungGleich,
-                        List<Double> haushalt, List<Double> wallbox, List<Double> aussen, boolean laufend) {
+                        List<Double> haushalt, List<List<Double>> geraete, List<Double> aussen, boolean laufend) {
 
         /**
          * Change of the current year against the same days of the year before in percent, null below 5 kWh in the
@@ -81,52 +85,111 @@ public class Jahresvergleich {
             Double vorher = heizungGleich.get(JAHRE - 2);
             return jetzt == null || vorher == null || vorher < 5 ? null : (jetzt / vorher - 1) * 100;
         }
+
+        /**
+         * Electricity of the device g in the year with index i, null if not known
+         */
+        public Double geraet(int g, int i) {
+            return geraete.get(g).get(i);
+        }
+    }
+
+    /**
+     * Electricity of a device from the 1st of January up to now and in the years before up to the same day and hour;
+     * null where it is not known
+     */
+    public record GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr) {
     }
 
     /**
      * @param jahre       the years, the oldest first, the last is the current year
      * @param bis         the last day with data in the current year
      * @param mitHaushalt the house meter is configured
-     * @param mitWallbox  the counter of the wallbox is configured
+     * @param geraete     devices with their own counter, e.g. the wallbox
      * @param gesamt      grid import of the house meter in the current year up to now, null without the meter
-     * @param gesamtVorjahrGleich grid import in the year before up to the same day and hour
-     * @param wallboxBisJetzt     wallbox in the current year up to now, null without its counter
-     * @param wallboxVorjahrGleich wallbox in the year before up to the same day and hour
-     * @param gesamtVorvorjahrGleich  grid import two years before up to the same day and hour, null if unknown
-     * @param wallboxVorvorjahrGleich wallbox two years before up to the same day and hour
+     * @param gesamtVorjahrGleich    grid import in the year before up to the same day and hour
+     * @param gesamtVorvorjahrGleich grid import two years before up to the same day and hour, null if unknown
+     * @param geraeteGleich          per device its electricity on the same days
+     * @param jahressummen           all whole years that are over, for the bars per year
      */
     public record Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
-                            boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
-                            Double wallboxVorjahrGleich, Instant berechnet, Double gesamtVorvorjahrGleich,
-                            Double wallboxVorvorjahrGleich, List<Jahressumme> jahressummen) {
+                            List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
+                            Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
+                            List<Jahressumme> jahressummen) {
 
-        public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
-                         boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
-                         Double wallboxVorjahrGleich, Instant berechnet) {
-            this(jahre, bis, monate, mitHaushalt, mitWallbox, gesamt, gesamtVorjahrGleich, wallboxBisJetzt,
-                    wallboxVorjahrGleich, berechnet, null, null, List.of());
+        /**
+         * Devices with values on the same days of this year and the year before: they get their own part in the
+         * comparison. The others are counted in the rest, e.g. a device measured only since this year that ran
+         * before.
+         */
+        public List<Integer> gezeigt() {
+            List<Integer> g = new ArrayList<>();
+            for (int k = 0; k < geraete.size(); k++) {
+                GleicheTage t = geraeteGleich.get(k);
+                if (t.jetzt() != null && t.vorjahr() != null) {
+                    g.add(k);
+                }
+            }
+            return g;
         }
 
-        public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
-                         boolean mitWallbox, Double gesamt, Double gesamtVorjahrGleich, Double wallboxBisJetzt,
-                         Double wallboxVorjahrGleich, Instant berechnet, Double gesamtVorvorjahrGleich,
-                         Double wallboxVorvorjahrGleich) {
-            this(jahre, bis, monate, mitHaushalt, mitWallbox, gesamt, gesamtVorjahrGleich, wallboxBisJetzt,
-                    wallboxVorjahrGleich, berechnet, gesamtVorvorjahrGleich, wallboxVorvorjahrGleich, List.of());
+        /**
+         * Devices counted in the rest because their values on the same days are missing
+         */
+        public List<String> imRest() {
+            List<Integer> g = gezeigt();
+            List<String> namen = new ArrayList<>();
+            for (int k = 0; k < geraete.size(); k++) {
+                if (!g.contains(k)) {
+                    namen.add(geraete.get(k).name());
+                }
+            }
+            return namen;
         }
 
         /**
          * What the grid import from the 1st of January up to now consists of, against the same days of the year
-         * before: total, wallbox (if its counter is set), heating and the rest. Empty without the house meter.
+         * before: total, the devices, heating and the rest. Empty without the house meter.
          */
         public List<Anteil> aufteilung() {
-            return aufteilungBisJetzt();
+            if (gesamt == null || gesamtVorjahrGleich == null) {
+                return List.of();
+            }
+            double heizungJetzt = heizungGleich(JAHRE - 1);
+            double heizungVorher = heizungGleich(JAHRE - 2);
+            // Two years before, only with the grid import of then
+            boolean mitVorvorjahr = gesamtVorvorjahrGleich != null;
+            Double heizungVorvorher = mitVorvorjahr ? heizungGleich(JAHRE - 3) : null;
+            List<Anteil> anteile = new ArrayList<>();
+            anteile.add(new Anteil("Gesamt", gesamtVorjahrGleich, gesamt, gesamtVorvorjahrGleich));
+            double restJetzt = gesamt - heizungJetzt;
+            double restVorher = gesamtVorjahrGleich - heizungVorher;
+            Double restVorvorher = mitVorvorjahr ? gesamtVorvorjahrGleich - heizungVorvorher : null;
+            for (int k : gezeigt()) {
+                GleicheTage t = geraeteGleich.get(k);
+                anteile.add(new Anteil(geraete.get(k).name(), t.vorjahr(), t.jetzt(), mitVorvorjahr ? t.vorvorjahr() : null));
+                restJetzt -= t.jetzt();
+                restVorher -= t.vorjahr();
+                restVorvorher = restVorvorher == null || t.vorvorjahr() == null ? null : restVorvorher - t.vorvorjahr();
+            }
+            anteile.add(new Anteil("Heizung", heizungVorher, heizungJetzt, heizungVorvorher));
+            anteile.add(new Anteil(restName(), restVorher, restJetzt, restVorvorher));
+            return anteile;
+        }
+
+        /**
+         * "Rest (Haushalt)", with the devices counted in it
+         */
+        public String restName() {
+            List<String> imRest = imRest();
+            return imRest.isEmpty() ? "Rest (Haushalt)" : "Rest (Haushalt mit " + String.join(", ", imRest) + ")";
         }
 
         /**
          * Forecast up to the end of the year per part: heating as in the rest of the years before (mean of the two),
-         * the household as in the rest of the year before, the wallbox at the rate of the last three months that are
-         * over. The total is the sum of the parts. Without the house meter only the heating.
+         * the rest as in the rest of the year before, a device that ran before as in the rest of the year before, a
+         * new one at the rate of the last three months that are over. The total is the sum of the parts. Without the
+         * house meter only the heating.
          */
         public List<Prognose> prognose() {
             List<Prognose> teile = new ArrayList<>();
@@ -142,18 +205,30 @@ public class Jahresvergleich {
                 return teile;
             }
             teile.add(new Prognose("Heizung", heizung(JAHRE - 1), summe / n, heizung(JAHRE - 2)));
-            List<Anteil> anteile = aufteilungBisJetzt();
+            List<Anteil> anteile = aufteilung();
+            List<Integer> gezeigt = gezeigt();
             if (!anteile.isEmpty() && haushalt(JAHRE - 2) != null) {
                 Anteil rest = anteile.get(anteile.size() - 1);
-                teile.add(new Prognose(rest.name(), rest.jetzt(), Math.max(0, haushalt(JAHRE - 2) - rest.vorher()),
-                        haushalt(JAHRE - 2)));
+                // The whole rest of the year before: household plus the devices counted in the rest
+                double restVorjahr = haushalt(JAHRE - 2);
+                for (int k = 0; k < geraete.size(); k++) {
+                    if (!gezeigt.contains(k)) {
+                        restVorjahr += geraetBekannt(k, JAHRE - 2);
+                    }
+                }
+                teile.add(new Prognose(rest.name(), rest.jetzt(), Math.max(0, restVorjahr - rest.vorher()),
+                        restVorjahr));
             }
-            if (!anteile.isEmpty() && mitWallbox) {
-                Double vorjahr = wallbox(JAHRE - 2);
+            if (!anteile.isEmpty()) {
                 // Days up to the end of the year, today included
                 long restTage = LocalDate.of(jahr() + 1, 1, 1).toEpochDay() - bis.toEpochDay();
-                teile.add(new Prognose("Wallbox", wallboxBisJetzt == null ? 0 : wallboxBisJetzt,
-                        wallboxJeTag() * restTage, vorjahr == null ? 0 : vorjahr));
+                for (int k : gezeigt) {
+                    GleicheTage t = geraeteGleich.get(k);
+                    Double vorjahr = geraet(k, JAHRE - 2);
+                    double erwartet = geraete.get(k).vorherDa() && vorjahr != null
+                            ? Math.max(0, vorjahr - t.vorjahr()) : jeTag(k) * restTage;
+                    teile.add(new Prognose(geraete.get(k).name(), t.jetzt(), erwartet, vorjahr == null ? 0 : vorjahr));
+                }
             }
             if (teile.size() > 1) {
                 teile.addFirst(new Prognose("Gesamt", teile.stream().mapToDouble(Prognose::bisher).sum(),
@@ -164,46 +239,21 @@ public class Jahresvergleich {
         }
 
         /**
-         * Mean electricity of the wallbox per day in the last three months that are over
+         * Mean electricity of a device per day in the last three months that are over
          */
-        double wallboxJeTag() {
+        double jeTag(int k) {
             double kwh = 0;
             int tage = 0;
-            for (int k = 1; k <= 3; k++) {
-                YearMonth monat = YearMonth.from(bis).minusMonths(k);
+            for (int z = 1; z <= 3; z++) {
+                YearMonth monat = YearMonth.from(bis).minusMonths(z);
                 int i = jahre.indexOf(monat.getYear());
-                Double wert = i < 0 ? null : monate.get(monat.getMonthValue() - 1).wallbox().get(i);
+                Double wert = i < 0 ? null : monate.get(monat.getMonthValue() - 1).geraet(k, i);
                 if (wert != null) {
                     kwh += wert;
                     tage += monat.lengthOfMonth();
                 }
             }
             return tage == 0 ? 0 : kwh / tage;
-        }
-
-        private List<Anteil> aufteilungBisJetzt() {
-            if (gesamt == null || gesamtVorjahrGleich == null) {
-                return List.of();
-            }
-            double heizungJetzt = heizungGleich(JAHRE - 1);
-            double heizungVorher = heizungGleich(JAHRE - 2);
-            double wallboxJetzt = wallboxBisJetzt == null ? 0 : wallboxBisJetzt;
-            double wallboxVorher = wallboxVorjahrGleich == null ? 0 : wallboxVorjahrGleich;
-            // Two years before, only with the grid import of then
-            boolean mitVorvorjahr = gesamtVorvorjahrGleich != null;
-            Double heizungVorvorher = mitVorvorjahr ? heizungGleich(JAHRE - 3) : null;
-            Double wallboxVorvorher = mitVorvorjahr ? (wallboxVorvorjahrGleich == null ? 0 : wallboxVorvorjahrGleich)
-                    : null;
-            List<Anteil> anteile = new ArrayList<>();
-            anteile.add(new Anteil("Gesamt", gesamtVorjahrGleich, gesamt, gesamtVorvorjahrGleich));
-            if (mitWallbox) {
-                anteile.add(new Anteil("Wallbox", wallboxVorher, wallboxJetzt, wallboxVorvorher));
-            }
-            anteile.add(new Anteil("Heizung", heizungVorher, heizungJetzt, heizungVorvorher));
-            anteile.add(new Anteil(mitWallbox ? "Rest (Haushalt)" : "Rest (Haushalt und Wallbox)",
-                    gesamtVorjahrGleich - heizungVorher - wallboxVorher, gesamt - heizungJetzt - wallboxJetzt,
-                    mitVorvorjahr ? gesamtVorvorjahrGleich - heizungVorvorher - wallboxVorvorher : null));
-            return anteile;
         }
 
         /**
@@ -241,11 +291,16 @@ public class Jahresvergleich {
         }
 
         /**
-         * Electricity of the wallbox in the year with the given index, null without its counter or without values
+         * Electricity of a device in the year with the given index, null if no month of it is known
          */
-        public Double wallbox(int i) {
-            List<Double> werte = monate.stream().map(m -> m.wallbox().get(i)).toList();
-            return mitWallbox && werte.stream().anyMatch(w -> w != null) ? summe(werte) : null;
+        public Double geraet(int k, int i) {
+            List<Double> werte = monate.stream().map(m -> m.geraet(k, i)).toList();
+            return werte.stream().anyMatch(w -> w != null) ? summe(werte) : null;
+        }
+
+        private double geraetBekannt(int k, int i) {
+            Double w = geraet(k, i);
+            return w == null ? 0 : w;
         }
 
         /**
@@ -263,11 +318,13 @@ public class Jahresvergleich {
 
     /**
      * One whole year that is over, from the house meter: grid import and its parts in kWh
+     *
+     * @param geraete per device of the comparison, null where it is not known (part of the household then)
      */
-    public record Jahressumme(int jahr, double gesamt, double heizung, double wallbox) {
+    public record Jahressumme(int jahr, double gesamt, double heizung, List<Double> geraete) {
 
         public double haushalt() {
-            return gesamt - heizung - wallbox;
+            return gesamt - heizung - geraete.stream().filter(g -> g != null).mapToDouble(Double::doubleValue).sum();
         }
     }
 
@@ -277,10 +334,11 @@ public class Jahresvergleich {
      * @param standAnfang reading of the house meter at the start, null if unknown
      * @param standEnde   reading of the house meter at the end (now if the end is still to come), null if unknown
      * @param heizung     estimated electricity of the heating
-     * @param wallbox     from the counter of the wallbox, null without it
+     * @param namen       the devices
+     * @param geraete     their electricity, null where not known
      */
     public record Zeitraum(LocalDate von, LocalDate bis, Instant ende, Double standAnfang, Double standEnde,
-                           double heizung, Double wallbox) {
+                           double heizung, List<String> namen, List<Double> geraete) {
 
         public Double gesamt() {
             return standAnfang == null || standEnde == null ? null : standEnde - standAnfang;
@@ -288,7 +346,8 @@ public class Jahresvergleich {
 
         public Double haushalt() {
             Double g = gesamt();
-            return g == null ? null : g - heizung - (wallbox == null ? 0 : wallbox);
+            return g == null ? null : g - heizung
+                    - geraete.stream().filter(x -> x != null).mapToDouble(Double::doubleValue).sum();
         }
 
         public long tage() {
@@ -336,11 +395,9 @@ public class Jahresvergleich {
     }
 
     public Jahresvergleich(@Value("${auswertung.haushalt.bucket:}") String haushaltBucket,
-                           @Value("${auswertung.haushalt.zaehler:}") String hauszaehler,
-                           @Value("${auswertung.haushalt.wallbox:}") String wallboxZaehler) {
+                           @Value("${auswertung.haushalt.zaehler:}") String hauszaehler) {
         this.haushaltBucket = haushaltBucket.trim();
         this.hauszaehler = hauszaehler.trim();
-        this.wallboxZaehler = wallboxZaehler.trim();
     }
 
     /**
@@ -380,7 +437,23 @@ public class Jahresvergleich {
             gleich.put(jahr - k, strom(start(laufend.minusYears(k)), jetzt.minusYears(k).toInstant()));
         }
         Map<YearMonth, Double> bezug = verbrauch(hauszaehler, erster, laufend, jetzt);
-        Map<YearMonth, Double> wallbox = verbrauch(wallboxZaehler, erster, laufend, jetzt);
+        List<Geraete.Geraet> liste = geraete.getListe();
+        reihen = reihenLesen(liste);
+        List<Map<YearMonth, Double>> geraeteMonate = new ArrayList<>();
+        List<GleicheTage> geraeteGleich = new ArrayList<>();
+        for (Geraete.Geraet g : liste) {
+            Zaehlerreihe r = reihen.get(g.name());
+            Map<YearMonth, Double> monate = new TreeMap<>();
+            for (YearMonth monat = erster; !monat.isAfter(laufend); monat = monat.plusMonths(1)) {
+                Instant ende = monat.equals(laufend) ? jetzt.toInstant() : start(monat.plusMonths(1));
+                monate.put(monat, r.verbrauch(start(monat), ende, g.vorherDa()));
+            }
+            geraeteMonate.add(monate);
+            geraeteGleich.add(new GleicheTage(
+                    r.verbrauch(start(YearMonth.of(jahr, 1)), jetzt.toInstant(), g.vorherDa()),
+                    r.verbrauch(start(YearMonth.of(jahr - 1, 1)), jetzt.minusYears(1).toInstant(), g.vorherDa()),
+                    r.verbrauch(start(YearMonth.of(jahr - 2, 1)), jetzt.minusYears(2).toInstant(), g.vorherDa())));
+        }
         // The outdoor temperature of the months that are over is read once too
         YearMonth ab = aussenFertig.isEmpty() || !aussenFertig.containsKey(laufend.minusMonths(1)) ? erster : laufend;
         Map<YearMonth, Double> aussen = new TreeMap<>(aussenFertig);
@@ -390,22 +463,47 @@ public class Jahresvergleich {
                 aussenFertig.put(monat, wert);
             }
         });
-        // Grid import from the 1st of January up to now and up to the same hour a year ago
+        // Grid import from the 1st of January up to now and up to the same hour in the years before
         Double[] gesamt = bisJetzt(hauszaehler, jetzt);
-        Double[] wallboxBisJetzt = bisJetzt(wallboxZaehler, jetzt);
-        Vergleich v = vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, wallbox),
-                !hauszaehler.isEmpty(), wallbox, !wallboxZaehler.isEmpty(), aussen, gesamt[0], gesamt[1],
-                wallboxBisJetzt[0], wallboxBisJetzt[1], Instant.now());
-        return new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.mitWallbox(), v.gesamt(),
-                v.gesamtVorjahrGleich(), v.wallboxBisJetzt(), v.wallboxVorjahrGleich(), v.berechnet(), gesamt[2],
-                wallboxBisJetzt[2], jahressummen(jahr));
+        return vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, geraeteMonate),
+                !hauszaehler.isEmpty(), liste, geraeteMonate, aussen, gesamt[0], gesamt[1], gesamt[2],
+                geraeteGleich, Instant.now(), jahressummen(jahr, liste));
+    }
+
+    /**
+     * Readings of every device: the earlier ones as they are, the counter as the last value of each day
+     */
+    private Map<String, Zaehlerreihe> reihenLesen(List<Geraete.Geraet> liste) {
+        Map<String, Zaehlerreihe> neu = new java.util.HashMap<>();
+        String bucket = haushaltBucket.isEmpty() ? influx.getBucket() : haushaltBucket;
+        for (Geraete.Geraet g : liste) {
+            Map<Instant, Double> davor = g.zaehlerDavor().isEmpty() ? Map.of()
+                    : influx.werte(reiheFlux(bucket, g.zaehlerDavor(), false));
+            Map<Instant, Double> zaehler = g.zaehler().isEmpty() ? Map.of()
+                    : influx.werte(reiheFlux(bucket, g.zaehler(), true));
+            neu.put(g.name(), new Zaehlerreihe(davor, zaehler));
+        }
+        return neu;
+    }
+
+    /**
+     * All readings of a counter in kWh, with taeglich the last of each day (Home Assistant stores every change)
+     */
+    static String reiheFlux(String bucket, String entity, boolean taeglich) {
+        pruefen(bucket);
+        pruefen(entity);
+        return (taeglich ? "import \"timezone\"\noption location = timezone.location(name: \"Europe/Berlin\")\n" : "")
+                + "from(bucket: \"" + bucket + "\") |> range(start: 2010-01-01T00:00:00Z)"
+                + " |> filter(fn: (r) => r._measurement == \"kWh\" and r._field == \"value\" and r.entity_id == \""
+                + entity + "\") |> group() |> sort(columns: [\"_time\"])"
+                + (taeglich ? " |> aggregateWindow(every: 1d, fn: last, createEmpty: false, timeSrc: \"_stop\")" : "");
     }
 
     /**
      * All whole years that are over and have readings of the house meter at both ends, read once; empty without
      * the house meter. Looks back at most JAHRE_ZURUECK years.
      */
-    private List<Jahressumme> jahressummen(int jahr) {
+    private List<Jahressumme> jahressummen(int jahr, List<Geraete.Geraet> liste) {
         List<Jahressumme> summen = new ArrayList<>();
         if (hauszaehler.isEmpty()) {
             return summen;
@@ -421,9 +519,11 @@ public class Jahresvergleich {
             for (YearMonth m = YearMonth.of(j, 1); m.getYear() == j; m = m.plusMonths(1)) {
                 heizung += heizungFertig.computeIfAbsent(m, x -> strom(start(x), start(x.plusMonths(1))));
             }
-            Double wallbox = wallboxZaehler.isEmpty() ? null
-                    : differenz(stand(wallboxZaehler, anfang), stand(wallboxZaehler, ende));
-            summen.add(new Jahressumme(j, gesamt, heizung, wallbox == null ? 0 : wallbox));
+            List<Double> teile = new ArrayList<>();
+            for (Geraete.Geraet g : liste) {
+                teile.add(reihen.get(g.name()).verbrauch(anfang, ende, g.vorherDa()));
+            }
+            summen.add(new Jahressumme(j, gesamt, heizung, Collections.unmodifiableList(teile)));
         }
         return summen;
     }
@@ -440,8 +540,14 @@ public class Jahresvergleich {
         }
         Double standAnfang = hauszaehler.isEmpty() ? null : zaehlerstand(hauszaehler, anfang, jetzt);
         Double standEnde = hauszaehler.isEmpty() ? null : zaehlerstand(hauszaehler, ende, jetzt);
-        Double wallbox = wallboxZaehler.isEmpty() ? null
-                : differenz(zaehlerstand(wallboxZaehler, anfang, jetzt), zaehlerstand(wallboxZaehler, ende, jetzt));
+        List<String> namen = new ArrayList<>();
+        List<Double> teile = new ArrayList<>();
+        Map<String, Zaehlerreihe> r = reihen;
+        for (Geraete.Geraet g : geraete.getListe()) {
+            namen.add(g.name());
+            Zaehlerreihe reihe = r.get(g.name());
+            teile.add(reihe == null ? null : reihe.verbrauch(anfang, ende, g.vorherDa()));
+        }
         // Whole months from the cache of the comparison, the parts at the edges directly
         double heizung = 0;
         Instant t = anfang;
@@ -454,7 +560,7 @@ public class Jahresvergleich {
                     : strom(t, bisHier);
             t = bisHier;
         }
-        return new Zeitraum(von, bis, ende, standAnfang, standEnde, heizung, wallbox);
+        return new Zeitraum(von, bis, ende, standAnfang, standEnde, heizung, namen, teile);
     }
 
     /**
@@ -485,14 +591,14 @@ public class Jahresvergleich {
 
     /**
      * Comparison from the values per month: the current month counts up to today, for it the years before are given
-     * up to the same day in gleich; gesamt is the grid import of this year up to now, gesamtVorjahrGleich the same
-     * days of the year before
+     * up to the same day in gleich; gesamt is the grid import of this year up to now, gesamtVorjahrGleich and
+     * gesamtVorvorjahrGleich the same days of the years before
      */
     static Vergleich vergleich(int jahr, LocalDate heute, Map<YearMonth, Double> heizung, Map<Integer, Double> gleich,
-                               Map<YearMonth, Double> haushalt, boolean mitHaushalt, Map<YearMonth, Double> wallbox,
-                               boolean mitWallbox, Map<YearMonth, Double> aussen, Double gesamt,
-                               Double gesamtVorjahrGleich, Double wallboxBisJetzt, Double wallboxVorjahrGleich,
-                               Instant berechnet) {
+                               Map<YearMonth, Double> haushalt, boolean mitHaushalt, List<Geraete.Geraet> geraete,
+                               List<Map<YearMonth, Double>> geraeteMonate, Map<YearMonth, Double> aussen,
+                               Double gesamt, Double gesamtVorjahrGleich, Double gesamtVorvorjahrGleich,
+                               List<GleicheTage> geraeteGleich, Instant berechnet, List<Jahressumme> jahressummen) {
         YearMonth laufend = YearMonth.from(heute);
         List<Integer> jahre = jahre(jahr);
         List<Monat> monate = new ArrayList<>();
@@ -502,23 +608,31 @@ public class Jahresvergleich {
             List<Double> h = new ArrayList<>();
             List<Double> hg = new ArrayList<>();
             List<Double> hh = new ArrayList<>();
-            List<Double> w = new ArrayList<>();
             List<Double> a = new ArrayList<>();
+            List<List<Double>> g = new ArrayList<>();
+            for (Map<YearMonth, Double> werte : geraeteMonate) {
+                List<Double> w = new ArrayList<>();
+                for (int j : jahre) {
+                    YearMonth monat = YearMonth.of(j, m);
+                    w.add(monat.isAfter(laufend) ? null : werte.get(monat));
+                }
+                g.add(Collections.unmodifiableList(w));
+            }
             for (int j : jahre) {
                 YearMonth monat = YearMonth.of(j, m);
                 boolean zukunft = monat.isAfter(laufend);
                 h.add(zukunft ? null : heizung.get(monat));
                 hg.add(kommt ? null : istLaufend && j < jahr ? gleich.get(j) : zukunft ? null : heizung.get(monat));
                 hh.add(zukunft ? null : haushalt.get(monat));
-                w.add(zukunft ? null : wallbox.get(monat));
                 a.add(zukunft ? null : aussen.get(monat));
             }
             monate.add(new Monat(m, MONATE[m - 1], Collections.unmodifiableList(h), Collections.unmodifiableList(hg),
-                    Collections.unmodifiableList(hh), Collections.unmodifiableList(w), Collections.unmodifiableList(a),
+                    Collections.unmodifiableList(hh), Collections.unmodifiableList(g), Collections.unmodifiableList(a),
                     istLaufend));
         }
-        return new Vergleich(List.copyOf(jahre), heute, monate, mitHaushalt, mitWallbox, gesamt, gesamtVorjahrGleich,
-                wallboxBisJetzt, wallboxVorjahrGleich, berechnet);
+        return new Vergleich(List.copyOf(jahre), heute, monate, mitHaushalt, List.copyOf(geraete), gesamt,
+                gesamtVorjahrGleich, gesamtVorvorjahrGleich, List.copyOf(geraeteGleich), berechnet,
+                List.copyOf(jahressummen));
     }
 
     private static List<Integer> jahre(int jahr) {
@@ -534,15 +648,18 @@ public class Jahresvergleich {
     }
 
     /**
-     * Household electricity per month: grid import minus heating minus wallbox, not below 0. Null where the grid
-     * import is not known; a month without a wallbox value counts without wallbox.
+     * Household electricity per month: grid import minus heating minus the devices with a value, not below 0. Null
+     * where the grid import is not known.
      */
     static Map<YearMonth, Double> haushalt(Map<YearMonth, Double> bezug, Map<YearMonth, Double> heizung,
-                                           Map<YearMonth, Double> wallbox) {
+                                           List<Map<YearMonth, Double>> geraete) {
         Map<YearMonth, Double> haushalt = new TreeMap<>();
         bezug.forEach((monat, kwh) -> {
             if (kwh != null) {
-                double rest = kwh - heizung.getOrDefault(monat, 0d) - Optional.ofNullable(wallbox.get(monat)).orElse(0d);
+                double rest = kwh - heizung.getOrDefault(monat, 0d);
+                for (Map<YearMonth, Double> g : geraete) {
+                    rest -= Optional.ofNullable(g.get(monat)).orElse(0d);
+                }
                 haushalt.put(monat, Math.max(0, rest));
             }
         });
