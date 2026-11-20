@@ -98,7 +98,11 @@ public class Jahresvergleich {
      * Electricity of a device from the 1st of January up to now and in the years before up to the same day and hour;
      * null where it is not known
      */
-    public record GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr) {
+    public record GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr, boolean hochgerechnet) {
+
+        public GleicheTage(Double jetzt, Double vorjahr, Double vorvorjahr) {
+            this(jetzt, vorjahr, vorvorjahr, false);
+        }
     }
 
     /**
@@ -452,7 +456,8 @@ public class Jahresvergleich {
             geraeteGleich.add(new GleicheTage(
                     r.verbrauch(start(YearMonth.of(jahr, 1)), jetzt.toInstant(), g.vorherDa()),
                     r.verbrauch(start(YearMonth.of(jahr - 1, 1)), jetzt.minusYears(1).toInstant(), g.vorherDa()),
-                    r.verbrauch(start(YearMonth.of(jahr - 2, 1)), jetzt.minusYears(2).toInstant(), g.vorherDa())));
+                    r.verbrauch(start(YearMonth.of(jahr - 2, 1)), jetzt.minusYears(2).toInstant(), g.vorherDa()),
+                    r.isHochgerechnet()));
         }
         // The outdoor temperature of the months that are over is read once too
         YearMonth ab = aussenFertig.isEmpty() || !aussenFertig.containsKey(laufend.minusMonths(1)) ? erster : laufend;

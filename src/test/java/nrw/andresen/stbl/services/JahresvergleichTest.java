@@ -406,6 +406,13 @@ public class JahresvergleichTest {
         assertEquals(7800 - 1050 - 830, anteile.get(3).jetzt(), 1e-9);
         String karte = JahresvergleichSeite.ursachen(v);
         assertTrue(karte.contains("Klimaanlage zählt zum Rest, bis es für beide Jahre Messwerte gibt."));
+        // A value estimated after the last reading by hand is named
+        Jahresvergleich.Vergleich ww = new Jahresvergleich.Vergleich(zwei.jahre(), zwei.bis(), zwei.monate(), true,
+                java.util.List.of(new Geraete.Geraet("Warmwasser", "", "warmwasser_manuell", true)), zwei.gesamt(),
+                zwei.gesamtVorjahrGleich(), null, java.util.List.of(new Jahresvergleich.GleicheTage(560.0, 650.0,
+                null, true)), zwei.berechnet(), java.util.List.of());
+        assertTrue(JahresvergleichSeite.ursachen(ww).contains("Warmwasser: nach der letzten Ablesung mit dem Verbrauch "
+                + "der Wochen davor hochgerechnet"));
     }
 
     @Test

@@ -211,6 +211,7 @@ public final class JahresvergleichSeite {
                 + ", also der übrige Haushalt mit Lüftung und Geräten."
                 + (v.imRest().isEmpty() ? "" : " " + String.join(", ", v.imRest()) + " zählt zum Rest, bis es für "
                 + "beide Jahre Messwerte gibt.")
+                + hochgerechnet(v)
                 + "</p></article></section>";
     }
 
@@ -278,6 +279,20 @@ public final class JahresvergleichSeite {
             return mehr ? "durch den übrigen Haushalt" : "beim übrigen Haushalt";
         }
         return "bei " + geschaetzt(name);
+    }
+
+    /**
+     * Note on devices whose value up to now is estimated after their last reading by hand
+     */
+    static String hochgerechnet(Jahresvergleich.Vergleich v) {
+        List<String> namen = new ArrayList<>();
+        for (int k : v.gezeigt()) {
+            if (v.geraeteGleich().get(k).hochgerechnet()) {
+                namen.add(v.geraete().get(k).name());
+            }
+        }
+        return namen.isEmpty() ? "" : " " + String.join(", ", namen) + ": nach der letzten Ablesung mit dem Verbrauch "
+                + "der Wochen davor hochgerechnet, bis ein Zähler übernimmt.";
     }
 
     /**
