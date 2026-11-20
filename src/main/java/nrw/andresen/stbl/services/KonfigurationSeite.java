@@ -1,5 +1,7 @@
 package nrw.andresen.stbl.services;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -55,9 +57,9 @@ public final class KonfigurationSeite {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
-                .append("<title>Wärmepumpe · Konfiguration</title><style>").append(StatusPage.CSS).append(CSS)
+                .append("<title>Wärmepumpe · Einstellungen</title><style>").append(StatusPage.CSS).append(CSS)
                 .append("</style></head><body><main>")
-                .append("<header><div><h1>Konfiguration</h1><p class=\"sub\">Einstellungen dieses Dienstes, nicht ")
+                .append("<header><div><h1>Einstellungen</h1><p class=\"sub\">Einstellungen dieses Dienstes, nicht ")
                 .append("der Wärmepumpe</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"jahresvergleich\">Jahresvergleich</a> · ")
                 .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
@@ -94,43 +96,176 @@ public final class KonfigurationSeite {
                     .append("Die markierten Werte gelten erst nach einem Neustart: „Speichern und neu starten“ ")
                     .append("übernimmt sie sofort.</p>");
         }
-        html.append("<form method=\"post\" action=\"konfiguration\">");
+        Map<String, Konfiguration.Wert> nachName = new java.util.LinkedHashMap<>();
+        stand.werte().forEach(w -> nachName.put(w.feld().name(), w));
+        html.append("<nav class=\"abschnitte\" aria-label=\"Abschnitte\">");
+        for (Abschnitt a : ABSCHNITTE) {
+            html.append("<a class=\"nav\" href=\"#").append(a.id()).append("\">").append(text(a.titel())).append("</a>");
+        }
+        html.append("</nav><form method=\"post\" action=\"konfiguration\">");
         if (csrfName != null) {
             html.append("<input type=\"hidden\" name=\"").append(text(csrfName)).append("\" value=\"")
                     .append(text(csrfToken)).append("\">");
         }
-        String gruppe = null;
-        for (Konfiguration.Wert wert : stand.werte()) {
-            Konfiguration.Feld feld = wert.feld();
-            if (!feld.gruppe().equals(gruppe)) {
-                html.append(gruppe == null ? "" : "</article>").append("<article class=\"card\"><h2>")
-                        .append(text(feld.gruppe())).append("</h2>");
-                gruppe = feld.gruppe();
+        java.util.Set<String> gezeigt = new java.util.HashSet<>();
+        for (Abschnitt a : ABSCHNITTE) {
+            html.append("<section class=\"card abschnitt\" id=\"").append(a.id()).append("\"><h2>")
+                    .append(text(a.titel())).append("</h2><p class=\"hilfe einleitung\">").append(text(a.text()))
+                    .append("</p>");
+            for (Teil t : a.teile()) {
+                html.append(t.titel().isEmpty() ? "" : "<h3>" + text(t.titel()) + "</h3>");
+                if (t.felder().equals(GERAETE)) {
+                    html.append(geraete(nachName, eingabe, fehler, stand.schreibbar()));
+                    for (int n = 1; n <= Geraete.ANZAHL; n++) {
+                        for (String teil : GERAETE_TEILE) {
+                            gezeigt.add("auswertung.geraet." + n + "." + teil);
+                        }
+                    }
+                    continue;
+                }
+                html.append("<div class=\"felder\">");
+                for (String name : t.felder()) {
+                    Konfiguration.Wert wert = nachName.get(name);
+                    if (wert != null) {
+                        html.append(feld(wert, eingabe.get(name), fehler.get(name), stand.schreibbar()));
+                        gezeigt.add(name);
+                    }
+                }
+                html.append("</div>");
             }
-            html.append(feld(wert, eingabe.get(feld.name()), fehler.get(feld.name()), stand.schreibbar()));
+            if (a.id().equals("benachrichtigungen")) {
+                // Sends with the values of the running service, uses the token of this form
+                html.append("<p class=\"aktionen\"><button type=\"submit\" class=\"zweit\" ")
+                        .append("formaction=\"konfiguration/test\" formnovalidate>Testnachricht senden</button>")
+                        .append("<span class=\"hilfe\">Schickt eine Warnung zur Probe per Mail und, falls eingerichtet, ")
+                        .append("per Pushover, mit den Werten des laufenden Dienstes.</span></p>");
+            }
+            html.append("</section>");
         }
-        html.append(gruppe == null ? "" : "</article>");
+        // Settings without a place in the sections, so none is ever lost
+        StringBuilder rest = new StringBuilder();
+        for (Konfiguration.Wert wert : stand.werte()) {
+            if (!gezeigt.contains(wert.feld().name())) {
+                rest.append(feld(wert, eingabe.get(wert.feld().name()), fehler.get(wert.feld().name()),
+                        stand.schreibbar()));
+            }
+        }
+        if (!rest.isEmpty()) {
+            html.append("<section class=\"card abschnitt\"><h2>Weitere</h2><div class=\"felder\">").append(rest)
+                    .append("</div></section>");
+        }
         String gesperrt = stand.schreibbar() ? "" : " disabled";
-        html.append("<p class=\"aktionen\"><button type=\"submit\" name=\"aktion\" value=\"").append(NEUSTART)
+        html.append("<div class=\"aktionen fest\"><button type=\"submit\" name=\"aktion\" value=\"").append(NEUSTART)
                 .append("\"").append(gesperrt).append(">Speichern und neu starten</button>")
                 .append("<button type=\"submit\" class=\"zweit\" name=\"aktion\" value=\"speichern\"").append(gesperrt)
-                .append(">Nur speichern</button><a class=\"nav\" href=\"status\">Zurück zum Status</a></p>")
-                .append("<p class=\"note\">Der Neustart dauert etwa eine Minute, in dieser Zeit werden keine Werte ")
-                .append("der Wärmepumpe gelesen und gespeichert. „Alle Nachrichten empfangen“ wirkt schon beim ")
-                .append("Speichern, ohne Neustart.</p></form>")
-                .append("<form method=\"post\" action=\"konfiguration/test\">")
-                .append(csrfName == null ? "" : "<input type=\"hidden\" name=\"" + text(csrfName) + "\" value=\""
-                        + text(csrfToken) + "\">")
-                .append("<p class=\"aktionen\"><button type=\"submit\" class=\"zweit\">Testnachricht senden")
-                .append("</button></p><p class=\"note\">Schickt eine Warnung zur Probe per Mail und, falls ")
-                .append("eingerichtet, per Pushover. Es gelten die Werte des laufenden Dienstes, geänderte Werte ")
-                .append("also erst nach dem Neustart.</p></form>")
+                .append(">Nur speichern</button><span class=\"hilfe\">Der Neustart dauert etwa eine Minute, ohne ")
+                .append("Werte der Wärmepumpe. „Alle Nachrichten empfangen“ wirkt schon beim Speichern.</span></div>")
+                .append("</form>")
                 .append("<p class=\"note\">Datei: ").append(text(stand.datei().toString()))
                 .append(". Vor jedem Speichern legt der Dienst daneben eine Kopie mit der Endung .bak an, Kommentare ")
                 .append("und Reihenfolge der Datei bleiben erhalten. Der Dienst liest seine Einstellungen nur beim ")
                 .append("Start. Das Login, Adresse und Port dieser Seite, die Logdatei und der Token der InfluxDB ")
                 .append("stehen nur in der Datei: Ein Tippfehler dort würde die Seite aussperren.</p>")
                 .append("</main></body></html>");
+        return html.toString();
+    }
+
+    /**
+     * One section of the page with its parts; a part shows its settings in columns
+     */
+    record Abschnitt(String id, String titel, String text, List<Teil> teile) {
+    }
+
+    record Teil(String titel, List<String> felder) {
+    }
+
+    // Marks the part shown as table of the devices
+    static final List<String> GERAETE = List.of("geraete");
+    static final List<String> GERAETE_TEILE = List.of("name", "zaehler", "davor", "vorher");
+
+    // In the order of setting up the service: connection, notification, warnings, Home Assistant, evaluation
+    static final List<Abschnitt> ABSCHNITTE = List.of(
+            new Abschnitt("verbindung", "Wärmepumpe und Datenbank",
+                    "Wie der Dienst die Wärmepumpe liest und wo er die Werte speichert.", List.of(
+                    new Teil("CAN-Adapter", List.of("USBtin.port", "USBtin.speed", "can.logall")),
+                    new Teil("InfluxDB", List.of("influx.enabled", "influx.url", "influx.org", "influx.bucket")))),
+            new Abschnitt("benachrichtigungen", "Benachrichtigungen", "Wohin die Warnungen gehen.", List.of(
+                    new Teil("Mail", List.of("stbl.mail.to", "spring.mail.host", "spring.mail.port",
+                            "spring.mail.username", "spring.mail.password", "spring.mail.properties.mail.smtp.auth",
+                            "spring.mail.properties.mail.smtp.starttls.enable")),
+                    new Teil("Pushover", List.of("pushover.user", "pushover.token", "pushover.prioritaet")))),
+            new Abschnitt("warnungen", "Warnungen", "Ab wann der Dienst warnt.", List.of(
+                    new Teil("Heizwasser", List.of("warnung.heizungsdruck.min", "warnung.heizungsdruck.max",
+                            "warnung.heizungsdruck.abfall", "warnung.spreizung.max")),
+                    new Teil("Kältekreis", List.of("warnung.hochdruck.max", "warnung.niederdruck.min",
+                            "warnung.heissgas.max")),
+                    new Teil("Betrieb", List.of("warnung.starts.proStunde", "warnung.abtauung.minuten",
+                            "warnung.frost.aussentemp", "warnung.frost.stunden")),
+                    new Teil("Strom und Bus", List.of("warnung.spannung.min", "warnung.spannung.max",
+                            "warnung.antwortquote.min")))),
+            new Abschnitt("homeassistant", "Home Assistant", "Die Werte als Gerät „Wärmepumpe“ in Home Assistant, "
+                    + "über MQTT und nur lesend.", List.of(
+                    new Teil("", List.of("mqtt.host", "mqtt.port", "mqtt.benutzer", "mqtt.passwort", "mqtt.praefix")))),
+            new Abschnitt("auswertung", "Auswertung", "Was die Seiten Jahr, Zustand und die Vergleiche lesen.", List.of(
+                    new Teil("Ab wann ausgewertet wird", List.of("auswertung.start", "auswertung.fehlstarts.start",
+                            "auswertung.zustand.start")),
+                    new Teil("Außentemperatur", List.of("auswertung.aussentemp.bucket", "auswertung.aussentemp.entity")),
+                    new Teil("Stromzähler", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler",
+                            "auswertung.haushalt.wallbox")),
+                    new Teil("Geräte mit eigenem Zähler", GERAETE))));
+
+    /**
+     * The devices as table, one row each: name, counter, earlier readings, ran before
+     */
+    private static String geraete(Map<String, Konfiguration.Wert> werte, Map<String, String> eingabe,
+                                  Map<String, String> fehler, boolean schreibbar) {
+        StringBuilder html = new StringBuilder("<p class=\"hilfe\">Zum Beispiel ein Shelly an Klimaanlage oder "
+                + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Zähler und Werte davor "
+                + "sind Home-Assistant-Entities mit dem Zählerstand in kWh; Werte davor sind frühere, etwa händisch "
+                + "abgelesene Stände. „Vorher da“: Das Gerät lief schon vor dem ersten Wert und steckte bis dahin im "
+                + "Haushalt.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
+                + "<th>Zähler</th><th>Werte davor</th><th>Vorher da</th></tr></thead><tbody>");
+        List<String> meldungen = new ArrayList<>();
+        for (int n = 1; n <= Geraete.ANZAHL; n++) {
+            html.append("<tr><td>").append(n).append("</td>");
+            for (String teil : GERAETE_TEILE) {
+                String name = "auswertung.geraet." + n + "." + teil;
+                Konfiguration.Wert wert = werte.get(name);
+                if (wert == null) {
+                    html.append("<td></td>");
+                    continue;
+                }
+                String id = name.replace('.', '-');
+                String angezeigt = eingabe.get(name) != null ? eingabe.get(name)
+                        : Konfiguration.anzeige(wert.feld(), wert.datei());
+                String attribute = " id=\"" + id + "\" name=\"" + name + "\" aria-label=\"" + text(wert.feld().label())
+                        + "\"" + (schreibbar ? "" : " disabled");
+                html.append("<td").append(fehler.containsKey(name) ? " class=\"ungueltig\"" : "").append(">");
+                if (wert.feld().typ() == Konfiguration.Typ.SCHALTER) {
+                    boolean an = eingabe.get(name) != null ? eingabe.get(name).equals("true")
+                            : Boolean.parseBoolean(wert.datei());
+                    html.append("<select").append(attribute).append("><option value=\"true\"")
+                            .append(an ? " selected" : "").append(">ja</option><option value=\"false\"")
+                            .append(an ? "" : " selected").append(">nein, neu</option></select>");
+                } else {
+                    html.append("<input type=\"text\"").append(attribute).append(" value=\"").append(text(angezeigt))
+                            .append("\">");
+                }
+                html.append("</td>");
+                if (fehler.containsKey(name)) {
+                    meldungen.add(wert.feld().label() + " " + fehler.get(name) + ".");
+                }
+                if (wert.neustartNoetig()) {
+                    meldungen.add(wert.feld().label() + ": gilt erst nach dem Neustart.");
+                }
+            }
+            html.append("</tr>");
+        }
+        html.append("</tbody></table></div>");
+        for (String m : meldungen) {
+            html.append("<p class=\"hilfe ").append(m.endsWith("Neustart.") ? "neustarttext" : "fehlertext").append("\">")
+                    .append(text(m)).append("</p>");
+        }
         return html.toString();
     }
 
@@ -145,7 +280,7 @@ public final class KonfigurationSeite {
                 + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
                 + "<noscript><meta http-equiv=\"refresh\" content=\"90;url=konfiguration\"></noscript>"
                 + "<title>Wärmepumpe · Neustart</title><style>" + StatusPage.CSS + CSS + "</style></head><body><main>"
-                + "<header><div><h1>Konfiguration</h1><p class=\"sub\">Einstellungen dieses Dienstes, nicht der "
+                + "<header><div><h1>Einstellungen</h1><p class=\"sub\">Einstellungen dieses Dienstes, nicht der "
                 + "Wärmepumpe</p></div></header>"
                 + "<p class=\"meldung ok\">In die Datei geschrieben.</p>"
                 + "<p class=\"meldung neustart\" id=\"lauf\">Der Dienst startet neu. Das dauert etwa eine Minute, "
@@ -237,11 +372,27 @@ public final class KonfigurationSeite {
     private static final String CSS = """
             .nav { color: var(--accent); text-decoration: none; font-weight: 600; }
             .nav:hover, .nav:focus { text-decoration: underline; }
-            form { display: grid; gap: 12px; }
-            .card { padding-bottom: 14px; }
-            .feld { padding: 10px 0; border-top: 1px solid var(--line); }
-            .feld:first-of-type { border-top: 0; }
-            .feld label { display: block; font-weight: 600; margin-bottom: 4px; }
+            form { display: grid; gap: 14px; }
+            form > * { min-width: 0; }
+            .abschnitte { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0 0 12px; font-size: 14px; }
+            .abschnitt { padding-bottom: 14px; scroll-margin-top: 12px; }
+            .abschnitt h3 { margin: 14px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px;
+              font-weight: 650; color: var(--text); }
+            .einleitung { margin: 2px 0 0; }
+            .felder { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+              gap: 0 28px; }
+            .feld { padding: 10px 0 2px; }
+            .feld label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+            table.geraete { width: 100%; margin-top: 8px; }
+            table.geraete th, table.geraete td { text-align: left; }
+            table.geraete td { padding: 4px 8px 4px 0; vertical-align: middle; }
+            table.geraete td:first-child { color: var(--muted); width: 1.5em; }
+            table.geraete input { width: 100%; min-width: 120px; }
+            .ungueltig input, .ungueltig select { border-color: var(--warn); }
+            .aktionen.fest { position: sticky; bottom: 0; z-index: 5; padding: 12px 16px; margin: 0;
+              background: color-mix(in srgb, var(--card) 94%, transparent); border: 1px solid var(--line);
+              border-radius: 14px; box-shadow: 0 -4px 16px rgb(0 0 0 / 0.06); }
+            .aktionen .hilfe { margin: 0; }
             .eingabe { display: flex; align-items: center; gap: 8px; }
             input, select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
               border-radius: 8px; padding: 6px 10px; width: min(100%, 320px); }

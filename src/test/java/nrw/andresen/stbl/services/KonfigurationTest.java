@@ -267,11 +267,12 @@ public class KonfigurationTest {
         Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
         String html = KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(), KonfigurationSeite.TEST,
                 "_csrf", "abc", "Testnachricht: Mail gesendet, Pushover fehlgeschlagen: HTTP 400.");
-        assertTrue(html.contains("<h2>Pushover</h2>"));
+        assertTrue(html.contains("<h3>Pushover</h3>"));
         assertTrue(html.contains("name=\"pushover.token\" value=\"\""));
-        // The test button sends its own form with the token against other sites
-        assertTrue(html.contains("<form method=\"post\" action=\"konfiguration/test\"><input type=\"hidden\" "
-                + "name=\"_csrf\" value=\"abc\">"));
+        // The test button sends the form with its token to the test address, in the section of the notifications
+        assertTrue(html.contains("formaction=\"konfiguration/test\" formnovalidate>Testnachricht senden</button>"));
+        assertTrue(html.indexOf("Testnachricht senden") > html.indexOf("id=\"benachrichtigungen\"")
+                && html.indexOf("Testnachricht senden") < html.indexOf("id=\"warnungen\""));
         assertTrue(html.contains("<p class=\"meldung fehler\">Testnachricht: Mail gesendet, Pushover "
                 + "fehlgeschlagen: HTTP 400.</p>"));
         Map<String, String> werte = new LinkedHashMap<>();
@@ -281,5 +282,32 @@ public class KonfigurationTest {
         // The user key is never shown, like the tokens
         assertEquals(Konfiguration.Typ.GEHEIM, Konfiguration.FELDER.stream()
                 .filter(f -> f.name().equals("pushover.user")).findFirst().orElseThrow().typ());
+    }
+
+    @Test
+    public void testAbschnitte(@TempDir Path ordner) throws Exception {
+        Path datei = ordner.resolve("application.properties");
+        Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
+        Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
+        String html = KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(), null, null, null);
+        // Every setting has its place in a section, nothing lands in "Weitere"
+        assertFalse(html.contains("<h2>Weitere</h2>"));
+        for (Konfiguration.Feld feld : Konfiguration.FELDER) {
+            assertTrue(html.contains("name=\"" + feld.name() + "\""), feld.name());
+        }
+        // In the order of setting up, with a jump list
+        java.util.List<String> ids = java.util.List.of("verbindung", "benachrichtigungen", "warnungen",
+                "homeassistant", "auswertung");
+        int vorher = -1;
+        for (String id : ids) {
+            int stelle = html.indexOf("id=\"" + id + "\"");
+            assertTrue(stelle > vorher, id);
+            vorher = stelle;
+            assertTrue(html.contains("<a class=\"nav\" href=\"#" + id + "\">"), id);
+        }
+        // The devices as table, a device that ran before is preset with yes
+        assertTrue(html.contains("<table class=\"geraete\">"));
+        assertTrue(html.contains("name=\"auswertung.geraet.1.vorher\" aria-label=\"Gerät 1: vorher schon vorhanden\">"
+                + "<option value=\"true\" selected>ja</option>"));
     }
 }
