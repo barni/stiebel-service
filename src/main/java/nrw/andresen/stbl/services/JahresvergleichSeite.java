@@ -79,7 +79,7 @@ public final class JahresvergleichSeite {
                             "kWh"))
                     .append(kpi("Gesamt " + (jahr - 1) + " gleiche Tage", zahl(vergleich.gesamtVorjahrGleich(), 0),
                             "kWh"))
-                    .append(kpi("Gesamt Veränderung", prozent(vergleich.gesamtAenderung()), ""))
+                    .append(kpi("Gesamt Veränderung gleiche Tage", prozent(vergleich.gesamtAenderung()), ""))
                     .append("</section>").append(jahresbalken(vergleich)).append(ursachen(vergleich))
                     .append(prognose(vergleich))
                     .append("<section class=\"kpis\">");

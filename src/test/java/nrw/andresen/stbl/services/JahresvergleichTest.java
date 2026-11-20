@@ -280,7 +280,7 @@ public class JahresvergleichTest {
         assertTrue(html.contains("Netzbezug des Hauses und Strom der Heizung, 2024 bis 2026"));
         // With the house meter no sentence at the top, the tiles say the same
         assertFalse(html.contains("<p class=\"meldung\">"));
-        assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung</div><div class=\"value\">−2,5 %</div>"));
+        assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung gleiche Tage</div><div class=\"value\">−2,5 %</div>"));
         assertTrue(html.contains("<h2>Netzbezug je Jahr</h2>"));
         assertTrue(html.contains("2026 Prognose"));
         // Each year after the first with its change against the year before
