@@ -139,4 +139,20 @@ public class UeberwachungTest {
         assertEquals(1, Waermepumpe.littleEndian((short) 0x0100));
         assertEquals(0x0201, Waermepumpe.littleEndian((short) 0x0102));
     }
+
+    @Test
+    public void testSchwelleOhneNeustart() {
+        Ueberwachung u = new Ueberwachung(1.3, 2.5, 90, 3, 38, 10, 2, 4, 0.15, 2.5, 110, 15, 195, 255);
+        Warnung druck = u.getWarnungen().get(0);
+        assertTrue(druck.getRegel().startsWith("Heizungsdruck unter 1,30 bar"), druck.getRegel());
+        assertTrue(u.schwelleSetzen("warnung.heizungsdruck.min", "1.1"));
+        assertTrue(druck.getRegel().startsWith("Heizungsdruck unter 1,10 bar"), druck.getRegel());
+        assertTrue(u.schwelleSetzen("warnung.abtauung.minuten", "20"));
+        assertTrue(u.getWarnungen().stream().anyMatch(w -> w.getRegel().contains("länger als 20 Minuten")));
+        // Not a threshold, or an empty value that means the default: only after a restart
+        assertFalse(u.schwelleSetzen("can.logall", "true"));
+        assertFalse(u.schwelleSetzen("warnung.heizungsdruck.min", ""));
+        assertTrue(Konfiguration.SOFORT.contains("warnung.spannung.max"));
+        assertFalse(Konfiguration.SOFORT.contains("mqtt.host"));
+    }
 }

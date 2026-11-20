@@ -10,8 +10,8 @@ import java.time.Instant;
 public class Warnung {
 
     private final String name;
-    private final String regel;
-    private final Duration verzoegerung;
+    private volatile String regel;
+    private volatile Duration verzoegerung;
     private Instant bedingungSeit;
     private Instant aktivSeit;
     private String text;
@@ -68,5 +68,13 @@ public class Warnung {
 
     public String getRegel() {
         return regel;
+    }
+
+    /**
+     * New rule and delay, e.g. after a threshold was changed on the configuration page; the state is kept
+     */
+    public void regel(String regel, Duration verzoegerung) {
+        this.regel = regel;
+        this.verzoegerung = verzoegerung;
     }
 }

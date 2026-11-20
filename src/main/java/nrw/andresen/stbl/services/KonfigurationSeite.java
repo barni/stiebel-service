@@ -159,12 +159,13 @@ public final class KonfigurationSeite {
                 .append("\"").append(gesperrt).append(">Speichern und neu starten</button>")
                 .append("<button type=\"submit\" class=\"zweit\" name=\"aktion\" value=\"speichern\"").append(gesperrt)
                 .append(">Nur speichern</button><span class=\"hilfe\">Der Neustart dauert etwa eine Minute, ohne ")
-                .append("Werte der Wärmepumpe. „Alle Nachrichten empfangen“ wirkt schon beim Speichern.</span></div>")
+                .append("Werte der Wärmepumpe. Mit <span class=\"sofort\">sofort</span> markierte Werte gelten schon ")
+                .append("beim Speichern.</span></div>")
                 .append("</form>")
                 .append("<p class=\"note\">Datei: ").append(text(stand.datei().toString()))
                 .append(". Vor jedem Speichern legt der Dienst daneben eine Kopie mit der Endung .bak an, Kommentare ")
-                .append("und Reihenfolge der Datei bleiben erhalten. Der Dienst liest seine Einstellungen nur beim ")
-                .append("Start. Das Login, Adresse und Port dieser Seite, die Logdatei und der Token der InfluxDB ")
+                .append("und Reihenfolge der Datei bleiben erhalten. Die übrigen Einstellungen liest der Dienst nur ")
+                .append("beim Start. Das Login, Adresse und Port dieser Seite, die Logdatei und der Token der InfluxDB ")
                 .append("stehen nur in der Datei: Ein Tippfehler dort würde die Seite aussperren.</p>")
                 .append("</main></body></html>");
         return html.toString();
@@ -295,7 +296,10 @@ public final class KonfigurationSeite {
         String id = feld.name().replace('.', '-');
         String angezeigt = eingabe != null ? eingabe : Konfiguration.anzeige(feld, wert.datei());
         StringBuilder html = new StringBuilder("<div class=\"feld").append(fehler == null ? "" : " ungueltig")
-                .append("\"><label for=\"").append(id).append("\">").append(text(feld.label())).append("</label>")
+                .append("\"><label for=\"").append(id).append("\">").append(text(feld.label()))
+                .append(Konfiguration.SOFORT.contains(feld.name())
+                        ? " <span class=\"sofort\" title=\"Gilt schon beim Speichern, ohne Neustart\">sofort</span>" : "")
+                .append("</label>")
                 .append("<div class=\"eingabe\">");
         String attribute = " id=\"" + id + "\" name=\"" + feld.name() + "\"" + (schreibbar ? "" : " disabled");
         switch (feld.typ()) {
@@ -403,6 +407,9 @@ public final class KonfigurationSeite {
             input:disabled, select:disabled { color: var(--muted); }
             .unit { color: var(--muted); }
             .hilfe { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+            .sofort { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: 11px;
+              font-weight: 600; line-height: 16px; vertical-align: 1px; color: var(--accent);
+              border: 1px solid var(--accent); }
             .ungueltig input, .ungueltig select { border-color: var(--warn); }
             .fehlertext { color: var(--warn); font-weight: 600; }
             .neustarttext { color: var(--stale); font-weight: 600; }

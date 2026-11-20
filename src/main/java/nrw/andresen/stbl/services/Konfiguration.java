@@ -247,7 +247,10 @@ public class Konfiguration {
                             + "die Antworten auf eigene Anfragen. Wirkt sofort beim Speichern, ohne Neustart."));
 
     // Settings the running service takes over when they are saved, without a restart
-    public static final Set<String> SOFORT = Set.of("can.logall");
+    // The thresholds of the warnings are compared at every check, the CAN filter is changed on the adapter
+    public static final Set<String> SOFORT = java.util.stream.Stream.concat(java.util.stream.Stream.of("can.logall"),
+            FELDER.stream().map(Feld::name).filter(n -> n.startsWith("warnung."))).collect(
+            java.util.stream.Collectors.toUnmodifiableSet());
 
     // Without these the service does not start, they cannot be left empty
     private static final Set<String> PFLICHT = Set.of("USBtin.port", "USBtin.speed", "can.logall");
