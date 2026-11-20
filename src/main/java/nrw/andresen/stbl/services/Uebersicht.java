@@ -187,18 +187,18 @@ public final class Uebersicht {
         double spanne = z.ende() - z.start();
         StringBuilder html = new StringBuilder("<section class=\"card zeitleiste\" aria-label=\"Letzte 24 Stunden\">"
                 + "<div class=\"zl-kopf\"><h2>Letzte 24 Stunden</h2><div class=\"zl-legende\">"
-                + "<span><i class=\"lg strom\"></i>Strom ≈ (Wirkleistung des Verdichters)</span>"
+                + "<span><i class=\"lg strom\"></i>Leistung ≈ (Verdichter)</span>"
                 + "<span><i class=\"lg abtau\"></i>Abtauung</span>");
         for (Linie l : z.linien()) {
             html.append("<span><i class=\"lg ").append(l.klasse()).append("\"></i>").append(t(l.name())).append("</span>");
         }
         List<Reihe> reihen = new ArrayList<>();
-        reihen.add(new Reihe("Strom ≈", "W", 0, z.stromZeit(), z.stromW()));
+        reihen.add(new Reihe("Leistung ≈", "W", 0, z.stromZeit(), z.stromW()));
         for (Linie l : z.linien()) {
             reihen.add(new Reihe(l.name(), "°C", 1, l.zeit(), l.wert()));
         }
         html.append("</div></div><div class=\"zl-raster\" data-verlauf=\"")
-                .append(t(verlaufJson(z.start(), z.ende(), reihen))).append("\"><span class=\"zl-achse-name\">Strom kW ≈</span>"
+                .append(t(verlaufJson(z.start(), z.ende(), reihen))).append("\"><span class=\"zl-achse-name\">Leistung kW ≈</span>"
                 + "<div class=\"zl-strom\" data-plot><svg viewBox=\"0 0 1000 60\" preserveAspectRatio=\"none\" aria-hidden=\"true\">"
                 + "<line x1=\"0\" x2=\"1000\" y1=\"31\" y2=\"31\"/><line x1=\"0\" x2=\"1000\" y1=\"4\" y2=\"4\"/>");
         if (z.stromW().length > 0) {

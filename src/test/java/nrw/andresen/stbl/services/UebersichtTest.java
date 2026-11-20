@@ -47,7 +47,7 @@ public class UebersichtTest {
     public void testSignale() {
         Instant jetzt = Instant.parse("2026-11-18T14:00:00Z");
         Rahmen.Signal heizt = SignalService.betrieb(true, false, jetzt.minusSeconds(42 * 60), null, 890.0, jetzt);
-        assertEquals("Heizt seit 42 min · Strom ≈ 0,89 kW", heizt.wert());
+        assertEquals("Heizt seit 42 min · Leistung ≈ 0,89 kW", heizt.wert());
         assertEquals("aktiv", heizt.art());
         assertEquals("Taut ab", SignalService.betrieb(true, true, null, null, 900.0, jetzt).wert());
         assertTrue(SignalService.betrieb(false, false, null, jetzt.minusSeconds(3600), 0.0, jetzt).wert()
@@ -98,14 +98,14 @@ public class UebersichtTest {
         String html = Uebersicht.kacheln(List.of(
                 new Uebersicht.Kachel("Heizungsdruck", "1,79", "bar", "Warnung unter 1,3", new long[]{0, 1},
                         new double[]{1.78, 1.80}, 1.7, 1.9, "druck", "Heizungsdruck", 2),
-                new Uebersicht.Kachel("Strom jetzt ≈", "0", "W", "", new long[0], new double[0], 0, 1000, "strom",
+                new Uebersicht.Kachel("Leistung jetzt ≈", "0", "W", "", new long[0], new double[0], 0, 1000, "strom",
                         null, 0)));
         assertTrue(html.contains("class=\"kachel klickbar\" data-series=\"Heizungsdruck\""));
         assertTrue(html.contains("data-decimals=\"2\""));
         assertTrue(html.contains("<svg class=\"spark\" viewBox=\"0 0 100 30\" preserveAspectRatio=\"none\" "
                 + "aria-hidden=\"true\" data-verlauf=\""));
         // Without a course no chart and no dialog
-        assertTrue(html.contains("<div class=\"kachel\"><span class=\"kachel-name\">Strom jetzt ≈</span>"));
+        assertTrue(html.contains("<div class=\"kachel\"><span class=\"kachel-name\">Leistung jetzt ≈</span>"));
     }
 
     @Test
@@ -130,7 +130,7 @@ public class UebersichtTest {
         assertTrue(html.contains("class=\"zl-abtau\" data-wert=\"Abtauung 03:00\" style=\"left:50.00%\""));
         // Values under the pointer: electricity and lines with their times, the gap as null
         assertTrue(html.contains("class=\"zl-raster\" data-verlauf=\"{&quot;von&quot;:" + start));
-        assertTrue(html.contains("&quot;n&quot;:&quot;Strom ≈&quot;,&quot;e&quot;:&quot;W&quot;,&quot;s&quot;:0"));
+        assertTrue(html.contains("&quot;n&quot;:&quot;Leistung ≈&quot;,&quot;e&quot;:&quot;W&quot;,&quot;s&quot;:0"));
         assertTrue(html.contains("&quot;w&quot;:[33.0,34.0,35.0,null]"));
         assertTrue(html.contains("<div class=\"zl-strom\" data-plot>"));
         assertTrue(html.contains("<polyline class=\"vorlauf\""));
