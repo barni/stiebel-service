@@ -221,9 +221,9 @@ public final class JahresvergleichSeite {
                 + "beide Jahre Messwerte gibt.")
                 + hochgerechnet(v)
                 + (v.wetter() == null ? "" : " Wetter: Heizgradtage nach VDI 3807 (an Tagen unter 15 °C die "
-                + "Differenz zu 20 °C) aus der Außentemperatur; die Heizung von " + (v.jahr() - 1) + " wird mit dem "
-                + "Verhältnis der Gradtage auf das Wetter von " + v.jahr() + " umgerechnet, der Rest ist Anlage und "
-                + "Nutzung.")
+                + "Differenz zu 20 °C) aus der Außentemperatur; die Heizung von " + (v.jahr() - 1) + " wird Monat "
+                + "für Monat mit dem Verhältnis der Gradtage auf das Wetter von " + v.jahr() + " umgerechnet, Monate "
+                + "mit weniger als 20 Gradtagen im Vorjahr ohne Wetter. Der Rest ist Anlage und Nutzung.")
                 + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 2) + " ct/kWh, ohne Grundpreis.")
                 + "</p></article></section>";
     }

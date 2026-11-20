@@ -127,18 +127,37 @@ public class Jahresvergleich {
      * @param gradtage               per year the heating degree days from the 1st of January up to the same day,
      *                               null where the outdoor temperature is missing; empty if not known
      * @param preis                  price of electricity in € per kWh, null if not set
+     * @param gradtageMonate         per month (index 0 January) and year the heating degree days, the current
+     *                               month up to the same day; empty if not known
      */
     public record Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                             List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
                             Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
-                            List<Jahressumme> jahressummen, List<Double> gradtage, Double preis) {
+                            List<Jahressumme> jahressummen, List<Double> gradtage, Double preis,
+                            List<List<Double>> gradtageMonate) {
+
+        public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
+                         List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
+                         Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
+                         List<Jahressumme> jahressummen, List<Double> gradtage, Double preis) {
+            this(jahre, bis, monate, mitHaushalt, geraete, gesamt, gesamtVorjahrGleich, gesamtVorvorjahrGleich,
+                    geraeteGleich, berechnet, jahressummen, gradtage, preis, List.of());
+        }
+
+        /**
+         * Copy with another price
+         */
+        public Vergleich mitPreis(Double neu) {
+            return new Vergleich(jahre, bis, monate, mitHaushalt, geraete, gesamt, gesamtVorjahrGleich,
+                    gesamtVorvorjahrGleich, geraeteGleich, berechnet, jahressummen, gradtage, neu, gradtageMonate);
+        }
 
         public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                          List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
                          Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
                          List<Jahressumme> jahressummen) {
             this(jahre, bis, monate, mitHaushalt, geraete, gesamt, gesamtVorjahrGleich, gesamtVorvorjahrGleich,
-                    geraeteGleich, berechnet, jahressummen, List.of(), null);
+                    geraeteGleich, berechnet, jahressummen, List.of(), null, List.of());
         }
 
         /**
@@ -149,9 +168,11 @@ public class Jahresvergleich {
         }
 
         /**
-         * Part of the change of the heating against the same days of the year before that comes from the weather:
-         * the heating of the year before scaled by the heating degree days, minus the heating of the year before.
-         * Null without the degree days of both years.
+         * Part of the change of the heating against the same days of the year before that comes from the weather.
+         * Month by month the heating of the year before is scaled by the heating degree days: a colder November
+         * weighs more than a milder September. A month with fewer than MIN_GRADTAGE in the year before has no
+         * reference and counts without weather. Without the months the whole year is scaled. Null without the
+         * degree days of both years.
          */
         public Double wetter() {
             Double jetzt = gradtage(JAHRE - 1);
@@ -159,7 +180,27 @@ public class Jahresvergleich {
             if (jetzt == null || vorher == null || vorher <= 0) {
                 return null;
             }
-            return heizungGleich(JAHRE - 2) * (jetzt / vorher - 1);
+            if (gradtageMonate.isEmpty()) {
+                return heizungGleich(JAHRE - 2) * (jetzt / vorher - 1);
+            }
+            double summe = 0;
+            for (int m = 0; m < Math.min(12, gradtageMonate.size()); m++) {
+                List<Double> g = gradtageMonate.get(m);
+                Double gJetzt = g.get(JAHRE - 1);
+                Double gVorher = g.get(JAHRE - 2);
+                Double hVorher = m < monate.size() ? monate.get(m).heizungGleich().get(JAHRE - 2) : null;
+                if (gJetzt == null || gVorher == null || hVorher == null) {
+                    // A month without the outdoor temperature: not known
+                    if (m < monate.size() && monate.get(m).heizungGleich().get(JAHRE - 1) != null) {
+                        return null;
+                    }
+                    continue;
+                }
+                if (gVorher >= MIN_GRADTAGE) {
+                    summe += hVorher * (gJetzt / gVorher - 1);
+                }
+            }
+            return summe;
         }
 
         /**
@@ -484,9 +525,7 @@ public class Jahresvergleich {
         setPreis(preis);
         Vergleich v = ergebnis;
         if (v != null) {
-            ergebnis = new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.geraete(), v.gesamt(),
-                    v.gesamtVorjahrGleich(), v.gesamtVorvorjahrGleich(), v.geraeteGleich(), v.berechnet(),
-                    v.jahressummen(), v.gradtage(), this.preis);
+            ergebnis = v.mitPreis(this.preis);
         }
     }
 
@@ -578,9 +617,21 @@ public class Jahresvergleich {
         for (int j : v.jahre()) {
             gradtage.add(gradtage(tage, LocalDate.of(j, 1, 1), jetzt.toLocalDate().withYear(j)));
         }
+        // Per month up to the current one, which counts up to the same day
+        List<List<Double>> gradtageMonate = new ArrayList<>();
+        for (int m = 1; m <= laufend.getMonthValue(); m++) {
+            List<Double> jeJahr = new ArrayList<>();
+            for (int j : v.jahre()) {
+                LocalDate von = LocalDate.of(j, m, 1);
+                LocalDate bisTag = m == laufend.getMonthValue() ? jetzt.toLocalDate().withYear(j) : von.plusMonths(1);
+                jeJahr.add(gradtage(tage, von, bisTag));
+            }
+            gradtageMonate.add(java.util.Collections.unmodifiableList(jeJahr));
+        }
         return new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.geraete(), v.gesamt(),
                 v.gesamtVorjahrGleich(), v.gesamtVorvorjahrGleich(), v.geraeteGleich(), v.berechnet(),
-                v.jahressummen(), java.util.Collections.unmodifiableList(gradtage), preis);
+                v.jahressummen(), java.util.Collections.unmodifiableList(gradtage), preis,
+                java.util.Collections.unmodifiableList(gradtageMonate));
     }
 
     /**
@@ -844,6 +895,8 @@ public class Jahresvergleich {
     static final double INNEN = 20;
     // Share of the days that needs a value, otherwise the degree days are not known
     static final double MIN_ABDECKUNG = 0.9;
+    // A month with fewer degree days in the year before is no reference for the weather, e.g. July
+    static final double MIN_GRADTAGE = 20;
 
     /**
      * Heating degree days from the day von up to the day before bis (the day bis is not over yet); null if the

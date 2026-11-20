@@ -103,7 +103,8 @@ before you rely on it.
   heating and wallbox) and the wallbox on top of the heating; `haushalt=nein` / `wallbox=nein` leave them out. The
   card "Woran liegt es?" shows the gap to the year before added up from the 1st of January, in total and per part,
   and a table against the two years before; the change of the heating is split into weather and the rest by the
-  heating degree days (VDI 3807, Gt20/15, from the daily mean outdoor temperature) of both years. A forecast up to
+  heating degree days (VDI 3807, Gt20/15, from the daily mean outdoor temperature) of both years, month by month
+  (months with fewer than 20 degree days in the year before count without weather). A forecast up to
   the end of the year adds to each part what is still expected: heating as in the rest of the two years before, the
   household as in the rest of the year before, a device as in the rest of the year before if it was measured then,
   otherwise at the rate of the last three full months. With `auswertung.strompreis` (€ per kWh) the forecast, the
