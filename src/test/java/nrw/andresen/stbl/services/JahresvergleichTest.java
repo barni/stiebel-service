@@ -568,4 +568,42 @@ public class JahresvergleichTest {
                 ohne.berechnet(), ohne.jahressummen(), java.util.List.of(2000.0, 2000.0, 2140.0), null, monate)
                 .wetter(), 1e-9);
     }
+
+    @Test
+    public void testPv() {
+        assertEquals(639.0, Jahresvergleich.eigen(649.0, 10.0), 1e-9);
+        assertEquals(649.0, Jahresvergleich.eigen(649.0, null), 1e-9);
+        assertNull(Jahresvergleich.eigen(null, 10.0));
+        Map<YearMonth, Double> bezug = new TreeMap<>(Map.of(YearMonth.of(2026, 5), 300.0));
+        assertEquals(bezug, Jahresvergleich.plusPv(bezug, Map.of(), Map.of()));
+        assertEquals(395.0, Jahresvergleich.plusPv(bezug, Map.of(YearMonth.of(2026, 5), 100.0),
+                Map.of(YearMonth.of(2026, 5), 5.0)).get(YearMonth.of(2026, 5)), 1e-9);
+
+        Jahresvergleich.Vergleich ohne = vergleich(true);
+        assertFalse(ohne.mitPv());
+        assertEquals(7800.0, ohne.netz(), 1e-9);
+        // Consumption 7800 with 640 kWh own PV this year, 600 the year before, 50 still expected
+        Jahresvergleich.Vergleich v = new Jahresvergleich.Vergleich(ohne.jahre(), ohne.bis(), ohne.monate(),
+                ohne.mitHaushalt(), ohne.geraete(), ohne.gesamt(), ohne.gesamtVorjahrGleich(), null,
+                ohne.geraeteGleich(), ohne.berechnet(), ohne.jahressummen(), java.util.List.of(), 0.30,
+                java.util.List.of(), new Jahresvergleich.GleicheTage(640.0, 600.0, null, false, 50.0));
+        assertTrue(v.mitPv());
+        assertEquals(7160.0, v.netz(), 1e-9);
+        String karte = JahresvergleichSeite.ursachen(v);
+        assertTrue(karte.contains("<td>davon aus PV</td><td>600</td><td>640</td><td>+40 kWh</td><td>–</td>"), karte);
+        // The total costs only the grid import: −200 kWh consumption, 40 more from PV, −240 kWh from the grid
+        assertTrue(karte.contains("−200 kWh (−2,5 %) · −72 €"), karte);
+        String prognose = JahresvergleichSeite.prognose(v);
+        assertTrue(prognose.contains("kWh verbrauchen, "), prognose);
+        assertTrue(prognose.contains("<td>davon aus PV</td><td>640</td><td>50</td><td>690</td><td>650</td>"), prognose);
+        assertTrue(prognose.contains("spart 207"), prognose);
+        assertTrue(JahresvergleichSeite.render(v, null, true, true).contains("Stromverbrauch je Jahr")
+                || JahresvergleichSeite.jahresbalken(v).isEmpty());
+
+        Jahresvergleich.Zeitraum z = new Jahresvergleich.Zeitraum(LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
+                Instant.parse("2026-02-01T00:00:00Z"), 100.0, 600.0, 300, java.util.List.of(), java.util.List.of(), 20.0);
+        assertEquals(500.0, z.gesamt(), 1e-9);
+        assertEquals(520.0, z.verbrauch(), 1e-9);
+        assertEquals(220.0, z.haushalt(), 1e-9);
+    }
 }

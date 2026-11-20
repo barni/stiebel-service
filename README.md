@@ -108,7 +108,10 @@ before you rely on it.
   the end of the year adds to each part what is still expected: heating as in the rest of the two years before, the
   household as in the rest of the year before, a device as in the rest of the year before if it was measured then,
   otherwise at the rate of the last three full months. With `auswertung.strompreis` (€ per kWh) the forecast, the
-  changes and the period also show the cost, without the standing charge. Months that are over are read once, the current
+  changes and the period also show the cost, without the standing charge. With the yield of the own PV
+  (`auswertung.pv.ertrag`, optionally minus the feed-in `auswertung.pv.einspeisung`) the PV used in the house counts
+  to the consumption and the household: the total is then grid import plus PV, with a row "davon aus PV", and only
+  the grid import counts for the cost. Months that are over are read once, the current
   month every hour. "Verbrauch im Zeitraum" (`/jahresvergleich?von=2025-12-01&bis=2026-11-30`) shows the readings
   of the house meter at the start of the first and the end of the last day, the grid import between them and its
   parts, to compare with the electricity bill.
@@ -119,7 +122,7 @@ before you rely on it.
   counted on. A device that ran before its first reading (`.vorher`, default on) is part of the household until
   then and counted in the rest of the comparison until both years have values; a new one counts 0 before. The
   service checks every 15 minutes that the house meter and the outdoor temperature from Home Assistant had a value in
-  the last 6 hours and every device counter in the last 10 days, otherwise the warning about the service is raised.
+  the last 6 hours and every device counter and the PV yield in the last 10 days, otherwise the warning about the service is raised.
 - **Condition and ageing** on the page `/zustand` and as JSON from `/zustand/daten`: per heating season (July to June,
   since `auswertung.zustand.start`, default 2022-07-01) the efficiency, starts, hours per start and defrosts at the
   same outdoor temperature (0 to 5 °C and 5 to 10 °C), failed starts per 1000 mild starts and the heating pressure

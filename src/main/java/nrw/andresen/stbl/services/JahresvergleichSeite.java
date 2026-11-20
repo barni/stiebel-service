@@ -54,7 +54,8 @@ public final class JahresvergleichSeite {
                 .append("<title>Wärmepumpe · Jahresvergleich</title><style>").append(StatusPage.CSS).append(CSS)
                 .append("</style></head><body><main><header><div><h1>Jahresvergleich</h1><p class=\"sub\">")
                 .append(vergleich == null ? "Stromverbrauch je Jahr und Monat"
-                        : (vergleich.gesamt() != null ? "Netzbezug des Hauses und Strom der Heizung, "
+                        : (vergleich.gesamt() != null ? (vergleich.mitPv() ? "Stromverbrauch" : "Netzbezug")
+                        + " des Hauses und Strom der Heizung, "
                         : "Strom der Heizung je Monat, ") + vergleich.jahre().get(0) + " bis " + vergleich.jahr())
                 .append("</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
@@ -141,15 +142,18 @@ public final class JahresvergleichSeite {
                 .append("gespeicherten Scheinleistung, wie in der Tagesübersicht, ohne Pumpe und Regelung. Der Zähler ")
                 .append("der Wärmepumpe zeigt etwa 15 % weniger. Die Änderung vergleicht ").append(jahr)
                 .append(" mit ").append(jahr - 1).append(", im laufenden Monat dieselben Tage bis zur gleichen Stunde.")
-                .append(vergleich.mitHaushalt() ? " Haushalt ist der Netzbezug laut Hauszähler minus Heizung"
-                        + (vergleich.geraete().isEmpty() ? "" : " und " + namen(vergleich))
-                        + "; Strom aus der eigenen PV-Anlage ist nicht enthalten." : " Den Haushaltsstrom "
+                .append(vergleich.mitHaushalt() ? " Haushalt ist der Netzbezug laut Hauszähler"
+                        + (vergleich.mitPv() ? " plus der im Haus verbrauchte Strom der eigenen PV-Anlage" : "")
+                        + " minus Heizung" + (vergleich.geraete().isEmpty() ? "" : " und " + namen(vergleich))
+                        + (vergleich.mitPv() ? "." : "; Strom aus der eigenen PV-Anlage ist nicht enthalten.")
+                        : " Den Haushaltsstrom "
                         + "zeigt die Seite, wenn in der Konfiguration der Hauszähler eingetragen ist.")
                 .append(vergleich.geraete().isEmpty() ? "" : " " + namen(vergleich)
                         + ": Zählerstände der Geräte; vor ihrem ersten Wert zählt ein Gerät, das es schon gab, zum "
                         + "Haushalt.")
-                .append(vergleich.gesamt() != null ? " Gesamt ist der Netzbezug laut Hauszähler vom 1. Januar bis "
-                        + "jetzt, verglichen mit dem Vorjahr bis zur gleichen Stunde." : "")
+                .append(vergleich.gesamt() != null ? " Gesamt ist der " + (vergleich.mitPv()
+                        ? "Stromverbrauch (Netzbezug plus PV im Haus)" : "Netzbezug laut Hauszähler")
+                        + " vom 1. Januar bis jetzt, verglichen mit dem Vorjahr bis zur gleichen Stunde." : "")
                 .append(" Außentemperatur: Mittel der Tagesmittel.</p>")
                 .append("</article></section>")
                 .append(zeitraumKarte(vergleich, zeitraum, vergleich.bis().minusYears(1), vergleich.bis().minusDays(1)))
@@ -181,9 +185,16 @@ public final class JahresvergleichSeite {
             }
             zeile.add(zahl(a.vorher(), 0));
             zeile.add(zahl(a.jetzt(), 0));
-            zeile.add(differenz(a) + euro(v, a.differenz(), true));
+            // Only the grid import costs money: the change of the total without the own PV
+            Double kosten = a != gesamt ? Double.valueOf(a.differenz()) : !v.mitPv() ? a.differenz()
+                    : v.pv().jetzt() == null || v.pv().vorjahr() == null ? null
+                    : a.differenz() - (v.pv().jetzt() - v.pv().vorjahr());
+            zeile.add(differenz(a) + euro(v, kosten, true));
             zeile.add(mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–");
             zeilen.add(zeile);
+            if (a == gesamt && v.mitPv()) {
+                zeilen.add(pvZeile(v.pv(), dreiJahre));
+            }
             if (a.name().startsWith("Rest")) {
                 zeilen.addAll(davonZeilen(v, dreiJahre));
             }
@@ -214,7 +225,8 @@ public final class JahresvergleichSeite {
                 "<div class=\"tbl vorvorjahr\">") : tabelle(kopf, zeilen))
                 + "<p class=\"note\">Jeweils vom 1. Januar bis zum selben Tag und zur selben Stunde. Änderungen "
                 + "und Anteile gegenüber " + (v.jahr() - 1) + (dreiJahre ? ", " + (v.jahr() - 2) + " zum Vergleich" : "")
-                + ". Rest ist Netzbezug minus Heizung" + (v.gezeigt().isEmpty() ? "" : " und "
+                + ". Rest ist " + (v.mitPv() ? "der Verbrauch" : "Netzbezug") + " minus Heizung"
+                + (v.gezeigt().isEmpty() ? "" : " und "
                 + String.join(", ", v.gezeigt().stream().map(k -> v.geraete().get(k).name()).toList()))
                 + ", also der übrige Haushalt mit Lüftung und Geräten."
                 + (v.imRest().isEmpty() ? "" : " " + String.join(", ", v.imRest()) + " zählt zum Rest, bis es für "
@@ -226,6 +238,23 @@ public final class JahresvergleichSeite {
                 + "mit weniger als 20 Gradtagen im Vorjahr ohne Wetter. Der Rest ist Anlage und Nutzung.")
                 + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 2) + " ct/kWh, ohne Grundpreis.")
                 + "</p></article></section>";
+    }
+
+    /**
+     * Row "davon aus PV" under the total: the own PV used in the house
+     */
+    private static List<String> pvZeile(Jahresvergleich.GleicheTage pv, boolean dreiJahre) {
+        List<String> zeile = new ArrayList<>();
+        zeile.add("davon aus PV");
+        if (dreiJahre) {
+            zeile.add(zahl(pv.vorvorjahr(), 0));
+        }
+        zeile.add(zahl(pv.vorjahr(), 0));
+        zeile.add(zahl(pv.jetzt(), 0));
+        zeile.add(pv.jetzt() == null || pv.vorjahr() == null ? "–" : vorzeichen(pv.jetzt() - pv.vorjahr())
+                + zahl(Math.abs(pv.jetzt() - pv.vorjahr()), 0) + " kWh");
+        zeile.add("–");
+        return zeile;
     }
 
     /**
@@ -330,11 +359,19 @@ public final class JahresvergleichSeite {
         }
         int jahr = v.jahr();
         Jahresvergleich.Prognose erste = teile.get(0);
-        String was = erste.name().equals("Gesamt") ? "Das Haus wird " + jahr + " voraussichtlich "
-                + zahl(erste.jahr(), 0) + " kWh aus dem Netz beziehen"
-                : "Die Heizung wird " + jahr + " voraussichtlich " + zahl(erste.jahr(), 0) + " kWh brauchen";
+        // The own PV up to now and as in the rest of the year before
+        Jahresvergleich.GleicheTage pv = erste.name().equals("Gesamt") ? v.pv() : null;
+        boolean mitPv = pv != null && pv.jetzt() != null;
+        double pvJahr = mitPv ? pv.jetzt() + (pv.restVorjahr() == null ? 0 : pv.restVorjahr()) : 0;
+        double netzJahr = erste.jahr() - pvJahr;
+        String was = !erste.name().equals("Gesamt")
+                ? "Die Heizung wird " + jahr + " voraussichtlich " + zahl(erste.jahr(), 0) + " kWh brauchen"
+                : mitPv ? "Das Haus wird " + jahr + " voraussichtlich " + zahl(erste.jahr(), 0) + " kWh verbrauchen, "
+                + zahl(netzJahr, 0) + " kWh davon aus dem Netz"
+                : "Das Haus wird " + jahr + " voraussichtlich " + zahl(erste.jahr(), 0) + " kWh aus dem Netz beziehen";
         Double aenderung = erste.aenderung();
-        String satz = was + (v.preis() == null ? "" : " (etwa " + zahl(erste.jahr() * v.preis(), 0) + " €)")
+        String satz = was + (v.preis() == null ? "" : " (etwa " + zahl((erste.name().equals("Gesamt") ? netzJahr
+                : erste.jahr()) * v.preis(), 0) + " €)")
                 + (aenderung == null ? "." : ", " + (Math.abs(aenderung) < 1 ? "etwa so viel wie"
                 : zahl(Math.abs(aenderung), 1) + " % " + (aenderung > 0 ? "mehr" : "weniger") + " als") + " "
                 + (jahr - 1) + " (" + zahl(erste.vorjahr(), 0) + " kWh).");
@@ -343,10 +380,24 @@ public final class JahresvergleichSeite {
         for (Jahresvergleich.Prognose p : teile) {
             List<String> z = new ArrayList<>(List.of(geschaetzt(p.name()), zahl(p.bisher(), 0), zahl(p.erwartet(), 0),
                     zahl(p.jahr(), 0), zahl(p.vorjahr(), 0), prozent(p.aenderung())));
+            boolean gesamt = p == erste && p.name().equals("Gesamt");
             if (v.preis() != null) {
-                z.add(zahl(p.jahr() * v.preis(), 0));
+                // The total costs only its grid import
+                z.add(zahl((gesamt ? netzJahr : p.jahr()) * v.preis(), 0));
             }
             zeilen.add(z);
+            if (gesamt && mitPv) {
+                double erwartet = pv.restVorjahr() == null ? 0 : pv.restVorjahr();
+                Double vorjahr = pv.vorjahr() == null || pv.restVorjahr() == null ? null
+                        : pv.vorjahr() + pv.restVorjahr();
+                List<String> d = new ArrayList<>(List.of("davon aus PV", zahl(pv.jetzt(), 0), zahl(erwartet, 0),
+                        zahl(pvJahr, 0), zahl(vorjahr, 0), prozent(vorjahr == null || vorjahr <= 0 ? null
+                                : (pvJahr / vorjahr - 1) * 100)));
+                if (v.preis() != null) {
+                    d.add("spart " + zahl(pvJahr * v.preis(), 0));
+                }
+                zeilen.add(d);
+            }
             if (p.name().startsWith("Rest")) {
                 // The devices in the rest, expected at the rate of the last three months
                 for (int k : davon(v)) {
@@ -369,7 +420,10 @@ public final class JahresvergleichSeite {
                 + (v.geraete().isEmpty() ? "" : ", Geräte wie im Rest von " + (jahr - 1) + ", wenn sie damals "
                 + "schon gemessen wurden, sonst mit dem Verbrauch je Tag der letzten drei vollen Monate") + ". Ein "
                 + "kalter oder milder Winter verschiebt die Heizung um einige hundert kWh."
-                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 2) + " ct/kWh, ohne Grundpreis.")
+                + (v.mitPv() ? " PV: im Haus verbrauchter Strom der eigenen Anlage (Ertrag minus Einspeisung), bis "
+                + "31.12. wie im Rest von " + (jahr - 1) + "." : "")
+                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 2) + " ct/kWh, ohne Grundpreis"
+                + (v.mitPv() ? "; Gesamt nur der Netzbezug, die PV spart den Rest" : "") + ".")
                 + "</p></article></section>";
     }
 
@@ -773,6 +827,10 @@ public final class JahresvergleichSeite {
             Double gesamt = z.gesamt();
             zeilen.add(List.of("Netzbezug (" + z.tage() + " Tage)", zahl(gesamt, 0)
                     + (gesamt == null ? "" : " · " + zahl(gesamt / z.tage(), 1) + " je Tag") + euro(v, gesamt, false)));
+            if (z.pv() != null) {
+                zeilen.add(List.of("PV im Haus verbraucht", zahl(z.pv(), 0)));
+                zeilen.add(List.of("Verbrauch", zahl(z.verbrauch(), 0)));
+            }
             zeilen.add(List.of("davon Heizung ≈", zahl(z.heizung(), 0)));
             List<String> unbekannt = new ArrayList<>();
             for (int k = 0; k < z.namen().size(); k++) {
@@ -874,7 +932,7 @@ public final class JahresvergleichSeite {
         int hoehe = n * zeile + 6;
         double breite = B - links - rechts;
         StringBuilder svg = new StringBuilder("<div class=\"diagramm\"><svg viewBox=\"0 0 " + B + " " + hoehe
-                + "\" width=\"100%\" role=\"img\" aria-label=\"Netzbezug je Jahr\">");
+                + "\" width=\"100%\" role=\"img\" aria-label=\"" + (v.mitPv() ? "Stromverbrauch" : "Netzbezug") + " je Jahr\">");
         for (int i = 0; i < n; i++) {
             double[] t = jahre.get(i);
             double y = 4 + i * zeile;
@@ -913,7 +971,8 @@ public final class JahresvergleichSeite {
             legende.append("<span><i class=\"sw ").append(k == 0 ? "teil-heizung" : klassen.get(k)).append("\"></i>")
                     .append(text(namen.get(k))).append("</span>");
         }
-        return "<section class=\"cards\"><article class=\"card breit\"><h2>Netzbezug je Jahr</h2>"
+        return "<section class=\"cards\"><article class=\"card breit\"><h2>" + (v.mitPv() ? "Stromverbrauch"
+                : "Netzbezug") + " je Jahr</h2>"
                 + "<p class=\"legende\">" + legende + "<span>"
                 + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten; "
                 + "% gegenüber dem Vorjahr; ein Gerät vor seinem ersten Messwert steckt im Haushalt"

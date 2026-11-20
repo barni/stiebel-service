@@ -129,19 +129,45 @@ public class Jahresvergleich {
      * @param preis                  price of electricity in € per kWh, null if not set
      * @param gradtageMonate         per month (index 0 January) and year the heating degree days, the current
      *                               month up to the same day; empty if not known
+     * @param pv                     electricity of the own PV used in the house (yield minus feed-in) on the same
+     *                               days, with the rest of the year before; null without PV. With PV gesamt and
+     *                               the household include it: the whole consumption, not only the grid import.
      */
     public record Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                             List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
                             Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
                             List<Jahressumme> jahressummen, List<Double> gradtage, Double preis,
-                            List<List<Double>> gradtageMonate) {
+                            List<List<Double>> gradtageMonate, GleicheTage pv) {
+
+        public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
+                         List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
+                         Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
+                         List<Jahressumme> jahressummen, List<Double> gradtage, Double preis,
+                         List<List<Double>> gradtageMonate) {
+            this(jahre, bis, monate, mitHaushalt, geraete, gesamt, gesamtVorjahrGleich, gesamtVorvorjahrGleich,
+                    geraeteGleich, berechnet, jahressummen, gradtage, preis, gradtageMonate, null);
+        }
+
+        /**
+         * True if gesamt is the whole consumption with the own PV, false if it is the grid import
+         */
+        public boolean mitPv() {
+            return pv != null;
+        }
+
+        /**
+         * Grid import of this year up to now: the consumption minus the own PV, null if not known
+         */
+        public Double netz() {
+            return gesamt == null ? null : pv == null ? gesamt : pv.jetzt() == null ? null : gesamt - pv.jetzt();
+        }
 
         public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
                          List<Geraete.Geraet> geraete, Double gesamt, Double gesamtVorjahrGleich,
                          Double gesamtVorvorjahrGleich, List<GleicheTage> geraeteGleich, Instant berechnet,
                          List<Jahressumme> jahressummen, List<Double> gradtage, Double preis) {
             this(jahre, bis, monate, mitHaushalt, geraete, gesamt, gesamtVorjahrGleich, gesamtVorvorjahrGleich,
-                    geraeteGleich, berechnet, jahressummen, gradtage, preis, List.of());
+                    geraeteGleich, berechnet, jahressummen, gradtage, preis, List.of(), null);
         }
 
         /**
@@ -149,7 +175,8 @@ public class Jahresvergleich {
          */
         public Vergleich mitPreis(Double neu) {
             return new Vergleich(jahre, bis, monate, mitHaushalt, geraete, gesamt, gesamtVorjahrGleich,
-                    gesamtVorvorjahrGleich, geraeteGleich, berechnet, jahressummen, gradtage, neu, gradtageMonate);
+                    gesamtVorvorjahrGleich, geraeteGleich, berechnet, jahressummen, gradtage, neu, gradtageMonate,
+                    pv);
         }
 
         public Vergleich(List<Integer> jahre, LocalDate bis, List<Monat> monate, boolean mitHaushalt,
@@ -461,14 +488,30 @@ public class Jahresvergleich {
      * @param geraete     their electricity, null where not known
      */
     public record Zeitraum(LocalDate von, LocalDate bis, Instant ende, Double standAnfang, Double standEnde,
-                           double heizung, List<String> namen, List<Double> geraete) {
+                           double heizung, List<String> namen, List<Double> geraete, Double pv) {
 
+        public Zeitraum(LocalDate von, LocalDate bis, Instant ende, Double standAnfang, Double standEnde,
+                        double heizung, List<String> namen, List<Double> geraete) {
+            this(von, bis, ende, standAnfang, standEnde, heizung, namen, geraete, null);
+        }
+
+        /**
+         * Grid import between the readings
+         */
         public Double gesamt() {
             return standAnfang == null || standEnde == null ? null : standEnde - standAnfang;
         }
 
-        public Double haushalt() {
+        /**
+         * Grid import plus the own PV used in the house, the grid import without PV
+         */
+        public Double verbrauch() {
             Double g = gesamt();
+            return g == null ? null : g + (pv == null ? 0 : pv);
+        }
+
+        public Double haushalt() {
+            Double g = verbrauch();
             return g == null ? null : g - heizung
                     - geraete.stream().filter(x -> x != null).mapToDouble(Double::doubleValue).sum();
         }
@@ -519,6 +562,19 @@ public class Jahresvergleich {
 
     // Price of electricity in € per kWh, null if not set
     private volatile Double preis;
+    // Counters of the own PV: the yield and the feed-in to the grid, empty if not set
+    private String pvErtrag = "";
+    private String pvEinspeisung = "";
+
+    @Value("${auswertung.pv.ertrag:}")
+    void setPvErtrag(String entity) {
+        pvErtrag = entity == null ? "" : entity.trim();
+    }
+
+    @Value("${auswertung.pv.einspeisung:}")
+    void setPvEinspeisung(String entity) {
+        pvEinspeisung = entity == null ? "" : entity.trim();
+    }
 
     public Jahresvergleich(@Value("${auswertung.haushalt.bucket:}") String haushaltBucket,
                            @Value("${auswertung.haushalt.zaehler:}") String hauszaehler) {
@@ -584,7 +640,8 @@ public class Jahresvergleich {
         for (int k = 1; k < JAHRE; k++) {
             gleich.put(jahr - k, strom(start(laufend.minusYears(k)), jetzt.minusYears(k).toInstant()));
         }
-        Map<YearMonth, Double> bezug = verbrauch(hauszaehler, erster, laufend, jetzt);
+        Map<YearMonth, Double> bezug = plusPv(verbrauch(hauszaehler, erster, laufend, jetzt),
+                verbrauch(pvErtrag, erster, laufend, jetzt), verbrauch(pvEinspeisung, erster, laufend, jetzt));
         List<Geraete.Geraet> liste = geraete.getListe();
         reihen = reihenLesen(liste);
         List<Map<YearMonth, Double>> geraeteMonate = new ArrayList<>();
@@ -618,6 +675,22 @@ public class Jahresvergleich {
         Map<YearMonth, Double> aussen = monatsmittel(tage);
         // Grid import from the 1st of January up to now and up to the same hour in the years before
         Double[] gesamt = bisJetzt(hauszaehler, jetzt);
+        GleicheTage pv = null;
+        if (!hauszaehler.isEmpty() && !pvErtrag.isEmpty()) {
+            Double[] ertrag = bisJetzt(pvErtrag, jetzt);
+            Double[] einspeisung = bisJetzt(pvEinspeisung, jetzt);
+            Double[] eigen = new Double[3];
+            for (int i = 0; i < 3; i++) {
+                eigen[i] = eigen(ertrag[i], einspeisung[i]);
+                gesamt[i] = gesamt[i] == null || eigen[i] == null ? gesamt[i] : gesamt[i] + eigen[i];
+            }
+            Instant vorJahr = jetzt.minusYears(1).toInstant();
+            Instant neujahr = start(YearMonth.of(jahr, 1));
+            Double rest = eigen(differenz(stand(pvErtrag, vorJahr), stand(pvErtrag, neujahr)),
+                    pvEinspeisung.isEmpty() ? 0.0
+                            : differenz(stand(pvEinspeisung, vorJahr), stand(pvEinspeisung, neujahr)));
+            pv = new GleicheTage(eigen[0], eigen[1], eigen[2], false, rest);
+        }
         Vergleich v = vergleich(jahr, jetzt.toLocalDate(), heizung, gleich, haushalt(bezug, heizung, geraeteMonate),
                 !hauszaehler.isEmpty(), liste, geraeteMonate, aussen, gesamt[0], gesamt[1], gesamt[2],
                 geraeteGleich, Instant.now(), jahressummen(jahr, liste));
@@ -639,7 +712,7 @@ public class Jahresvergleich {
         return new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.geraete(), v.gesamt(),
                 v.gesamtVorjahrGleich(), v.gesamtVorvorjahrGleich(), v.geraeteGleich(), v.berechnet(),
                 v.jahressummen(), java.util.Collections.unmodifiableList(gradtage), preis,
-                java.util.Collections.unmodifiableList(gradtageMonate));
+                java.util.Collections.unmodifiableList(gradtageMonate), pv);
     }
 
     /**
@@ -687,6 +760,12 @@ public class Jahresvergleich {
             if (gesamt == null) {
                 continue;
             }
+            if (!pvErtrag.isEmpty()) {
+                Double eigen = eigen(differenz(stand(pvErtrag, anfang), stand(pvErtrag, ende)),
+                        pvEinspeisung.isEmpty() ? 0.0
+                                : differenz(stand(pvEinspeisung, anfang), stand(pvEinspeisung, ende)));
+                gesamt += eigen == null ? 0 : eigen;
+            }
             double heizung = 0;
             for (YearMonth m = YearMonth.of(j, 1); m.getYear() == j; m = m.plusMonths(1)) {
                 heizung += heizungFertig.computeIfAbsent(m, x -> strom(start(x), start(x.plusMonths(1))));
@@ -732,7 +811,13 @@ public class Jahresvergleich {
                     : strom(t, bisHier);
             t = bisHier;
         }
-        return new Zeitraum(von, bis, ende, standAnfang, standEnde, heizung, namen, teile);
+        Double pv = null;
+        if (!pvErtrag.isEmpty()) {
+            pv = eigen(differenz(zaehlerstand(pvErtrag, anfang, jetzt), zaehlerstand(pvErtrag, ende, jetzt)),
+                    pvEinspeisung.isEmpty() ? 0.0 : differenz(zaehlerstand(pvEinspeisung, anfang, jetzt),
+                            zaehlerstand(pvEinspeisung, ende, jetzt)));
+        }
+        return new Zeitraum(von, bis, ende, standAnfang, standEnde, heizung, namen, teile, pv);
     }
 
     /**
@@ -817,6 +902,30 @@ public class Jahresvergleich {
 
     private static Double differenz(Double anfang, Double ende) {
         return anfang == null || ende == null ? null : ende - anfang;
+    }
+
+    /**
+     * PV used in the house: the yield minus the feed-in, not below 0; null if the yield is not known, a feed-in that
+     * is not known counts 0 (it is only a few percent)
+     */
+    static Double eigen(Double ertrag, Double einspeisung) {
+        return ertrag == null ? null : Math.max(0, ertrag - (einspeisung == null ? 0 : einspeisung));
+    }
+
+    /**
+     * Grid import per month plus the own PV used in the house; unchanged without PV
+     */
+    static Map<YearMonth, Double> plusPv(Map<YearMonth, Double> bezug, Map<YearMonth, Double> ertrag,
+                                         Map<YearMonth, Double> einspeisung) {
+        if (ertrag.isEmpty()) {
+            return bezug;
+        }
+        Map<YearMonth, Double> summe = new TreeMap<>();
+        bezug.forEach((monat, kwh) -> {
+            Double pv = eigen(ertrag.get(monat), einspeisung.get(monat));
+            summe.put(monat, kwh == null ? null : kwh + (pv == null ? 0 : pv));
+        });
+        return summe;
     }
 
     /**
