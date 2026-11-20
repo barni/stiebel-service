@@ -154,6 +154,7 @@ public class UeberwachungTest {
         assertFalse(u.schwelleSetzen("warnung.heizungsdruck.min", ""));
         assertTrue(Konfiguration.SOFORT.contains("warnung.spannung.max"));
         assertFalse(Konfiguration.SOFORT.contains("mqtt.host"));
+        assertTrue(Konfiguration.SOFORT.contains("auswertung.strompreis"));
     }
 
     @Test

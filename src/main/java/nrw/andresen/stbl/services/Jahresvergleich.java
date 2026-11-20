@@ -469,12 +469,25 @@ public class Jahresvergleich {
     }
 
     // Price of electricity in € per kWh, null if not set
-    private Double preis;
+    private volatile Double preis;
 
     public Jahresvergleich(@Value("${auswertung.haushalt.bucket:}") String haushaltBucket,
                            @Value("${auswertung.haushalt.zaehler:}") String hauszaehler) {
         this.haushaltBucket = haushaltBucket.trim();
         this.hauszaehler = hauszaehler.trim();
+    }
+
+    /**
+     * Takes over the price saved on the configuration page at once, also for the comparison already calculated
+     */
+    public void preisSetzen(String preis) {
+        setPreis(preis);
+        Vergleich v = ergebnis;
+        if (v != null) {
+            ergebnis = new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.geraete(), v.gesamt(),
+                    v.gesamtVorjahrGleich(), v.gesamtVorvorjahrGleich(), v.geraeteGleich(), v.berechnet(),
+                    v.jahressummen(), v.gradtage(), this.preis);
+        }
     }
 
     @Value("${auswertung.strompreis:}")
