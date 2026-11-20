@@ -155,6 +155,11 @@ public class Jahresvergleich {
          * What the grid import from the 1st of January up to now consists of, against the same days of the year
          * before: total, the devices, heating and the rest. Empty without the house meter.
          */
+        /**
+         * Index of the rest in {@link #aufteilung()}: total, heating, rest, then the devices
+         */
+        public static final int REST = 2;
+
         public List<Anteil> aufteilung() {
             if (gesamt == null || gesamtVorjahrGleich == null) {
                 return List.of();
@@ -169,15 +174,18 @@ public class Jahresvergleich {
             double restJetzt = gesamt - heizungJetzt;
             double restVorher = gesamtVorjahrGleich - heizungVorher;
             Double restVorvorher = mitVorvorjahr ? gesamtVorvorjahrGleich - heizungVorvorher : null;
+            // Same order as the forecast: total, heating, rest, devices
+            List<Anteil> eigene = new ArrayList<>();
             for (int k : gezeigt()) {
                 GleicheTage t = geraeteGleich.get(k);
-                anteile.add(new Anteil(geraete.get(k).name(), t.vorjahr(), t.jetzt(), mitVorvorjahr ? t.vorvorjahr() : null));
+                eigene.add(new Anteil(geraete.get(k).name(), t.vorjahr(), t.jetzt(), mitVorvorjahr ? t.vorvorjahr() : null));
                 restJetzt -= t.jetzt();
                 restVorher -= t.vorjahr();
                 restVorvorher = restVorvorher == null || t.vorvorjahr() == null ? null : restVorvorher - t.vorvorjahr();
             }
             anteile.add(new Anteil("Heizung", heizungVorher, heizungJetzt, heizungVorvorher));
             anteile.add(new Anteil(restName(), restVorher, restJetzt, restVorvorher));
+            anteile.addAll(eigene);
             return anteile;
         }
 
@@ -212,7 +220,7 @@ public class Jahresvergleich {
             List<Anteil> anteile = aufteilung();
             List<Integer> gezeigt = gezeigt();
             if (!anteile.isEmpty() && haushalt(JAHRE - 2) != null) {
-                Anteil rest = anteile.get(anteile.size() - 1);
+                Anteil rest = anteile.get(REST);
                 // The whole rest of the year before: household plus the devices counted in the rest
                 double restVorjahr = haushalt(JAHRE - 2);
                 for (int k = 0; k < geraete.size(); k++) {

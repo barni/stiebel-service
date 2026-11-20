@@ -159,12 +159,13 @@ public final class KonfigurationSeite {
                 .append("\"").append(gesperrt).append(">Speichern und neu starten</button>")
                 .append("<button type=\"submit\" class=\"zweit\" name=\"aktion\" value=\"speichern\"").append(gesperrt)
                 .append(">Nur speichern</button><span class=\"hilfe\">Der Neustart dauert etwa eine Minute, ohne ")
-                .append("Werte der Wärmepumpe. „Alle Nachrichten empfangen“ wirkt schon beim Speichern.</span></div>")
+                .append("Werte der Wärmepumpe. Mit <span class=\"sofort\">sofort</span> markierte Werte gelten schon ")
+                .append("beim Speichern.</span></div>")
                 .append("</form>")
                 .append("<p class=\"note\">Datei: ").append(text(stand.datei().toString()))
                 .append(". Vor jedem Speichern legt der Dienst daneben eine Kopie mit der Endung .bak an, Kommentare ")
-                .append("und Reihenfolge der Datei bleiben erhalten. Der Dienst liest seine Einstellungen nur beim ")
-                .append("Start. Das Login, Adresse und Port dieser Seite, die Logdatei und der Token der InfluxDB ")
+                .append("und Reihenfolge der Datei bleiben erhalten. Die übrigen Einstellungen liest der Dienst nur ")
+                .append("beim Start. Das Login, Adresse und Port dieser Seite, die Logdatei und der Token der InfluxDB ")
                 .append("stehen nur in der Datei: Ein Tippfehler dort würde die Seite aussperren.</p>")
                 .append("</main></body></html>");
         return html.toString();
@@ -214,16 +215,18 @@ public final class KonfigurationSeite {
                     new Teil("Geräte mit eigenem Zähler", GERAETE))));
 
     /**
-     * The devices as table, one row each: name, counter, earlier readings, ran before
+     * The devices as table, one row each: name, counter, readings before the counter, ran before the first value
      */
     private static String geraete(Map<String, Konfiguration.Wert> werte, Map<String, String> eingabe,
                                   Map<String, String> fehler, boolean schreibbar) {
         StringBuilder html = new StringBuilder("<p class=\"hilfe\">Zum Beispiel ein Shelly an Klimaanlage oder "
-                + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Zähler und Werte davor "
-                + "sind Home-Assistant-Entities mit dem Zählerstand in kWh; Werte davor sind frühere, etwa händisch "
-                + "abgelesene Stände. „Vorher da“: Das Gerät lief schon vor dem ersten Wert und steckte bis dahin im "
-                + "Haushalt; „nein, neu“ etwa für eine neue Wallbox, vorher zählt sie 0.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
-                + "<th>Zähler</th><th>Werte davor</th><th>Vorher da</th></tr></thead><tbody>");
+                + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Beide Spalten mit "
+                + "Werten sind Home-Assistant-Entities mit dem Zählerstand in kWh. „Werte vor dem Zähler“: Stände aus "
+                + "der Zeit, bevor es den Zähler gab, etwa händisch abgelesen; der Zähler setzt danach fort. „Vor dem "
+                + "ersten Wert“: „lief schon“, wenn das Gerät vor seinem ersten Wert (von Hand oder vom Zähler) "
+                + "ungemessen im Haushalt steckte; „gab es noch nicht“ etwa für eine neue Wallbox, vorher zählt sie "
+                + "0.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
+                + "<th>Zähler</th><th>Werte vor dem Zähler</th><th>Vor dem ersten Wert</th></tr></thead><tbody>");
         List<String> meldungen = new ArrayList<>();
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             html.append("<tr><td>").append(n).append("</td>");
@@ -244,8 +247,8 @@ public final class KonfigurationSeite {
                     boolean an = eingabe.get(name) != null ? eingabe.get(name).equals("true")
                             : Boolean.parseBoolean(wert.datei());
                     html.append("<select").append(attribute).append("><option value=\"true\"")
-                            .append(an ? " selected" : "").append(">ja</option><option value=\"false\"")
-                            .append(an ? "" : " selected").append(">nein, neu</option></select>");
+                            .append(an ? " selected" : "").append(">lief schon</option><option value=\"false\"")
+                            .append(an ? "" : " selected").append(">gab es noch nicht</option></select>");
                 } else {
                     html.append("<input type=\"text\"").append(attribute).append(" value=\"").append(text(angezeigt))
                             .append("\">");
@@ -293,7 +296,10 @@ public final class KonfigurationSeite {
         String id = feld.name().replace('.', '-');
         String angezeigt = eingabe != null ? eingabe : Konfiguration.anzeige(feld, wert.datei());
         StringBuilder html = new StringBuilder("<div class=\"feld").append(fehler == null ? "" : " ungueltig")
-                .append("\"><label for=\"").append(id).append("\">").append(text(feld.label())).append("</label>")
+                .append("\"><label for=\"").append(id).append("\">").append(text(feld.label()))
+                .append(Konfiguration.SOFORT.contains(feld.name())
+                        ? " <span class=\"sofort\" title=\"Gilt schon beim Speichern, ohne Neustart\">sofort</span>" : "")
+                .append("</label>")
                 .append("<div class=\"eingabe\">");
         String attribute = " id=\"" + id + "\" name=\"" + feld.name() + "\"" + (schreibbar ? "" : " disabled");
         switch (feld.typ()) {
@@ -401,6 +407,9 @@ public final class KonfigurationSeite {
             input:disabled, select:disabled { color: var(--muted); }
             .unit { color: var(--muted); }
             .hilfe { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+            .sofort { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: 11px;
+              font-weight: 600; line-height: 16px; vertical-align: 1px; color: var(--accent);
+              border: 1px solid var(--accent); }
             .ungueltig input, .ungueltig select { border-color: var(--warn); }
             .fehlertext { color: var(--warn); font-weight: 600; }
             .neustarttext { color: var(--stale); font-weight: 600; }

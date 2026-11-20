@@ -24,6 +24,20 @@
     tip.style.left = Math.max(8, left) + 'px';
     tip.style.top = Math.max(8, top) + 'px';
   };
+  // The text of a bar with the part under the pointer (data-teil) in bold, e.g. "…: Heizung 120 kWh, …"
+  const mitTeil = (text, teil) => {
+    if (!teil) return esc(text);
+    let i = -1;
+    for (const davor of [': ', ', ']) {
+      const j = text.indexOf(davor + teil + ' ');
+      if (j >= 0 && (i < 0 || j < i)) i = j + davor.length;
+    }
+    if (i < 0) return esc(text);
+    const rest = text.slice(i);
+    const m = rest.search(/[,;]/);
+    const ende = m < 0 ? text.length : i + m;
+    return esc(text.slice(0, i)) + '<b>' + esc(text.slice(i, ende)) + '</b>' + esc(text.slice(ende));
+  };
   const linienWeg = () => document.querySelectorAll('.dlinie').forEach(l => l.remove());
   const verberge = () => { tip.hidden = true; linienWeg(); };
 
@@ -75,7 +89,7 @@
 
   const bewegt = e => {
     const punkt = e.target.closest && e.target.closest('[data-wert]');
-    if (punkt) { linienWeg(); zeige(e.clientX, e.clientY, esc(punkt.dataset.wert)); return; }
+    if (punkt) { linienWeg(); zeige(e.clientX, e.clientY, mitTeil(punkt.dataset.wert, punkt.dataset.teil)); return; }
     const box = e.target.closest && e.target.closest('[data-verlauf]');
     if (box && verlauf(box, e)) return;
     verberge();

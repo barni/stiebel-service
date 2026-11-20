@@ -79,7 +79,7 @@ public final class JahresvergleichSeite {
                             "kWh"))
                     .append(kpi("Gesamt " + (jahr - 1) + " gleiche Tage", zahl(vergleich.gesamtVorjahrGleich(), 0),
                             "kWh"))
-                    .append(kpi("Gesamt Veränderung", prozent(vergleich.gesamtAenderung()), ""))
+                    .append(kpi("Gesamt Veränderung gleiche Tage", prozent(vergleich.gesamtAenderung()), ""))
                     .append("</section>").append(jahresbalken(vergleich)).append(ursachen(vergleich))
                     .append(prognose(vergleich))
                     .append("<section class=\"kpis\">");
@@ -124,11 +124,11 @@ public final class JahresvergleichSeite {
                 .append("der laufende Monat ist heller, er ist noch nicht vorbei</span></p>");
         List<String> schalter = new ArrayList<>();
         if (vergleich.mitHaushalt()) {
-            schalter.add("<a class=\"nav\" href=\"" + adresse(!mitHaushalt, mitGeraete) + "\">Haushaltsstrom "
+            schalter.add("<a class=\"nav bleiben\" href=\"" + adresse(!mitHaushalt, mitGeraete) + "\">Haushaltsstrom "
                     + (mitHaushalt ? "ausblenden" : "einblenden") + "</a>");
         }
         if (!vergleich.geraete().isEmpty()) {
-            schalter.add("<a class=\"nav\" href=\"" + adresse(mitHaushalt, !mitGeraete) + "\">Geräte "
+            schalter.add("<a class=\"nav bleiben\" href=\"" + adresse(mitHaushalt, !mitGeraete) + "\">Geräte "
                     + (mitGeraete ? "ausblenden" : "einblenden") + "</a>");
         }
         if (!schalter.isEmpty()) {
@@ -154,7 +154,7 @@ public final class JahresvergleichSeite {
                 .append("</article></section>")
                 .append(zeitraumKarte(vergleich, zeitraum, vergleich.bis().minusYears(1), vergleich.bis().minusDays(1)))
                 .append("<p class=\"note\">Stand ").append(ZEIT.format(vergleich.berechnet()))
-                .append(", stündlich neu berechnet.</p></main></body></html>");
+                .append(", stündlich neu berechnet.</p></main>").append(POSITION).append("</body></html>");
         return html.toString();
     }
 
@@ -184,20 +184,9 @@ public final class JahresvergleichSeite {
             zeile.add(differenz(a));
             zeile.add(mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–");
             zeilen.add(zeile);
-        }
-        // Devices counted in the rest: how much of the rest they were, without a change against the year before
-        for (int k : davon(v)) {
-            Jahresvergleich.GleicheTage t = v.geraeteGleich().get(k);
-            List<String> zeile = new ArrayList<>();
-            zeile.add("davon " + v.geraete().get(k).name());
-            if (dreiJahre) {
-                zeile.add(t.vorvorjahr() == null ? "nicht gemessen" : zahl(t.vorvorjahr(), 0));
+            if (a.name().startsWith("Rest")) {
+                zeilen.addAll(davonZeilen(v, dreiJahre));
             }
-            zeile.add(t.vorjahr() == null ? "nicht gemessen" : zahl(t.vorjahr(), 0));
-            zeile.add(zahl(t.jetzt(), 0));
-            zeile.add("–");
-            zeile.add("–");
-            zeilen.add(zeile);
         }
         List<String> kopf = new ArrayList<>();
         kopf.add(zeitraum);
@@ -227,6 +216,27 @@ public final class JahresvergleichSeite {
                 + "beide Jahre Messwerte gibt.")
                 + hochgerechnet(v)
                 + "</p></article></section>";
+    }
+
+    /**
+     * Devices counted in the rest: how much of the rest they were, without a change against the year before
+     */
+    private static List<List<String>> davonZeilen(Jahresvergleich.Vergleich v, boolean dreiJahre) {
+        List<List<String>> zeilen = new ArrayList<>();
+        for (int k : davon(v)) {
+            Jahresvergleich.GleicheTage t = v.geraeteGleich().get(k);
+            List<String> zeile = new ArrayList<>();
+            zeile.add("davon " + v.geraete().get(k).name());
+            if (dreiJahre) {
+                zeile.add(t.vorvorjahr() == null ? "nicht gemessen" : zahl(t.vorvorjahr(), 0));
+            }
+            zeile.add(t.vorjahr() == null ? "nicht gemessen" : zahl(t.vorjahr(), 0));
+            zeile.add(zahl(t.jetzt(), 0));
+            zeile.add("–");
+            zeile.add("–");
+            zeilen.add(zeile);
+        }
+        return zeilen;
     }
 
     /**
@@ -530,18 +540,18 @@ public final class JahresvergleichSeite {
                         + (m.laufend() && i < J - 1 && m.heizungGleich().get(i) != null
                         ? "; bis zum gleichen Tag " + zahl(m.heizungGleich().get(i), 0) + " kWh" : "");
                 double x = x0 + i * balken + 1;
-                svg.append(balken("j" + i + (laufend ? " laufend" : ""), x, balken - 2, 0, heizung, oben, titel));
+                svg.append(balken("j" + i + (laufend ? " laufend" : ""), x, balken - 2, 0, heizung, oben, titel, "Heizung"));
                 double unten = heizung;
                 if (haushalt != null && haushalt > 0) {
                     svg.append(balken("haushalt j" + i + (laufend ? " laufend" : ""), x, balken - 2, unten,
-                            unten + haushalt, oben, titel));
+                            unten + haushalt, oben, titel, "Haushalt"));
                     unten += haushalt;
                 }
                 for (int k = 0; k < anzahl; k++) {
                     Double g = m.geraet(k, i);
                     if (g != null && g > 0) {
                         svg.append(balken("geraet g" + k + " j" + i + (laufend ? " laufend" : ""), x, balken - 2,
-                                unten, unten + g, oben, titel));
+                                unten, unten + g, oben, titel, v.geraete().get(k).name()));
                         unten += g;
                     }
                 }
@@ -552,12 +562,16 @@ public final class JahresvergleichSeite {
         return svg.append("</svg></div>").toString();
     }
 
+    /**
+     * A part of a stacked bar; teil names the part in the text, the tooltip shows it bold
+     */
     private static String balken(String klasse, double x, double breite, double von, double bis, double oben,
-                                 String titel) {
+                                 String titel, String teil) {
         double y = y(bis, oben);
         double hoehe = Math.max(0, y(von, oben) - y);
         return String.format(Locale.ROOT, "<rect class=\"%s\" x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" "
-                + "rx=\"2\" data-wert=\"%s\"></rect>", klasse, x, y, breite, hoehe, text(titel));
+                + "rx=\"2\" data-wert=\"%s\" data-teil=\"%s\"></rect>", klasse, x, y, breite, hoehe, text(titel),
+                text(teil));
     }
 
     private static double y(double wert, double oben) {
@@ -824,7 +838,7 @@ public final class JahresvergleichSeite {
             return "";
         }
         int jahr = v.jahr();
-        // The lines in the order of the parts: total, devices, heating, rest
+        // The lines in the order of the parts: total, heating, rest, devices
         List<String> klassen = new ArrayList<>();
         List<String> namen = new ArrayList<>();
         for (Jahresvergleich.Anteil a : anteile) {
@@ -852,15 +866,14 @@ public final class JahresvergleichSeite {
             }
             double[] d = new double[linienAnzahl];
             d[0] = gJetzt - gVorher;
-            double rest = d[0];
+            d[1] = wert(m.heizung().get(J - 1)) - wert(m.heizung().get(J - 2));
+            double rest = d[0] - d[1];
             for (int z = 0; z < gezeigt.size(); z++) {
                 int k = gezeigt.get(z);
-                d[1 + z] = wert(m.geraet(k, J - 1)) - wert(m.geraet(k, J - 2));
-                rest -= d[1 + z];
+                d[3 + z] = wert(m.geraet(k, J - 1)) - wert(m.geraet(k, J - 2));
+                rest -= d[3 + z];
             }
-            d[linienAnzahl - 2] = wert(m.heizung().get(J - 1)) - wert(m.heizung().get(J - 2));
-            rest -= d[linienAnzahl - 2];
-            d[linienAnzahl - 1] = rest;
+            d[2] = rest;
             double x = java.time.YearMonth.of(jahr, m.monat()).atEndOfMonth().getDayOfYear() / tage;
             for (int k = 0; k < linienAnzahl; k++) {
                 summe[k] += d[k];
@@ -883,7 +896,8 @@ public final class JahresvergleichSeite {
         double schritt = schritt(Math.max(max - min, 1));
         double unten = Math.floor(min / schritt) * schritt;
         double oben = Math.max(schritt, Math.ceil(max / schritt) * schritt);
-        int rechts = 130;
+        // Room for the labels at the end of the lines, e.g. "Klimaanlage +298 kWh"
+        int rechts = 150;
         double breite = B - LINKS - rechts;
         java.util.function.DoubleUnaryOperator yv = w -> OBEN + (oben - w) / (oben - unten) * (H - OBEN - UNTEN);
         StringBuilder svg = new StringBuilder("<div class=\"diagramm\"><svg viewBox=\"0 0 " + B + " " + H
@@ -934,13 +948,29 @@ public final class JahresvergleichSeite {
             int k = (int) e[1];
             svg.append(String.format(Locale.ROOT, "<text class=\"etikett %s\" x=\"%.1f\" y=\"%.1f\">%s %s</text>",
                     klassen.get(k), e[3] + 8, e[0] + 4, text(namen.get(k).replace(" ≈", "")),
-                    vorzeichen(e[2]) + zahl(Math.abs(e[2]), 0)));
+                    vorzeichen(e[2]) + zahl(Math.abs(e[2]), 0) + " kWh"));
         }
         return svg.append("</svg></div>").toString();
     }
 
     // The colors of the devices are the page's own, light and dark like the tokens of the status page; chosen
     // so that each stays apart from heating (teal) and household (amber), also for colour blindness
+    // The switches load the page again; it opens at the same place instead of at the top
+    private static final String POSITION = """
+            <script>
+            (() => {
+              try {
+                const y = sessionStorage.getItem('jahresvergleich-y');
+                if (y !== null) { sessionStorage.removeItem('jahresvergleich-y'); scrollTo(0, +y); }
+              } catch (e) {}
+              document.addEventListener('click', e => {
+                if (e.target.closest && e.target.closest('a.bleiben')) {
+                  try { sessionStorage.setItem('jahresvergleich-y', String(scrollY)); } catch (x) {}
+                }
+              });
+            })();
+            </script>""";
+
     private static final String CSS = """
             :root { --g0: #6d5bd0; --g1: #38bdf8; --g2: #1e293b; --g3: #84cc16; --g4: #db2777; }
             @media (prefers-color-scheme: dark) { :root { --g0: #a99bf0; --g1: #2563eb; --g2: #f1f5f9; --g3: #a3e635; --g4: #f472b6; } }

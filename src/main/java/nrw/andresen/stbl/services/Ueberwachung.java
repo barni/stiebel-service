@@ -58,19 +58,21 @@ public class Ueberwachung {
     @Autowired
     private WaermebedarfVergleich vergleich;
 
-    private final double druckMin;
-    private final double druckMax;
-    private final double antwortquoteMin;
-    private final int startsProStundeMax;
-    private final double hochdruckMax;
-    private final double spreizungMax;
-    private final double frostAussentemp;
-    private final Duration frostOhneLauf;
-    private final double druckAbfallMax;
-    private final double niederdruckMin;
-    private final double heissgasMax;
-    private final double spannungMin;
-    private final double spannungMax;
+    private volatile double druckMin;
+    private volatile double druckMax;
+    private volatile double antwortquoteMin;
+    private volatile int startsProStundeMax;
+    private volatile double hochdruckMax;
+    private volatile double spreizungMax;
+    private volatile double frostAussentemp;
+    private volatile Duration frostOhneLauf;
+    private volatile double druckAbfallMax;
+    private volatile double niederdruckMin;
+    private volatile double heissgasMax;
+    private volatile double spannungMin;
+    private volatile double spannungMax;
+    private volatile double frostStunden;
+    private volatile int abtauungMinuten;
     private final Warnung druck;
     private final Warnung druckHoch;
     private final Warnung hochdruck;
@@ -140,52 +142,118 @@ public class Ueberwachung {
         this.heissgasMax = heissgasMax;
         this.spannungMin = spannungMin;
         this.spannungMax = spannungMax;
-        hochdruck = new Warnung("Hochdruck hoch", "Hochdruck im Kältekreis über " + (int) hochdruckMax
-                + " bar; im Betrieb sind es sonst höchstens etwa 30 bar, der Hochdruckwächter schaltet bei 45 bar ab. "
-                + "Meist fließt zu wenig Heizwasser durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe).",
-                Duration.ofMinutes(1));
-        spreizung = new Warnung("Spreizung groß", "Vorlauf mehr als " + (int) spreizungMax
-                + " K über dem Rücklauf, 5 Minuten lang bei laufendem Verdichter (Soll 5 K). Es fließt zu wenig "
-                + "Heizwasser durch die Wärmepumpe: Heizkreise, Entlüftung und Pumpe prüfen. So war es am "
-                + "24.04.2021 (Vorlauf bis 62 °C, Hochdruck 44 bar).", Duration.ofMinutes(5));
-        druck = new Warnung("Heizungsdruck niedrig", "Heizungsdruck unter " + zahl(druckMin)
-                + " bar. Wasser nachfüllen; die Warnung endet ab " + zahl(druckMin + DRUCK_HYSTERESE_BAR) + " bar.",
-                Duration.ofMinutes(5));
-        druckHoch = new Warnung("Heizungsdruck hoch", "Heizungsdruck über " + zahl(druckMax)
-                + " bar, z. B. zu viel nachgefüllt oder Ausdehnungsgefäß ohne Vordruck. Das Sicherheitsventil öffnet "
-                + "meist bei 3 bar; die Warnung endet ab " + zahl(druckMax - DRUCK_HYSTERESE_BAR) + " bar.",
-                Duration.ofMinutes(5));
-        keinHeizbetrieb = new Warnung("Keine Wärme bei Frost", "Der Verdichter lief " + kurz(frostStunden)
-                + " Stunden nicht, bei im Mittel unter " + kurz(frostAussentemp) + " °C außen. Bei Frost lief er "
-                + "2024 bis 2026 nie länger als 2 Stunden nicht. Störung im Display des WPM, EVU-Sperre und "
-                + "Sicherungen prüfen.", Duration.ZERO);
-        druckAbfall = new Warnung("Heizungsdruck fällt", "Der Heizungsdruck lag im Mittel der letzten 24 Stunden "
-                + "mehr als " + zahl(druckAbfallMax) + " bar unter dem Mittel der 24 Stunden davor (2024 bis 2026 "
-                + "höchstens 0,08 bar, sonst etwa 0,2 bar im Jahr). Hinweis auf ein Leck: Heizkreisverteiler, "
-                + "Sicherheitsventil und Wärmepumpe auf Wasser prüfen.", Duration.ZERO);
-        niederdruck = new Warnung("Niederdruck niedrig", "Niederdruck im Kältekreis unter " + kurz(niederdruckMin)
-                + " bar, 10 Minuten lang bei laufendem Verdichter (2024 bis 2026 bei Frost mindestens 3,2 bar). "
-                + "Hinweis auf zu wenig Kältemittel oder einen vereisten Verdampfer.", Duration.ofMinutes(10));
-        heissgas = new Warnung("Heißgas heiß", "Heißgastemperatur über " + (int) heissgasMax
-                + " °C, 5 Minuten lang (seit 10/2026 höchstens 88 °C). Hinweis auf zu wenig Kältemittel; der "
-                + "Verdichter wird zu heiß.", Duration.ofMinutes(5));
-        abtauung = new Warnung("Abtauung dauert lange", "Eine Abtauung läuft länger als " + abtauungMinuten
-                + " Minuten (sonst 2 bis 6 Minuten). Verdampfer auf Eis und den Ablauf des Tauwassers prüfen.",
-                Duration.ofMinutes(abtauungMinuten));
-        spannung = new Warnung("Netzspannung", "Spannung am Inverter unter " + (int) spannungMin + " oder über "
-                + (int) spannungMax + " V, 5 Minuten lang (2024 bis 2026 203 bis 245 V; der Inverter zeigt etwa "
-                + "11 V zu wenig an).", Duration.ofMinutes(5));
+        hochdruck = new Warnung("Hochdruck hoch", "", Duration.ZERO);
+        spreizung = new Warnung("Spreizung groß", "", Duration.ZERO);
+        druck = new Warnung("Heizungsdruck niedrig", "", Duration.ZERO);
+        druckHoch = new Warnung("Heizungsdruck hoch", "", Duration.ZERO);
+        keinHeizbetrieb = new Warnung("Keine Wärme bei Frost", "", Duration.ZERO);
+        druckAbfall = new Warnung("Heizungsdruck fällt", "", Duration.ZERO);
+        niederdruck = new Warnung("Niederdruck niedrig", "", Duration.ZERO);
+        heissgas = new Warnung("Heißgas heiß", "", Duration.ZERO);
+        abtauung = new Warnung("Abtauung dauert lange", "", Duration.ZERO);
+        spannung = new Warnung("Netzspannung", "", Duration.ZERO);
         heizstab = new Warnung("Heizstab läuft", "Stufe 1 oder 2 des Heizstabs (DHC) ist an. Das kam bisher "
                 + "praktisch nie vor, der Heizstab braucht für dieselbe Wärme ein Vielfaches an Strom.",
                 Duration.ZERO);
-        antwortquote = new Warnung("Antwortquote niedrig", "Weniger als " + (int) antwortquoteMin
-                + " % der Anfragen beantwortet, 10 Minuten lang. Hinweis auf Probleme am CAN-Bus.",
-                Duration.ofMinutes(10));
-        starts = new Warnung("Viele Verdichterstarts", "Mehr als " + startsProStundeMax
-                + " Verdichterstarts in der letzten Stunde (Takten). Bei Frost sind es sonst etwa 1 bis 1,5.",
-                Duration.ZERO);
+        antwortquote = new Warnung("Antwortquote niedrig", "", Duration.ZERO);
+        starts = new Warnung("Viele Verdichterstarts", "", Duration.ZERO);
         dienst = new Warnung("Dienstprüfung fehlgeschlagen", "Eine Prüfung des Dienstes schlägt fehl, z. B. "
                 + "InfluxDB nicht erreichbar oder Schreiben/Lesen nicht erlaubt.", Duration.ofMinutes(15));
+        this.frostStunden = frostStunden;
+        this.abtauungMinuten = abtauungMinuten;
+        regelnSetzen();
+    }
+
+    /**
+     * Texts and delays of the warnings that depend on a threshold
+     */
+    private void regelnSetzen() {
+        hochdruck.regel("Hochdruck im Kältekreis über " + (int) hochdruckMax
+                + " bar; im Betrieb sind es sonst höchstens etwa 30 bar, der Hochdruckwächter schaltet bei 45 bar ab. "
+                + "Meist fließt zu wenig Heizwasser durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe).",
+                Duration.ofMinutes(1));
+        spreizung.regel("Vorlauf mehr als " + (int) spreizungMax
+                + " K über dem Rücklauf, 5 Minuten lang bei laufendem Verdichter (Soll 5 K). Es fließt zu wenig "
+                + "Heizwasser durch die Wärmepumpe: Heizkreise, Entlüftung und Pumpe prüfen. So war es am "
+                + "24.04.2021 (Vorlauf bis 62 °C, Hochdruck 44 bar).", Duration.ofMinutes(5));
+        druck.regel("Heizungsdruck unter " + zahl(druckMin)
+                + " bar. Wasser nachfüllen; die Warnung endet ab " + zahl(druckMin + DRUCK_HYSTERESE_BAR) + " bar.",
+                Duration.ofMinutes(5));
+        druckHoch.regel("Heizungsdruck über " + zahl(druckMax)
+                + " bar, z. B. zu viel nachgefüllt oder Ausdehnungsgefäß ohne Vordruck. Das Sicherheitsventil öffnet "
+                + "meist bei 3 bar; die Warnung endet ab " + zahl(druckMax - DRUCK_HYSTERESE_BAR) + " bar.",
+                Duration.ofMinutes(5));
+        keinHeizbetrieb.regel("Der Verdichter lief " + kurz(frostStunden)
+                + " Stunden nicht, bei im Mittel unter " + kurz(frostAussentemp) + " °C außen. Bei Frost lief er "
+                + "2024 bis 2026 nie länger als 2 Stunden nicht. Störung im Display des WPM, EVU-Sperre und "
+                + "Sicherungen prüfen.", Duration.ZERO);
+        druckAbfall.regel("Der Heizungsdruck lag im Mittel der letzten 24 Stunden "
+                + "mehr als " + zahl(druckAbfallMax) + " bar unter dem Mittel der 24 Stunden davor (2024 bis 2026 "
+                + "höchstens 0,08 bar, sonst etwa 0,2 bar im Jahr). Hinweis auf ein Leck: Heizkreisverteiler, "
+                + "Sicherheitsventil und Wärmepumpe auf Wasser prüfen.", Duration.ZERO);
+        niederdruck.regel("Niederdruck im Kältekreis unter " + kurz(niederdruckMin)
+                + " bar, 10 Minuten lang bei laufendem Verdichter (2024 bis 2026 bei Frost mindestens 3,2 bar). "
+                + "Hinweis auf zu wenig Kältemittel oder einen vereisten Verdampfer.", Duration.ofMinutes(10));
+        heissgas.regel("Heißgastemperatur über " + (int) heissgasMax
+                + " °C, 5 Minuten lang (seit 10/2026 höchstens 88 °C). Hinweis auf zu wenig Kältemittel; der "
+                + "Verdichter wird zu heiß.", Duration.ofMinutes(5));
+        abtauung.regel("Eine Abtauung läuft länger als " + abtauungMinuten
+                + " Minuten (sonst 2 bis 6 Minuten). Verdampfer auf Eis und den Ablauf des Tauwassers prüfen.",
+                Duration.ofMinutes(abtauungMinuten));
+        spannung.regel("Spannung am Inverter unter " + (int) spannungMin + " oder über "
+                + (int) spannungMax + " V, 5 Minuten lang (2024 bis 2026 203 bis 245 V; der Inverter zeigt etwa "
+                + "11 V zu wenig an).", Duration.ofMinutes(5));
+        antwortquote.regel("Weniger als " + (int) antwortquoteMin
+                + " % der Anfragen beantwortet, 10 Minuten lang. Hinweis auf Probleme am CAN-Bus.",
+                Duration.ofMinutes(10));
+        starts.regel("Mehr als " + startsProStundeMax
+                + " Verdichterstarts in der letzten Stunde (Takten). Bei Frost sind es sonst etwa 1 bis 1,5.",
+                Duration.ZERO);
+    }
+
+    /**
+     * Takes over a threshold saved on the configuration page, without a restart
+     *
+     * @param name setting, e.g. warnung.heizungsdruck.min
+     * @param wert value as in the file
+     * @return false if the setting is not a threshold of this class
+     */
+    public synchronized boolean schwelleSetzen(String name, String wert) {
+        // An empty value means the default, that is only read at the start
+        if (wert == null || wert.isBlank()) {
+            return false;
+        }
+        double w;
+        try {
+            w = Double.parseDouble(wert.trim().replace(',', '.'));
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        switch (name) {
+            case "warnung.heizungsdruck.min" -> druckMin = w;
+            case "warnung.heizungsdruck.max" -> druckMax = w;
+            case "warnung.antwortquote.min" -> antwortquoteMin = w;
+            case "warnung.starts.proStunde" -> startsProStundeMax = (int) Math.round(w);
+            case "warnung.hochdruck.max" -> hochdruckMax = w;
+            case "warnung.spreizung.max" -> spreizungMax = w;
+            case "warnung.frost.aussentemp" -> frostAussentemp = w;
+            case "warnung.frost.stunden" -> {
+                frostStunden = w;
+                frostOhneLauf = Duration.ofMinutes(Math.round(w * 60));
+            }
+            case "warnung.heizungsdruck.abfall" -> druckAbfallMax = w;
+            case "warnung.niederdruck.min" -> niederdruckMin = w;
+            case "warnung.heissgas.max" -> heissgasMax = w;
+            case "warnung.abtauung.minuten" -> abtauungMinuten = (int) Math.round(w);
+            case "warnung.spannung.min" -> spannungMin = w;
+            case "warnung.spannung.max" -> spannungMax = w;
+            default -> {
+                return false;
+            }
+        }
+        regelnSetzen();
+        logger.info("Threshold taken over without a restart: " + name + " = " + wert);
+        return true;
     }
 
     public List<Warnung> getWarnungen() {

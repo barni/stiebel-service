@@ -313,6 +313,8 @@ public class StblController {
             if (Konfiguration.SOFORT.contains(name) && wert.neustartNoetig()) {
                 if (name.equals("can.logall")) {
                     canBus.setLogall(Boolean.parseBoolean(wert.datei()));
+                } else if (!ueberwachung.schwelleSetzen(name, wert.datei())) {
+                    continue;
                 }
                 konfiguration.uebernommen(name, wert.datei());
                 geaendert = true;

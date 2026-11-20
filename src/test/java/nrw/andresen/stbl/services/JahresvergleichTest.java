@@ -102,15 +102,16 @@ public class JahresvergleichTest {
     @Test
     public void testAufteilung() {
         java.util.List<Jahresvergleich.Anteil> anteile = vergleich(true).aufteilung();
-        assertEquals(java.util.List.of("Gesamt", "Wallbox", "Heizung", "Rest (Haushalt)"),
+        // Same order as the forecast: total, heating, rest, devices
+        assertEquals(java.util.List.of("Gesamt", "Heizung", "Rest (Haushalt)", "Wallbox"),
                 anteile.stream().map(Jahresvergleich.Anteil::name).toList());
         assertEquals(-200, anteile.get(0).differenz(), 1e-9);
-        assertEquals(830, anteile.get(1).differenz(), 1e-9);
-        assertNull(anteile.get(1).prozent());
-        assertEquals(100, anteile.get(2).differenz(), 1e-9);
+        assertEquals(830, anteile.get(3).differenz(), 1e-9);
+        assertNull(anteile.get(3).prozent());
+        assertEquals(100, anteile.get(1).differenz(), 1e-9);
         // Rest = grid import minus heating minus wallbox
-        assertEquals(8000 - 950, anteile.get(3).vorher(), 1e-9);
-        assertEquals(7800 - 1050 - 830, anteile.get(3).jetzt(), 1e-9);
+        assertEquals(8000 - 950, anteile.get(2).vorher(), 1e-9);
+        assertEquals(7800 - 1050 - 830, anteile.get(2).jetzt(), 1e-9);
         assertTrue(vergleich(false).aufteilung().isEmpty());
 
         assertEquals("Der Stromverbrauch ist gegenüber denselben Tagen 2025 um 200 kWh (2,5 %) gesunken, vor allem "
@@ -153,7 +154,7 @@ public class JahresvergleichTest {
         assertEquals(v.heizungGleich(0), heizung.vorvorher(), 1e-9);
         Jahresvergleich.Anteil wallbox = anteile.stream().filter(a -> a.name().equals("Wallbox")).findFirst().orElseThrow();
         assertEquals(0.0, wallbox.vorvorher(), 1e-9);
-        Jahresvergleich.Anteil rest = anteile.get(anteile.size() - 1);
+        Jahresvergleich.Anteil rest = anteile.get(Jahresvergleich.Vergleich.REST);
         assertEquals(7935.0 - v.heizungGleich(0), rest.vorvorher(), 1e-9);
 
         String karte = JahresvergleichSeite.ursachen(v);
@@ -279,7 +280,7 @@ public class JahresvergleichTest {
         assertTrue(html.contains("Netzbezug des Hauses und Strom der Heizung, 2024 bis 2026"));
         // With the house meter no sentence at the top, the tiles say the same
         assertFalse(html.contains("<p class=\"meldung\">"));
-        assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung</div><div class=\"value\">−2,5 %</div>"));
+        assertTrue(html.contains("<div class=\"label\">Gesamt Veränderung gleiche Tage</div><div class=\"value\">−2,5 %</div>"));
         assertTrue(html.contains("<h2>Netzbezug je Jahr</h2>"));
         assertTrue(html.contains("2026 Prognose"));
         // Each year after the first with its change against the year before
@@ -400,10 +401,10 @@ public class JahresvergleichTest {
         assertEquals(java.util.List.of(0), v.gezeigt());
         assertEquals(java.util.List.of("Klimaanlage"), v.imRest());
         java.util.List<Jahresvergleich.Anteil> anteile = v.aufteilung();
-        assertEquals(java.util.List.of("Gesamt", "Wallbox", "Heizung", "Rest (Haushalt mit Klimaanlage)"),
+        assertEquals(java.util.List.of("Gesamt", "Heizung", "Rest (Haushalt mit Klimaanlage)", "Wallbox"),
                 anteile.stream().map(Jahresvergleich.Anteil::name).toList());
         // The rest keeps the air conditioning in both years, so it compares like with like
-        assertEquals(7800 - 1050 - 830, anteile.get(3).jetzt(), 1e-9);
+        assertEquals(7800 - 1050 - 830, anteile.get(2).jetzt(), 1e-9);
         String karte = JahresvergleichSeite.ursachen(v);
         assertTrue(karte.contains("Klimaanlage zählt zum Rest, bis es für beide Jahre Messwerte gibt."));
         // In the bar of the current year it has its own part all the same, taken out of the household
