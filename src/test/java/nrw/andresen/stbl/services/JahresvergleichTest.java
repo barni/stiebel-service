@@ -511,7 +511,7 @@ public class JahresvergleichTest {
         Jahresvergleich.Vergleich v = mit(ohne, java.util.List.of(), 0.30, ohne.geraeteGleich());
         String prognose = JahresvergleichSeite.prognose(v);
         assertTrue(prognose.contains("<th>Prognose €</th>"));
-        assertTrue(prognose.contains("Kosten mit 30,0 ct/kWh, ohne Grundpreis."));
+        assertTrue(prognose.contains("Kosten mit 30,00 ct/kWh, ohne Grundpreis."));
         String ursachen = JahresvergleichSeite.ursachen(v);
         // Wallbox +830 kWh at 0.30 €
         assertTrue(ursachen.contains("+830 kWh · +249 €"), ursachen);

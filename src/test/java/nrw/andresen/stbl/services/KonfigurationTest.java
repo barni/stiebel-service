@@ -46,6 +46,14 @@ public class KonfigurationTest {
         assertEquals("false", werte.get("influx.enabled"));
         // Settings that are not in the form are not touched
         assertFalse(werte.containsKey("warnung.hochdruck.max"));
+        // The price takes four decimals, other numbers three
+        assertTrue(Konfiguration.pruefen(Map.of("auswertung.strompreis", "0,2873"), werte).isEmpty());
+        assertEquals("0.2873", werte.get("auswertung.strompreis"));
+        assertEquals("höchstens vier Nachkommastellen",
+                Konfiguration.pruefen(Map.of("auswertung.strompreis", "0,28731"), werte).get("auswertung.strompreis"));
+        assertEquals("höchstens drei Nachkommastellen",
+                Konfiguration.pruefen(Map.of("warnung.heizungsdruck.min", "1,4001"), werte)
+                        .get("warnung.heizungsdruck.min"));
     }
 
     @Test
