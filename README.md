@@ -95,8 +95,8 @@ before you rely on it.
 - **Year comparison** on the page `/jahresvergleich` and as JSON from `/jahresvergleich/daten`: estimated electric
   energy of the heating per month in the current year and the two years before, as bars and as a table with the
   change and the mean outdoor temperature. The current month is compared with the same days of the year before.
-  With the Home Assistant counters `auswertung.haushalt.zaehler` (grid import of the house meter) and
-  `auswertung.haushalt.wallbox` (kWh) in `auswertung.haushalt.bucket` the page also shows the total grid import from
+  With the Home Assistant counter `auswertung.haushalt.zaehler` (grid import of the house meter, kWh) in
+  `auswertung.haushalt.bucket` the page also shows the total grid import from
   the 1st of January against the same days of the year before, one bar per year for all years with readings of the
   house meter (the current one with its forecast)
   made of heating, household and wallbox, and the monthly bars stack the household electricity (grid import minus
@@ -108,8 +108,8 @@ before you rely on it.
   month every hour. "Verbrauch im Zeitraum" (`/jahresvergleich?von=2025-12-01&bis=2026-11-30`) shows the readings
   of the house meter at the start of the first and the end of the last day, the grid import between them and its
   parts, to compare with the electricity bill.
-  Devices with their own energy counter (`auswertung.geraet.1.name`, `.zaehler`, `.davor`, `.vorher`, up to 4,
-  besides the wallbox), e.g. Shellys at the air conditioning or the water heater, are parts of their own in the bars,
+  Devices with their own energy counter (`auswertung.geraet.1.name`, `.zaehler`, `.davor`, `.vorher`, up to 5),
+  e.g. the wallbox or Shellys at the air conditioning or the water heater, are parts of their own in the bars,
   the monthly bars, "Woran liegt es?", the forecast and the period; the household is the rest. `.davor` is an entity
   with earlier readings, e.g. read by hand, the counter goes on from them; a counter that starts again at 0 is
   counted on. A device that ran before its first reading (`.vorher`, default on) is part of the household until

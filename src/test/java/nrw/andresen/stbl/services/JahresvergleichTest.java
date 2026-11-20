@@ -430,6 +430,14 @@ public class JahresvergleichTest {
         assertEquals(java.util.List.of(new Geraete.Geraet("Wallbox", "wallbox_energy", "", false),
                 new Geraete.Geraet("Warmwasser", "warmwasser_energy", "warmwasser_manuell", true),
                 new Geraete.Geraet("Klimaanlage", "klima_energy", "", false)), liste);
+        // The former setting of the wallbox only while it is not in the table
+        assertEquals(2, Geraete.lesen(new org.springframework.mock.env.MockEnvironment()
+                .withProperty("auswertung.haushalt.wallbox", "wallbox_energy")
+                .withProperty("auswertung.geraet.5.name", "Wallbox")
+                .withProperty("auswertung.geraet.5.zaehler", "wallbox_energy")
+                .withProperty("auswertung.geraet.5.vorher", "false")
+                .withProperty("auswertung.geraet.1.name", "Warmwasser")
+                .withProperty("auswertung.geraet.1.davor", "warmwasser_manuell")).size());
     }
 
     @Test
