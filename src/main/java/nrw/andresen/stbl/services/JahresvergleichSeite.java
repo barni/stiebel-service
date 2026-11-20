@@ -185,6 +185,20 @@ public final class JahresvergleichSeite {
             zeile.add(mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–");
             zeilen.add(zeile);
         }
+        // Devices counted in the rest: how much of the rest they were, without a change against the year before
+        for (int k : davon(v)) {
+            Jahresvergleich.GleicheTage t = v.geraeteGleich().get(k);
+            List<String> zeile = new ArrayList<>();
+            zeile.add("davon " + v.geraete().get(k).name());
+            if (dreiJahre) {
+                zeile.add(t.vorvorjahr() == null ? "nicht gemessen" : zahl(t.vorvorjahr(), 0));
+            }
+            zeile.add(t.vorjahr() == null ? "nicht gemessen" : zahl(t.vorjahr(), 0));
+            zeile.add(zahl(t.jetzt(), 0));
+            zeile.add("–");
+            zeile.add("–");
+            zeilen.add(zeile);
+        }
         List<String> kopf = new ArrayList<>();
         kopf.add(zeitraum);
         if (dreiJahre) {
@@ -234,9 +248,19 @@ public final class JahresvergleichSeite {
                 : zahl(Math.abs(aenderung), 1) + " % " + (aenderung > 0 ? "mehr" : "weniger") + " als") + " "
                 + (jahr - 1) + " (" + zahl(erste.vorjahr(), 0) + " kWh).");
         List<List<String>> zeilen = new ArrayList<>();
+        long restTage = LocalDate.of(jahr + 1, 1, 1).toEpochDay() - v.bis().toEpochDay();
         for (Jahresvergleich.Prognose p : teile) {
             zeilen.add(List.of(geschaetzt(p.name()), zahl(p.bisher(), 0), zahl(p.erwartet(), 0), zahl(p.jahr(), 0),
                     zahl(p.vorjahr(), 0), prozent(p.aenderung())));
+            if (p.name().startsWith("Rest")) {
+                // The devices in the rest, expected at the rate of the last three months
+                for (int k : davon(v)) {
+                    double bisher = v.geraeteGleich().get(k).jetzt();
+                    double erwartet = v.jeTag(k) * restTage;
+                    zeilen.add(List.of("davon " + v.geraete().get(k).name(), zahl(bisher, 0), zahl(erwartet, 0),
+                            zahl(bisher + erwartet, 0), "nicht gemessen", "–"));
+                }
+            }
         }
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Prognose bis Jahresende</h2>"
                 + "<p class=\"ursache\">" + text(satz) + "</p>"
@@ -293,6 +317,20 @@ public final class JahresvergleichSeite {
         }
         return namen.isEmpty() ? "" : " " + String.join(", ", namen) + ": nach der letzten Ablesung mit dem Verbrauch "
                 + "der Wochen davor hochgerechnet, bis ein Zähler übernimmt.";
+    }
+
+    /**
+     * Devices counted in the rest that have a value this year, shown as "davon" below the rest
+     */
+    static List<Integer> davon(Jahresvergleich.Vergleich v) {
+        List<Integer> liste = new ArrayList<>();
+        List<Integer> gezeigt = v.gezeigt();
+        for (int k = 0; k < v.geraete().size(); k++) {
+            if (!gezeigt.contains(k) && v.geraeteGleich().get(k).jetzt() != null) {
+                liste.add(k);
+            }
+        }
+        return liste;
     }
 
     /**
@@ -554,7 +592,8 @@ public final class JahresvergleichSeite {
         kopf.forEach(k -> html.append("<th>").append(text(k)).append("</th>"));
         html.append("</tr></thead><tbody>");
         for (List<String> zeile : zeilen) {
-            html.append("<tr>");
+            // A "davon" row belongs to the row above, shown indented and lighter
+            html.append(!zeile.isEmpty() && zeile.get(0).startsWith("davon ") ? "<tr class=\"davon\">" : "<tr>");
             zeile.forEach(z -> html.append("<td>").append(text(z)).append("</td>"));
             html.append("</tr>");
         }
@@ -918,6 +957,8 @@ public final class JahresvergleichSeite {
             .zeitraum button { font: inherit; font-weight: 600; padding: 7px 14px; border: 0; border-radius: 8px;
               background: var(--accent); color: #fff; cursor: pointer; }
             .tbl.vorvorjahr td:nth-child(2), .tbl.vorvorjahr th:nth-child(2) { color: var(--muted); }
+            .tbl tr.davon td { color: var(--muted); font-size: 13px; }
+            .tbl tr.davon td:first-child { padding-left: 18px; }
             .legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 4px 0 4px; color: var(--muted);
               font-size: 13px; }
             .legende span { display: inline-flex; align-items: center; gap: 6px; }
