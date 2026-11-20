@@ -154,6 +154,15 @@ public class StblController {
      * Electricity of the heating per month in the last three years as a page, with haushalt=ja and wallbox=ja also
      * the household electricity and the wallbox
      */
+    /**
+     * Only the system area of the configuration page (service, devices, USB adapter), fetched again by the page
+     * every 20 s
+     */
+    @GetMapping(value = "/konfiguration/system", produces = "text/html;charset=UTF-8")
+    public String konfigurationSystem() {
+        return statusService.getSystem();
+    }
+
     @GetMapping(value = "/jahresvergleich", produces = "text/html;charset=UTF-8")
     public String jahresvergleich(@RequestParam(required = false) String haushalt,
                                   @RequestParam(required = false) String wallbox,

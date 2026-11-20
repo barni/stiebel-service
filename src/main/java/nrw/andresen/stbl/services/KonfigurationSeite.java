@@ -18,6 +18,21 @@ public final class KonfigurationSeite {
      * @param meldung     result of the last request: GESPEICHERT, NEUGESTARTET, UNVERAENDERT or null
      * @param csrfName    name of the hidden form field against requests from other sites, null without protection
      */
+    // Fetches the system area every 20 s; after the session ran out it stops, the next click leads to the login
+    static final String SYSTEM_LIVE = """
+            <script>
+            (() => {
+              const ziel = document.getElementById('system-live');
+              const id = setInterval(async () => {
+                try {
+                  const antwort = await fetch('konfiguration/system', {cache: 'no-store', credentials: 'same-origin'});
+                  if (antwort.status === 401) { clearInterval(id); return; }
+                  if (antwort.ok) ziel.innerHTML = await antwort.text();
+                } catch (e) { /* next time */ }
+              }, 20000);
+            })();
+            </script>""";
+
     public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
                                 String meldung, String csrfName, String csrfToken) {
         return render(stand, eingabe, fehler, meldung, csrfName, csrfToken, null);
@@ -46,7 +61,10 @@ public final class KonfigurationSeite {
                 .append("der Wärmepumpe</p></div><nav><a class=\"nav\" href=\"status\">← Status</a> · ")
                 .append("<a class=\"nav\" href=\"jahresvergleich\">Jahresvergleich</a> · ")
                 .append("<a class=\"nav\" href=\"zustand\">Zustand</a> · ")
-                .append("<a class=\"nav\" href=\"canbus\">CAN-Bus</a></nav></header>").append(system);
+                .append("<a class=\"nav\" href=\"canbus\">CAN-Bus</a></nav></header>")
+                // The system area is fetched again every 20 s on its own, the forms below stay as they are
+                .append("<div id=\"system-live\">").append(system).append("</div>")
+                .append(system.isEmpty() ? "" : SYSTEM_LIVE);
         // The empty name carries a message that belongs to no setting, e.g. the file could not be written
         long ungueltig = fehler.keySet().stream().filter(name -> !name.isEmpty()).count();
         if (fehler.containsKey("")) {
