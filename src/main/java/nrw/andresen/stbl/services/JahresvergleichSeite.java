@@ -896,7 +896,8 @@ public final class JahresvergleichSeite {
         double schritt = schritt(Math.max(max - min, 1));
         double unten = Math.floor(min / schritt) * schritt;
         double oben = Math.max(schritt, Math.ceil(max / schritt) * schritt);
-        int rechts = 130;
+        // Room for the labels at the end of the lines, e.g. "Klimaanlage +298 kWh"
+        int rechts = 150;
         double breite = B - LINKS - rechts;
         java.util.function.DoubleUnaryOperator yv = w -> OBEN + (oben - w) / (oben - unten) * (H - OBEN - UNTEN);
         StringBuilder svg = new StringBuilder("<div class=\"diagramm\"><svg viewBox=\"0 0 " + B + " " + H
@@ -947,7 +948,7 @@ public final class JahresvergleichSeite {
             int k = (int) e[1];
             svg.append(String.format(Locale.ROOT, "<text class=\"etikett %s\" x=\"%.1f\" y=\"%.1f\">%s %s</text>",
                     klassen.get(k), e[3] + 8, e[0] + 4, text(namen.get(k).replace(" ≈", "")),
-                    vorzeichen(e[2]) + zahl(Math.abs(e[2]), 0)));
+                    vorzeichen(e[2]) + zahl(Math.abs(e[2]), 0) + " kWh"));
         }
         return svg.append("</svg></div>").toString();
     }
