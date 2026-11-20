@@ -139,7 +139,7 @@ public class Konfiguration {
                     "Home-Assistant-Entity mit dem Zählerstand des Netzbezugs in kWh. Damit zeigt der Jahresvergleich "
                     + "den Netzbezug und den Haushaltsstrom (Netzbezug minus Heizung und Geräte). Leer: kein Haushaltsstrom."),
             new Feld("auswertung.strompreis", AUSWERTUNG, "Strompreis", "€/kWh", Typ.ZAHL, null, 0, 2,
-                    "Arbeitspreis je kWh, zum Beispiel 0,32. Damit zeigt der Jahresvergleich auch die Kosten in Euro, "
+                    "Arbeitspreis je kWh, zum Beispiel 0,2873, bis zu vier Nachkommastellen. Damit zeigt der Jahresvergleich auch die Kosten in Euro, "
                     + "ohne Grundpreis. Leer: keine Kosten."),
             new Feld("auswertung.geraet.1.name", AUSWERTUNG, "Gerät 1: Name", "", Typ.TEXT, "", 0, 0,
                     "Verbraucher mit eigenem Zähler, zum Beispiel Wallbox oder ein Shelly an Klimaanlage oder Warmwasser. Sie erscheinen im Jahresvergleich als eigener Teil und werden vom Haushaltsstrom abgezogen. Leer: kein Gerät 1."),
@@ -250,8 +250,13 @@ public class Konfiguration {
                             + "die Antworten auf eigene Anfragen. Wirkt sofort beim Speichern, ohne Neustart."));
 
     // Settings the running service takes over when they are saved, without a restart
-    // The thresholds of the warnings are compared at every check, the CAN filter is changed on the adapter
-    public static final Set<String> SOFORT = java.util.stream.Stream.concat(java.util.stream.Stream.of("can.logall"),
+    // Numbers with more than three decimals, e.g. a price of 0.2873 € per kWh
+    static final java.util.Map<String, Integer> NACHKOMMASTELLEN = java.util.Map.of("auswertung.strompreis", 4);
+
+    // The thresholds of the warnings are compared at every check, the CAN filter is changed on the adapter, the price
+    // only multiplies
+    public static final Set<String> SOFORT = java.util.stream.Stream.concat(java.util.stream.Stream.of("can.logall",
+                    "auswertung.strompreis"),
             FELDER.stream().map(Feld::name).filter(n -> n.startsWith("warnung."))).collect(
             java.util.stream.Collectors.toUnmodifiableSet());
 
@@ -398,8 +403,10 @@ public class Konfiguration {
                 if (feld.typ() == Typ.GANZZAHL && zahl.scale() > 0) {
                     throw new IllegalArgumentException("muss eine ganze Zahl sein");
                 }
-                if (zahl.scale() > 3) {
-                    throw new IllegalArgumentException("höchstens drei Nachkommastellen");
+                int stellen = NACHKOMMASTELLEN.getOrDefault(feld.name(), 3);
+                if (zahl.scale() > stellen) {
+                    throw new IllegalArgumentException("höchstens " + (stellen == 4 ? "vier" : "drei")
+                            + " Nachkommastellen");
                 }
                 return zahl.toPlainString();
             }

@@ -35,6 +35,8 @@ import java.util.regex.Pattern;
 public class Jahresvergleich {
 
     static final int JAHRE = 3;
+    // A device counts as used in the year before from this much electricity on the same days
+    static final double GENUTZT_KWH = 5;
     // The bars per year look back this far, as long as the house meter has readings
     static final int JAHRE_ZURUECK = 10;
     private static final ZoneId ZONE = ZoneId.of("Europe/Berlin");
@@ -170,12 +172,13 @@ public class Jahresvergleich {
 
         /**
          * Expected electricity of a device from now up to the end of the year: as in the rest of the year before if
-         * it was measured then, else as in the rest of the year before from its whole year, else at the rate of the
-         * last three months that are over
+         * it was measured and used then, else as in the rest of the year before from its whole year, else at the
+         * rate of the last three months that are over. A counter that ran the year before without use, e.g. a
+         * wallbox before the electric car, says nothing about this year.
          */
         public double erwartet(int k) {
             GleicheTage t = geraeteGleich.get(k);
-            if (t.restVorjahr() != null) {
+            if (t.restVorjahr() != null && t.vorjahr() != null && t.vorjahr() >= GENUTZT_KWH) {
                 return t.restVorjahr();
             }
             Double vorjahr = geraet(k, JAHRE - 2);
@@ -466,12 +469,25 @@ public class Jahresvergleich {
     }
 
     // Price of electricity in € per kWh, null if not set
-    private Double preis;
+    private volatile Double preis;
 
     public Jahresvergleich(@Value("${auswertung.haushalt.bucket:}") String haushaltBucket,
                            @Value("${auswertung.haushalt.zaehler:}") String hauszaehler) {
         this.haushaltBucket = haushaltBucket.trim();
         this.hauszaehler = hauszaehler.trim();
+    }
+
+    /**
+     * Takes over the price saved on the configuration page at once, also for the comparison already calculated
+     */
+    public void preisSetzen(String preis) {
+        setPreis(preis);
+        Vergleich v = ergebnis;
+        if (v != null) {
+            ergebnis = new Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.geraete(), v.gesamt(),
+                    v.gesamtVorjahrGleich(), v.gesamtVorvorjahrGleich(), v.geraeteGleich(), v.berechnet(),
+                    v.jahressummen(), v.gradtage(), this.preis);
+        }
     }
 
     @Value("${auswertung.strompreis:}")

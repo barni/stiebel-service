@@ -511,7 +511,7 @@ public class JahresvergleichTest {
         Jahresvergleich.Vergleich v = mit(ohne, java.util.List.of(), 0.30, ohne.geraeteGleich());
         String prognose = JahresvergleichSeite.prognose(v);
         assertTrue(prognose.contains("<th>Prognose €</th>"));
-        assertTrue(prognose.contains("Kosten mit 30,0 ct/kWh, ohne Grundpreis."));
+        assertTrue(prognose.contains("Kosten mit 30,00 ct/kWh, ohne Grundpreis."));
         String ursachen = JahresvergleichSeite.ursachen(v);
         // Wallbox +830 kWh at 0.30 €
         assertTrue(ursachen.contains("+830 kWh · +249 €"), ursachen);
@@ -525,10 +525,14 @@ public class JahresvergleichTest {
         // Without the rest of the year before: the rate of the last three months
         assertEquals(ohne.jeTag(0) * (LocalDate.of(2027, 1, 1).toEpochDay() - HEUTE.toEpochDay()), ohne.erwartet(0),
                 1e-9);
-        // Measured in the rest of the year before: that, also for a device that is new
+        // Measured and used in the rest of the year before: that, also for a device that is new
         Jahresvergleich.Vergleich v = mit(ohne, java.util.List.of(), null,
-                java.util.List.of(new Jahresvergleich.GleicheTage(830.0, 0.0, null, false, 12.0)));
+                java.util.List.of(new Jahresvergleich.GleicheTage(830.0, 63.0, null, false, 12.0)));
         assertEquals(12.0, v.erwartet(0), 1e-9);
+        // A counter that ran the year before without use (wallbox before the electric car): the rate of the months
+        Jahresvergleich.Vergleich still = mit(ohne, java.util.List.of(), null,
+                java.util.List.of(new Jahresvergleich.GleicheTage(830.0, 0.0, null, false, 0.0)));
+        assertEquals(ohne.erwartet(0), still.erwartet(0), 1e-9);
         assertTrue(v.prognose().stream().anyMatch(p -> p.name().equals("Wallbox") && Math.abs(p.erwartet() - 12) < 1e-9));
     }
 }

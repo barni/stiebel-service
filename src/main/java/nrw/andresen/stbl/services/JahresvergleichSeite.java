@@ -224,7 +224,7 @@ public final class JahresvergleichSeite {
                 + "Differenz zu 20 °C) aus der Außentemperatur; die Heizung von " + (v.jahr() - 1) + " wird mit dem "
                 + "Verhältnis der Gradtage auf das Wetter von " + v.jahr() + " umgerechnet, der Rest ist Anlage und "
                 + "Nutzung.")
-                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 1) + " ct/kWh, ohne Grundpreis.")
+                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 2) + " ct/kWh, ohne Grundpreis.")
                 + "</p></article></section>";
     }
 
@@ -342,7 +342,7 @@ public final class JahresvergleichSeite {
                 + (v.geraete().isEmpty() ? "" : ", Geräte wie im Rest von " + (jahr - 1) + ", wenn sie damals "
                 + "schon gemessen wurden, sonst mit dem Verbrauch je Tag der letzten drei vollen Monate") + ". Ein "
                 + "kalter oder milder Winter verschiebt die Heizung um einige hundert kWh."
-                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 1) + " ct/kWh, ohne Grundpreis.")
+                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 2) + " ct/kWh, ohne Grundpreis.")
                 + "</p></article></section>";
     }
 
@@ -762,7 +762,7 @@ public final class JahresvergleichSeite {
                             + "Tagesbeginn gerechnet (zwischen zwei Werten anteilig). Weicht die Rechnung ab, kann sie "
                             + "einen geschätzten oder an einem anderen Tag abgelesenen Stand enthalten. Heizung ≈ ist aus "
                             + "dem Inverter geschätzt, Haushalt der Rest."
-                            + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 1) + " ct/kWh, ohne "
+                            + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 2) + " ct/kWh, ohne "
                             + "Grundpreis.") + "</p>");
         }
         return html.append("</article></section>").toString();
