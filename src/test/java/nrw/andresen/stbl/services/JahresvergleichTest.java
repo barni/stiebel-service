@@ -457,4 +457,78 @@ public class JahresvergleichTest {
         assertFalse(Jahresvergleich.reiheFlux("home_assistant", "warmwasser_manuell", false).contains("aggregateWindow"));
         assertThrows(IllegalArgumentException.class, () -> Jahresvergleich.reiheFlux("x", "a\" or true", false));
     }
+
+    private static Jahresvergleich.Vergleich mit(Jahresvergleich.Vergleich v, java.util.List<Double> gradtage,
+                                                 Double preis, java.util.List<Jahresvergleich.GleicheTage> gleich) {
+        return new Jahresvergleich.Vergleich(v.jahre(), v.bis(), v.monate(), v.mitHaushalt(), v.geraete(), v.gesamt(),
+                v.gesamtVorjahrGleich(), v.gesamtVorvorjahrGleich(), gleich, v.berechnet(), v.jahressummen(),
+                gradtage, preis);
+    }
+
+    @Test
+    public void testGradtage() {
+        Map<LocalDate, Double> tage = new TreeMap<>();
+        // 10 days: 5 at 0 °C (20 each), 4 at 16 °C (none), one missing
+        for (int d = 1; d <= 5; d++) {
+            tage.put(LocalDate.of(2026, 1, d), 0.0);
+        }
+        for (int d = 6; d <= 9; d++) {
+            tage.put(LocalDate.of(2026, 1, d), 16.0);
+        }
+        // The missing day counts as the mean of the others: 100 / 9 * 10
+        assertEquals(100.0 / 9 * 10, Jahresvergleich.gradtage(tage, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 11)),
+                1e-9);
+        // The day bis is not over and does not count
+        assertEquals(100.0, Jahresvergleich.gradtage(tage, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 6)), 1e-9);
+        // Too many days missing
+        assertNull(Jahresvergleich.gradtage(tage, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 20)));
+        assertNull(Jahresvergleich.gradtage(tage, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 1)));
+    }
+
+    @Test
+    public void testWetter() {
+        Jahresvergleich.Vergleich ohne = vergleich(true);
+        assertNull(ohne.wetter());
+        assertFalse(JahresvergleichSeite.ursachen(ohne).contains("davon Wetter"));
+        // Heating on the same days: 2025 950 kWh, 2026 1050 kWh; 10 % more degree days explain 95 kWh
+        Jahresvergleich.Vergleich v = mit(ohne, java.util.List.of(2100.0, 2000.0, 2200.0), null, ohne.geraeteGleich());
+        assertEquals(95, v.wetter(), 1e-9);
+        assertEquals(5, v.bereinigt(), 1e-9);
+        String karte = JahresvergleichSeite.ursachen(v);
+        assertTrue(karte.contains("<td>davon Wetter</td><td></td><td></td><td>+95 kWh</td><td>–</td>"), karte);
+        assertTrue(karte.contains("<td>davon wetterbereinigt</td><td></td><td></td><td>+5 kWh</td>"));
+        assertTrue(karte.contains("Das Wetter war kälter als 2025: 2.200 statt 2.000 Heizgradtage (+10,0 %). Das "
+                + "erklärt +95 kWh der Heizung; wetterbereinigt braucht sie 5 kWh mehr."), karte);
+        // The weather rows follow the heating
+        assertTrue(karte.indexOf("<td>Heizung ≈</td>") < karte.indexOf("davon Wetter"));
+        assertTrue(karte.indexOf("davon Wetter") < karte.indexOf("<td>Rest (Haushalt)</td>"));
+    }
+
+    @Test
+    public void testKosten() {
+        Jahresvergleich.Vergleich ohne = vergleich(true);
+        assertFalse(JahresvergleichSeite.prognose(ohne).contains("€"));
+        Jahresvergleich.Vergleich v = mit(ohne, java.util.List.of(), 0.30, ohne.geraeteGleich());
+        String prognose = JahresvergleichSeite.prognose(v);
+        assertTrue(prognose.contains("<th>Prognose €</th>"));
+        assertTrue(prognose.contains("Kosten mit 30,0 ct/kWh, ohne Grundpreis."));
+        String ursachen = JahresvergleichSeite.ursachen(v);
+        // Wallbox +830 kWh at 0.30 €
+        assertTrue(ursachen.contains("+830 kWh · +249 €"), ursachen);
+        assertEquals(" · −30 €", JahresvergleichSeite.euro(v, -100.0, true));
+        assertEquals("", JahresvergleichSeite.euro(ohne, 100.0, true));
+    }
+
+    @Test
+    public void testErwartetWieImRestDesVorjahres() {
+        Jahresvergleich.Vergleich ohne = vergleich(true);
+        // Without the rest of the year before: the rate of the last three months
+        assertEquals(ohne.jeTag(0) * (LocalDate.of(2027, 1, 1).toEpochDay() - HEUTE.toEpochDay()), ohne.erwartet(0),
+                1e-9);
+        // Measured in the rest of the year before: that, also for a device that is new
+        Jahresvergleich.Vergleich v = mit(ohne, java.util.List.of(), null,
+                java.util.List.of(new Jahresvergleich.GleicheTage(830.0, 0.0, null, false, 12.0)));
+        assertEquals(12.0, v.erwartet(0), 1e-9);
+        assertTrue(v.prognose().stream().anyMatch(p -> p.name().equals("Wallbox") && Math.abs(p.erwartet() - 12) < 1e-9));
+    }
 }

@@ -138,6 +138,9 @@ public class Konfiguration {
             new Feld("auswertung.haushalt.zaehler", AUSWERTUNG, "Entity des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "Home-Assistant-Entity mit dem Zählerstand des Netzbezugs in kWh. Damit zeigt der Jahresvergleich "
                     + "den Netzbezug und den Haushaltsstrom (Netzbezug minus Heizung und Geräte). Leer: kein Haushaltsstrom."),
+            new Feld("auswertung.strompreis", AUSWERTUNG, "Strompreis", "€/kWh", Typ.ZAHL, null, 0, 2,
+                    "Arbeitspreis je kWh, zum Beispiel 0,32. Damit zeigt der Jahresvergleich auch die Kosten in Euro, "
+                    + "ohne Grundpreis. Leer: keine Kosten."),
             new Feld("auswertung.geraet.1.name", AUSWERTUNG, "Gerät 1: Name", "", Typ.TEXT, "", 0, 0,
                     "Verbraucher mit eigenem Zähler, zum Beispiel Wallbox oder ein Shelly an Klimaanlage oder Warmwasser. Sie erscheinen im Jahresvergleich als eigener Teil und werden vom Haushaltsstrom abgezogen. Leer: kein Gerät 1."),
             new Feld("auswertung.geraet.1.zaehler", AUSWERTUNG, "Gerät 1: Entity des Zählers", "", Typ.NAME, "", 0,

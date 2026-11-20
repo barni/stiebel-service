@@ -181,11 +181,15 @@ public final class JahresvergleichSeite {
             }
             zeile.add(zahl(a.vorher(), 0));
             zeile.add(zahl(a.jetzt(), 0));
-            zeile.add(differenz(a));
+            zeile.add(differenz(a) + euro(v, a.differenz(), true));
             zeile.add(mitAnteil ? anteil(a.differenz() / gesamt.differenz() * 100) : "–");
             zeilen.add(zeile);
             if (a.name().startsWith("Rest")) {
                 zeilen.addAll(davonZeilen(v, dreiJahre));
+            }
+            if (a.name().equals("Heizung") && v.wetter() != null) {
+                zeilen.add(wetterZeile(v, "davon Wetter", v.wetter(), dreiJahre));
+                zeilen.add(wetterZeile(v, "davon wetterbereinigt", v.bereinigt(), dreiJahre));
             }
         }
         List<String> kopf = new ArrayList<>();
@@ -201,6 +205,7 @@ public final class JahresvergleichSeite {
         boolean steigt = prozent != null && prozent > STEIGT_AB_PROZENT;
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Woran liegt es?</h2>"
                 + "<p class=\"ursache" + (steigt ? " steigt" : "") + "\">" + text(ursache(anteile, v.jahr())) + "</p>"
+                + (v.wetter() == null ? "" : "<p class=\"legende\">" + text(wetterSatz(v)) + "</p>")
                 + "<p class=\"legende\">Abstand zu " + (v.jahr() - 1) + ", seit 1. Januar aufsummiert: über null mehr "
                 + "als " + (v.jahr() - 1) + ", unter null weniger; steigt eine Linie, wächst der Abstand gerade.</p>"
                 + abstandsverlauf(v, anteile)
@@ -215,7 +220,55 @@ public final class JahresvergleichSeite {
                 + (v.imRest().isEmpty() ? "" : " " + String.join(", ", v.imRest()) + " zählt zum Rest, bis es für "
                 + "beide Jahre Messwerte gibt.")
                 + hochgerechnet(v)
+                + (v.wetter() == null ? "" : " Wetter: Heizgradtage nach VDI 3807 (an Tagen unter 15 °C die "
+                + "Differenz zu 20 °C) aus der Außentemperatur; die Heizung von " + (v.jahr() - 1) + " wird mit dem "
+                + "Verhältnis der Gradtage auf das Wetter von " + v.jahr() + " umgerechnet, der Rest ist Anlage und "
+                + "Nutzung.")
+                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 1) + " ct/kWh, ohne Grundpreis.")
                 + "</p></article></section>";
+    }
+
+    /**
+     * Row of the weather or the rest of the change of the heating, only with a change
+     */
+    private static List<String> wetterZeile(Jahresvergleich.Vergleich v, String name, double kwh, boolean dreiJahre) {
+        List<String> zeile = new ArrayList<>();
+        zeile.add(name);
+        if (dreiJahre) {
+            zeile.add("");
+        }
+        zeile.add("");
+        zeile.add("");
+        zeile.add(vorzeichen(kwh) + zahl(Math.abs(kwh), 0) + " kWh" + euro(v, kwh, true));
+        zeile.add("–");
+        return zeile;
+    }
+
+    /**
+     * Sentence on the heating degree days of both years and what they explain
+     */
+    static String wetterSatz(Jahresvergleich.Vergleich v) {
+        double jetzt = v.gradtage(Jahresvergleich.JAHRE - 1);
+        double vorher = v.gradtage(Jahresvergleich.JAHRE - 2);
+        double prozent = (jetzt / vorher - 1) * 100;
+        double wetter = v.wetter();
+        double bereinigt = v.bereinigt();
+        String art = Math.abs(prozent) < 1 ? "etwa gleich kalt wie" : prozent > 0 ? "kälter als" : "milder als";
+        return "Das Wetter war " + art + " " + (v.jahr() - 1) + ": " + zahl(jetzt, 0) + " statt " + zahl(vorher, 0)
+                + " Heizgradtage (" + prozent(prozent) + "). Das erklärt " + vorzeichen(wetter)
+                + zahl(Math.abs(wetter), 0) + " kWh der Heizung; wetterbereinigt braucht sie " + (Math.abs(bereinigt)
+                < 0.5 ? "gleich viel." : zahl(Math.abs(bereinigt), 0) + " kWh " + (bereinigt > 0 ? "mehr." : "weniger."));
+    }
+
+    /**
+     * Cost of an amount of electricity, e.g. " · +217 €"; empty without a price
+     */
+    static String euro(Jahresvergleich.Vergleich v, Double kwh, boolean mitVorzeichen) {
+        if (v.preis() == null || kwh == null) {
+            return "";
+        }
+        double e = kwh * v.preis();
+        return " · " + (mitVorzeichen ? vorzeichen(e) + zahl(Math.abs(e), 0) : zahl(e, 0)) + " €";
     }
 
     /**
@@ -254,33 +307,52 @@ public final class JahresvergleichSeite {
                 + zahl(erste.jahr(), 0) + " kWh aus dem Netz beziehen"
                 : "Die Heizung wird " + jahr + " voraussichtlich " + zahl(erste.jahr(), 0) + " kWh brauchen";
         Double aenderung = erste.aenderung();
-        String satz = was + (aenderung == null ? "." : ", " + (Math.abs(aenderung) < 1 ? "etwa so viel wie"
+        String satz = was + (v.preis() == null ? "" : " (etwa " + zahl(erste.jahr() * v.preis(), 0) + " €)")
+                + (aenderung == null ? "." : ", " + (Math.abs(aenderung) < 1 ? "etwa so viel wie"
                 : zahl(Math.abs(aenderung), 1) + " % " + (aenderung > 0 ? "mehr" : "weniger") + " als") + " "
                 + (jahr - 1) + " (" + zahl(erste.vorjahr(), 0) + " kWh).");
         List<List<String>> zeilen = new ArrayList<>();
         long restTage = LocalDate.of(jahr + 1, 1, 1).toEpochDay() - v.bis().toEpochDay();
         for (Jahresvergleich.Prognose p : teile) {
-            zeilen.add(List.of(geschaetzt(p.name()), zahl(p.bisher(), 0), zahl(p.erwartet(), 0), zahl(p.jahr(), 0),
-                    zahl(p.vorjahr(), 0), prozent(p.aenderung())));
+            List<String> z = new ArrayList<>(List.of(geschaetzt(p.name()), zahl(p.bisher(), 0), zahl(p.erwartet(), 0),
+                    zahl(p.jahr(), 0), zahl(p.vorjahr(), 0), prozent(p.aenderung())));
+            if (v.preis() != null) {
+                z.add(zahl(p.jahr() * v.preis(), 0));
+            }
+            zeilen.add(z);
             if (p.name().startsWith("Rest")) {
                 // The devices in the rest, expected at the rate of the last three months
                 for (int k : davon(v)) {
                     double bisher = v.geraeteGleich().get(k).jetzt();
-                    double erwartet = v.jeTag(k) * restTage;
-                    zeilen.add(List.of("davon " + v.geraete().get(k).name(), zahl(bisher, 0), zahl(erwartet, 0),
-                            zahl(bisher + erwartet, 0), "nicht gemessen", "–"));
+                    double erwartet = v.erwartet(k);
+                    List<String> d = new ArrayList<>(List.of("davon " + v.geraete().get(k).name(), zahl(bisher, 0),
+                            zahl(erwartet, 0), zahl(bisher + erwartet, 0), "nicht gemessen", "–"));
+                    if (v.preis() != null) {
+                        d.add(zahl((bisher + erwartet) * v.preis(), 0));
+                    }
+                    zeilen.add(d);
                 }
             }
         }
         return "<section class=\"cards\"><article class=\"card breit\"><h2>Prognose bis Jahresende</h2>"
                 + "<p class=\"ursache\">" + text(satz) + "</p>"
-                + tabelle(List.of(String.valueOf(jahr), "bisher kWh", "bis 31.12. erwartet kWh", "Prognose kWh",
-                (jahr - 1) + " kWh", "Änderung"), zeilen)
+                + tabelle(kopfPrognose(jahr, v.preis() != null), zeilen)
                 + "<p class=\"note\">Erwartet bis 31.12.: Heizung wie im Rest der Vorjahre (Mittel aus "
                 + (jahr - 1) + " und " + (jahr - 2) + "), der übrige Haushalt wie im Rest von " + (jahr - 1)
-                + (v.geraete().isEmpty() ? "" : ", Geräte, die es schon gab, wie im Rest von " + (jahr - 1)
-                + ", neue mit dem Verbrauch je Tag der letzten drei vollen Monate") + ". Ein kalter oder milder "
-                + "Winter verschiebt die Heizung um einige hundert kWh.</p></article></section>";
+                + (v.geraete().isEmpty() ? "" : ", Geräte wie im Rest von " + (jahr - 1) + ", wenn sie damals "
+                + "schon gemessen wurden, sonst mit dem Verbrauch je Tag der letzten drei vollen Monate") + ". Ein "
+                + "kalter oder milder Winter verschiebt die Heizung um einige hundert kWh."
+                + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 1) + " ct/kWh, ohne Grundpreis.")
+                + "</p></article></section>";
+    }
+
+    private static List<String> kopfPrognose(int jahr, boolean mitKosten) {
+        List<String> kopf = new ArrayList<>(List.of(String.valueOf(jahr), "bisher kWh", "bis 31.12. erwartet kWh",
+                "Prognose kWh", (jahr - 1) + " kWh", "Änderung"));
+        if (mitKosten) {
+            kopf.add("Prognose €");
+        }
+        return kopf;
     }
 
     /**
@@ -673,7 +745,7 @@ public final class JahresvergleichSeite {
                     zahl(z.standEnde(), 1)));
             Double gesamt = z.gesamt();
             zeilen.add(List.of("Netzbezug (" + z.tage() + " Tage)", zahl(gesamt, 0)
-                    + (gesamt == null ? "" : " · " + zahl(gesamt / z.tage(), 1) + " je Tag")));
+                    + (gesamt == null ? "" : " · " + zahl(gesamt / z.tage(), 1) + " je Tag") + euro(v, gesamt, false)));
             zeilen.add(List.of("davon Heizung ≈", zahl(z.heizung(), 0)));
             List<String> unbekannt = new ArrayList<>();
             for (int k = 0; k < z.namen().size(); k++) {
@@ -689,7 +761,9 @@ public final class JahresvergleichSeite {
                     .append("<p class=\"note\">Die Zählerstände sind aus den gespeicherten Werten des Hauszählers zum "
                             + "Tagesbeginn gerechnet (zwischen zwei Werten anteilig). Weicht die Rechnung ab, kann sie "
                             + "einen geschätzten oder an einem anderen Tag abgelesenen Stand enthalten. Heizung ≈ ist aus "
-                            + "dem Inverter geschätzt, Haushalt der Rest.</p>");
+                            + "dem Inverter geschätzt, Haushalt der Rest."
+                            + (v.preis() == null ? "" : " Kosten mit " + zahl(v.preis() * 100, 1) + " ct/kWh, ohne "
+                            + "Grundpreis.") + "</p>");
         }
         return html.append("</article></section>").toString();
     }
@@ -749,14 +823,13 @@ public final class JahresvergleichSeite {
         // Devices measured this year but counted in the rest of the comparison (no values in the year before):
         // their own part here, taken out of the household, so the bar shows where the electricity goes
         if (!v.prognose().isEmpty()) {
-            long restTage = LocalDate.of(v.jahr() + 1, 1, 1).toEpochDay() - v.bis().toEpochDay();
             List<Integer> gezeigt = v.gezeigt();
             for (int k = 0; k < anzahl; k++) {
                 Double bisher = v.geraeteGleich().get(k).jetzt();
                 if (gezeigt.contains(k) || bisher == null) {
                     continue;
                 }
-                double jahr = bisher + v.jeTag(k) * restTage;
+                double jahr = bisher + v.erwartet(k);
                 jetzt[2 + k] = jahr;
                 jetzt[1] = Math.max(0, jetzt[1] - jahr);
             }

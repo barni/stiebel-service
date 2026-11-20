@@ -211,7 +211,8 @@ public final class KonfigurationSeite {
                     new Teil("Ab wann ausgewertet wird", List.of("auswertung.start", "auswertung.fehlstarts.start",
                             "auswertung.zustand.start")),
                     new Teil("Außentemperatur", List.of("auswertung.aussentemp.bucket", "auswertung.aussentemp.entity")),
-                    new Teil("Hauszähler", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler")),
+                    new Teil("Hauszähler", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler",
+                            "auswertung.strompreis")),
                     new Teil("Geräte mit eigenem Zähler", GERAETE))));
 
     /**
