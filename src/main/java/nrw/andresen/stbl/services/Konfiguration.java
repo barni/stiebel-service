@@ -82,6 +82,7 @@ public class Konfiguration {
     private static final String INFLUX = "InfluxDB";
     private static final String MAILGRUPPE = "Mail";
     private static final String PUSHOVER = "Pushover";
+    private static final String MQTT = "Home Assistant (MQTT)";
     private static final String CAN = "CAN-Adapter";
 
     static final List<Feld> FELDER = List.of(
@@ -172,6 +173,18 @@ public class Konfiguration {
             new Feld("pushover.prioritaet", PUSHOVER, "Priorität", "", Typ.GANZZAHL, "0", -2, 1,
                     "Wie Pushover die Nachricht zustellt: 1 hoch (auch in den Ruhezeiten mit Ton), 0 normal, "
                             + "-1 leise, -2 nur in der Liste ohne Hinweis."),
+            new Feld("mqtt.host", MQTT, "MQTT-Broker", "", Typ.HOST, null, 0, 0,
+                    "Name oder Adresse des Brokers, zum Beispiel homeassistant.local für das Mosquitto-Add-on. Leer: "
+                            + "Es wird nichts an Home Assistant gesendet. Die Werte erscheinen dort über MQTT-Discovery "
+                            + "als Gerät „Wärmepumpe“, nur lesend."),
+            new Feld("mqtt.port", MQTT, "Port", "", Typ.GANZZAHL, "1883", 1, 65535, "Port des Brokers, meist 1883."),
+            new Feld("mqtt.benutzer", MQTT, "Benutzer", "", Typ.TEXT, null, 0, 0,
+                    "Benutzer am Broker; beim Mosquitto-Add-on ein Home-Assistant-Benutzer oder einer aus den "
+                            + "Einstellungen des Add-ons."),
+            new Feld("mqtt.passwort", MQTT, "Passwort", "", Typ.GEHEIM, null, 0, 0,
+                    "Passwort am Broker. Wird nie angezeigt; leer lassen, um es nicht zu ändern."),
+            new Feld("mqtt.praefix", MQTT, "Thema", "", Typ.NAME, "stbl", 0, 0,
+                    "Anfang der MQTT-Themen der Werte, zum Beispiel stbl/zustand und stbl/status."),
             new Feld("USBtin.port", CAN, "Anschluss des USBtin", "", Typ.PFAD, null, 0, 0,
                     "Serielle Schnittstelle des CAN-Adapters, zum Beispiel /dev/ttyACM0."),
             new Feld("USBtin.speed", CAN, "Geschwindigkeit", "bit/s", Typ.GANZZAHL, null, 10000, 1000000,

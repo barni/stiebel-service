@@ -85,6 +85,13 @@ before you rely on it.
 - **Daily overview** on the status page and as JSON from `/tagesuebersicht`: compressor starts, run time, heat,
   estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
   the days of similar outdoor temperature (±1.5 K) from the comparison above. Updated every 10 minutes.
+- **Home Assistant over MQTT** when `mqtt.host` is set (with `mqtt.port`, `mqtt.benutzer`, `mqtt.passwort`, topic
+  prefix `mqtt.praefix`, default `stbl`): every 30 s all values as one JSON object on `stbl/zustand` (retained),
+  `stbl/status` online/offline (last will), and after every connection MQTT discovery messages under
+  `homeassistant/…/stbl/…/config`, so Home Assistant creates the device "Wärmepumpe" with 24 entities: temperatures,
+  pressures, estimated power, heat output, efficiency, compressor speed, flow, defrost margin, controller integral,
+  energy of today for the energy dashboard, operation, warnings, condition and service, and binary sensors for
+  compressor, defrost, EVU block and any warning. Read only, nothing can be switched from Home Assistant.
 - **Year comparison** on the page `/jahresvergleich` and as JSON from `/jahresvergleich/daten`: estimated electric
   energy of the heating per month in the current year and the two years before, as bars and as a table with the
   change and the mean outdoor temperature. The current month is compared with the same days of the year before.

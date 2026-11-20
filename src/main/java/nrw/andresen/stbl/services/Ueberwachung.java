@@ -49,6 +49,10 @@ public class Ueberwachung {
     private EmailService mail;
     @Autowired
     private PushoverService pushover;
+    // Lazy: the MQTT service reads the warnings of this class itself
+    @Autowired
+    @org.springframework.context.annotation.Lazy
+    private MqttService mqtt;
     @Autowired
     private InfluxController influx;
     @Autowired
@@ -461,6 +465,13 @@ public class Ueberwachung {
                     pushover.getLetzterFehler() == null ? "OK"
                             : "letzte Nachricht fehlgeschlagen: " + pushover.getLetzterFehler(),
                     "Warnungen zusätzlich als Push-Nachricht über pushover.net."));
+        }
+        // Home Assistant over MQTT is optional too
+        if (mqtt.isKonfiguriert()) {
+            liste.add(new Pruefung("Home Assistant (MQTT)", mqtt.getLetzterFehler() == null,
+                    mqtt.getLetzterFehler() != null ? "Fehler: " + mqtt.getLetzterFehler()
+                            : mqtt.getLetzteNachricht() == null ? "noch nicht gesendet" : "OK",
+                    "Werte alle 30 s an den MQTT-Broker, in Home Assistant als Gerät „Wärmepumpe“."));
         }
         pruefungen = liste;
         geprueft = Instant.now();
