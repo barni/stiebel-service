@@ -50,6 +50,8 @@ public class Datenquellen {
     private CanBus canBus;
     private volatile Map<String, Instant> letzte = Map.of();
     private volatile Map<String, String> entities = Map.of();
+    // Days a device counter may be silent, by setting name; 0 means no warning
+    private volatile Map<String, Integer> alarm = Map.of();
 
     /**
      * Two minutes after the start and then every two minutes
@@ -89,6 +91,16 @@ public class Datenquellen {
                 logger.debug("Last value of " + entity + " could not be read: " + e.getMessage());
             }
         }
+        Map<String, Integer> tage = new HashMap<>();
+        for (int n = 1; n <= Geraete.ANZAHL; n++) {
+            String t = werte.getOrDefault("auswertung.geraet." + n + ".alarm", "");
+            try {
+                tage.put("auswertung.geraet." + n + ".zaehler", t.isEmpty() ? 10 : Integer.parseInt(t));
+            } catch (NumberFormatException e) {
+                tage.put("auswertung.geraet." + n + ".zaehler", 10);
+            }
+        }
+        alarm = tage;
         entities = neu;
         letzte = zeiten;
     }
@@ -101,7 +113,6 @@ public class Datenquellen {
                 "auswertung.haushalt.zaehler", "auswertung.pv.ertrag", "auswertung.pv.einspeisung"));
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             q.add("auswertung.geraet." + n + ".zaehler");
-            q.add("auswertung.geraet." + n + ".davor");
         }
         return q;
     }
@@ -114,7 +125,9 @@ public class Datenquellen {
         Map<String, Zuletzt> m = new HashMap<>();
         Map<String, Instant> l = letzte;
         for (String name : entities.keySet()) {
-            m.put(name, zuletzt(l.get(name), jetzt, maxAlter(name)));
+            Integer tage = alarm.get(name);
+            Duration max = tage == null ? maxAlter(name) : tage <= 0 ? null : Duration.ofDays(tage);
+            m.put(name, zuletzt(l.get(name), jetzt, max));
         }
         Instant antwort = canBus.getLetzteAntwort();
         if (antwort != null) {

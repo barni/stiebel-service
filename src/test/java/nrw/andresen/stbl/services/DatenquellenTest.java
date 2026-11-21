@@ -33,7 +33,9 @@ public class DatenquellenTest {
         assertEquals(Duration.ofDays(10), Datenquellen.maxAlter("auswertung.geraet.2.zaehler"));
         assertNull(Datenquellen.maxAlter("auswertung.geraet.2.davor"));
         assertNull(Datenquellen.maxAlter("auswertung.pv.einspeisung"));
-        assertTrue(Datenquellen.quellen().contains("auswertung.geraet.5.davor"));
+        // the readings before the counter get no line
+        assertTrue(Datenquellen.quellen().contains("auswertung.geraet.5.zaehler"));
+        assertFalse(Datenquellen.quellen().contains("auswertung.geraet.5.davor"));
     }
 
     @Test
