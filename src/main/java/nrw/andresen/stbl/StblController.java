@@ -15,6 +15,7 @@ import nrw.andresen.stbl.services.Ueberwachung;
 import nrw.andresen.stbl.services.Version;
 import nrw.andresen.stbl.services.WaermebedarfVergleich;
 import nrw.andresen.stbl.services.Anlage;
+import nrw.andresen.stbl.services.Datenquellen;
 import nrw.andresen.stbl.services.Erfahrungswerte;
 import nrw.andresen.stbl.services.Jahresvergleich;
 import nrw.andresen.stbl.services.JahresvergleichSeite;
@@ -111,6 +112,8 @@ public class StblController {
     private Erfahrungswerte erfahrungswerte;
     @Autowired
     private Anlage anlage;
+    @Autowired
+    private Datenquellen datenquellen;
     @Autowired
     private Zustand zustand;
     @Autowired
@@ -359,7 +362,7 @@ public class StblController {
         return Rahmen.einsetzen(KonfigurationSeite.render(konfiguration.stand(), eingabe, fehler, meldung,
                 csrf instanceof CsrfToken token ? token.getParameterName() : null,
                 csrf instanceof CsrfToken token ? token.getToken() : null, testErgebnis, statusService.getSystem(),
-                erfahrungswerte.fuerEinstellungen()),
+                erfahrungswerte.fuerEinstellungen(), datenquellen.fuerEinstellungen()),
                 signalService.kopf("konfiguration", ""));
     }
 

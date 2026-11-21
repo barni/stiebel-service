@@ -298,6 +298,14 @@ public class KonfigurationTest {
         Files.write(datei, DATEI, StandardCharsets.ISO_8859_1);
         Konfiguration konfiguration = new Konfiguration(new MockEnvironment(), datei.toString());
         String html = KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(), null, null, null);
+        // The last value of a source under its field and in the device table
+        String mitZuletzt = KonfigurationSeite.render(konfiguration.stand(), Map.of(), Map.of(), null, null, null, null,
+                "", Map.of(), Map.of("auswertung.haushalt.zaehler", new Datenquellen.Zuletzt("letzter Wert A", true),
+                        "auswertung.geraet.2.zaehler", new Datenquellen.Zuletzt("seit 12 Tagen kein Wert", false),
+                        "USBtin.port", new Datenquellen.Zuletzt("Wärmepumpe: letzter Wert B", true)));
+        assertTrue(mitZuletzt.contains("<p class=\"hilfe zuletzt\">letzter Wert A</p>"));
+        assertTrue(mitZuletzt.contains("<p class=\"hilfe zuletzt fehlertext\">⚠ seit 12 Tagen kein Wert</p>"));
+        assertTrue(mitZuletzt.contains("Wärmepumpe: letzter Wert B"));
         // Every setting has its place in a section, nothing lands in "Weitere"
         assertFalse(html.contains("<h2>Weitere</h2>"));
         for (Konfiguration.Feld feld : Konfiguration.FELDER) {
