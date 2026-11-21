@@ -202,11 +202,11 @@ public class Ueberwachung {
      * Texts and delays of the warnings that depend on a threshold
      */
     private void regelnSetzen() {
-        hochdruck.regel("Hochdruck im Kältekreis über " + (int) hochdruckMax
+        hochdruck.regel("Hochdruck im Kältekreis über " + kurz(hochdruckMax)
                 + " bar; der Hochdruckwächter der WPL ACS schaltet bei 45 bar ab. Meist fließt zu wenig Heizwasser "
                 + "durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe)." + erfahrung(Erfahrungswerte.HOCHDRUCK),
                 Duration.ofMinutes(1));
-        spreizung.regel("Vorlauf mehr als " + (int) spreizungMax
+        spreizung.regel("Vorlauf mehr als " + kurz(spreizungMax)
                 + " K über dem Rücklauf, 5 Minuten lang bei laufendem Verdichter (Soll 5 K). Es fließt zu wenig "
                 + "Heizwasser durch die Wärmepumpe: Heizkreise, Entlüftung und Pumpe prüfen; dann steigen meist auch "
                 + "Vorlauf und Hochdruck stark an.", Duration.ofMinutes(5));
@@ -228,16 +228,16 @@ public class Ueberwachung {
         niederdruck.regel("Niederdruck im Kältekreis unter " + kurz(niederdruckMin)
                 + " bar, 10 Minuten lang bei laufendem Verdichter. Hinweis auf zu wenig Kältemittel oder einen "
                 + "vereisten Verdampfer." + erfahrung(Erfahrungswerte.NIEDERDRUCK), Duration.ofMinutes(10));
-        heissgas.regel("Heißgastemperatur über " + (int) heissgasMax
+        heissgas.regel("Heißgastemperatur über " + kurz(heissgasMax)
                 + " °C, 5 Minuten lang. Hinweis auf zu wenig Kältemittel; der Verdichter wird zu heiß."
                 + erfahrung(Erfahrungswerte.HEISSGAS), Duration.ofMinutes(5));
         abtauung.regel("Eine Abtauung läuft länger als " + abtauungMinuten
                 + " Minuten. Verdampfer auf Eis und den Ablauf des Tauwassers prüfen."
                 + erfahrung(Erfahrungswerte.ABTAUUNG), Duration.ofMinutes(abtauungMinuten));
-        spannung.regel("Spannung am Inverter unter " + (int) spannungMin + " oder über "
-                + (int) spannungMax + " V, 5 Minuten lang." + erfahrung(Erfahrungswerte.SPANNUNG),
+        spannung.regel("Spannung am Inverter unter " + kurz(spannungMin) + " oder über "
+                + kurz(spannungMax) + " V, 5 Minuten lang." + erfahrung(Erfahrungswerte.SPANNUNG),
                 Duration.ofMinutes(5));
-        antwortquote.regel("Weniger als " + (int) antwortquoteMin
+        antwortquote.regel("Weniger als " + kurz(antwortquoteMin)
                 + " % der Anfragen beantwortet, 10 Minuten lang. Hinweis auf Probleme am CAN-Bus.",
                 Duration.ofMinutes(10));
         starts.regel("Mehr als " + startsProStundeMax
