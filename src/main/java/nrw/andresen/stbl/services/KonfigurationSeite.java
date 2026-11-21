@@ -54,6 +54,15 @@ public final class KonfigurationSeite {
     public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
                                 String meldung, String csrfName, String csrfToken, String testErgebnis,
                                 String system) {
+        return render(stand, eingabe, fehler, meldung, csrfName, csrfToken, testErgebnis, system, Map.of());
+    }
+
+    /**
+     * @param erfahrung per setting a sentence with what this installation reached so far, added to the help
+     */
+    public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
+                                String meldung, String csrfName, String csrfToken, String testErgebnis,
+                                String system, Map<String, String> erfahrung) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -127,7 +136,7 @@ public final class KonfigurationSeite {
                 for (String name : t.felder()) {
                     Konfiguration.Wert wert = nachName.get(name);
                     if (wert != null) {
-                        html.append(feld(wert, eingabe.get(name), fehler.get(name), stand.schreibbar()));
+                        html.append(feld(wert, eingabe.get(name), fehler.get(name), stand.schreibbar(), erfahrung.get(name)));
                         gezeigt.add(name);
                     }
                 }
@@ -147,7 +156,7 @@ public final class KonfigurationSeite {
         for (Konfiguration.Wert wert : stand.werte()) {
             if (!gezeigt.contains(wert.feld().name())) {
                 rest.append(feld(wert, eingabe.get(wert.feld().name()), fehler.get(wert.feld().name()),
-                        stand.schreibbar()));
+                        stand.schreibbar(), erfahrung.get(wert.feld().name())));
             }
         }
         if (!rest.isEmpty()) {
@@ -292,7 +301,8 @@ public final class KonfigurationSeite {
                 + "<script>const alt = \"" + text(gestartet) + "\";" + NEUSTART_SCRIPT + "</script></body></html>";
     }
 
-    private static String feld(Konfiguration.Wert wert, String eingabe, String fehler, boolean schreibbar) {
+    private static String feld(Konfiguration.Wert wert, String eingabe, String fehler, boolean schreibbar,
+                               String erfahrung) {
         Konfiguration.Feld feld = wert.feld();
         String id = feld.name().replace('.', '-');
         String angezeigt = eingabe != null ? eingabe : Konfiguration.anzeige(feld, wert.datei());
@@ -328,6 +338,9 @@ public final class KonfigurationSeite {
         if (feld.standard() != null && (feld.typ() == Konfiguration.Typ.ZAHL
                 || feld.typ() == Konfiguration.Typ.GANZZAHL || feld.typ() == Konfiguration.Typ.DATUM)) {
             html.append(" Standard: ").append(text(Konfiguration.anzeige(feld, feld.standard()))).append(".");
+        }
+        if (erfahrung != null) {
+            html.append(" ").append(text(erfahrung));
         }
         html.append("</p>");
         if (fehler != null) {

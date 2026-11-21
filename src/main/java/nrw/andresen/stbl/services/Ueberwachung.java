@@ -86,6 +86,8 @@ public class Ueberwachung {
     private volatile double spannungMax;
     private volatile double frostStunden;
     private volatile int abtauungMinuten;
+    // Values this installation reached so far, from Erfahrungswerte, by key; empty until they are calculated
+    private volatile Map<String, String> erfahrung = Map.of();
     private final Warnung druck;
     private final Warnung druckHoch;
     private final Warnung hochdruck;
@@ -165,8 +167,8 @@ public class Ueberwachung {
         heissgas = new Warnung("Heißgas heiß", "", Duration.ZERO);
         abtauung = new Warnung("Abtauung dauert lange", "", Duration.ZERO);
         spannung = new Warnung("Netzspannung", "", Duration.ZERO);
-        heizstab = new Warnung("Heizstab läuft", "Stufe 1 oder 2 des Heizstabs (DHC) ist an. Das kam bisher "
-                + "praktisch nie vor, der Heizstab braucht für dieselbe Wärme ein Vielfaches an Strom.",
+        heizstab = new Warnung("Heizstab läuft", "Stufe 1 oder 2 des Heizstabs (DHC) ist an. Der Heizstab braucht "
+                + "für dieselbe Wärme ein Vielfaches an Strom; er darf erst unter der Bivalenztemperatur zuheizen.",
                 Duration.ZERO);
         antwortquote = new Warnung("Antwortquote niedrig", "", Duration.ZERO);
         starts = new Warnung("Viele Verdichterstarts", "", Duration.ZERO);
@@ -179,17 +181,33 @@ public class Ueberwachung {
     }
 
     /**
+     * Takes over the values this installation reached so far and adds them to the explanations of the warnings
+     */
+    public synchronized void erfahrungSetzen(Map<String, String> saetze) {
+        erfahrung = saetze == null ? Map.of() : saetze;
+        regelnSetzen();
+    }
+
+    /**
+     * " " plus the sentence of this installation for the key, empty without it
+     */
+    private String erfahrung(String key) {
+        String s = erfahrung.get(key);
+        return s == null ? "" : " " + s;
+    }
+
+    /**
      * Texts and delays of the warnings that depend on a threshold
      */
     private void regelnSetzen() {
         hochdruck.regel("Hochdruck im Kältekreis über " + (int) hochdruckMax
-                + " bar; im Betrieb sind es sonst höchstens etwa 30 bar, der Hochdruckwächter schaltet bei 45 bar ab. "
-                + "Meist fließt zu wenig Heizwasser durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe).",
+                + " bar; der Hochdruckwächter der WPL ACS schaltet bei 45 bar ab. Meist fließt zu wenig Heizwasser "
+                + "durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe)." + erfahrung(Erfahrungswerte.HOCHDRUCK),
                 Duration.ofMinutes(1));
         spreizung.regel("Vorlauf mehr als " + (int) spreizungMax
                 + " K über dem Rücklauf, 5 Minuten lang bei laufendem Verdichter (Soll 5 K). Es fließt zu wenig "
-                + "Heizwasser durch die Wärmepumpe: Heizkreise, Entlüftung und Pumpe prüfen. So war es am "
-                + "24.04.2021 (Vorlauf bis 62 °C, Hochdruck 44 bar).", Duration.ofMinutes(5));
+                + "Heizwasser durch die Wärmepumpe: Heizkreise, Entlüftung und Pumpe prüfen; dann steigen meist auch "
+                + "Vorlauf und Hochdruck stark an.", Duration.ofMinutes(5));
         druck.regel("Heizungsdruck unter " + zahl(druckMin)
                 + " bar. Wasser nachfüllen; die Warnung endet ab " + zahl(druckMin + DRUCK_HYSTERESE_BAR) + " bar.",
                 Duration.ofMinutes(5));
@@ -198,30 +216,30 @@ public class Ueberwachung {
                 + "meist bei 3 bar; die Warnung endet ab " + zahl(druckMax - DRUCK_HYSTERESE_BAR) + " bar.",
                 Duration.ofMinutes(5));
         keinHeizbetrieb.regel("Der Verdichter lief " + kurz(frostStunden)
-                + " Stunden nicht, bei im Mittel unter " + kurz(frostAussentemp) + " °C außen. Bei Frost lief er "
-                + "2024 bis 2026 nie länger als 2 Stunden nicht. Störung im Display des WPM, EVU-Sperre und "
-                + "Sicherungen prüfen.", Duration.ZERO);
+                + " Stunden nicht, bei im Mittel unter " + kurz(frostAussentemp) + " °C außen. Störung im Display "
+                + "des WPM, EVU-Sperre und Sicherungen prüfen." + erfahrung(Erfahrungswerte.FROST_PAUSE),
+                Duration.ZERO);
         druckAbfall.regel("Der Heizungsdruck lag im Mittel der letzten 24 Stunden "
-                + "mehr als " + zahl(druckAbfallMax) + " bar unter dem Mittel der 24 Stunden davor (2024 bis 2026 "
-                + "höchstens 0,08 bar, sonst etwa 0,2 bar im Jahr). Hinweis auf ein Leck: Heizkreisverteiler, "
-                + "Sicherheitsventil und Wärmepumpe auf Wasser prüfen.", Duration.ZERO);
+                + "mehr als " + zahl(druckAbfallMax) + " bar unter dem Mittel der 24 Stunden davor. Hinweis auf ein "
+                + "Leck: Heizkreisverteiler, Sicherheitsventil und Wärmepumpe auf Wasser prüfen."
+                + erfahrung(Erfahrungswerte.DRUCKABFALL), Duration.ZERO);
         niederdruck.regel("Niederdruck im Kältekreis unter " + kurz(niederdruckMin)
-                + " bar, 10 Minuten lang bei laufendem Verdichter (2024 bis 2026 bei Frost mindestens 3,2 bar). "
-                + "Hinweis auf zu wenig Kältemittel oder einen vereisten Verdampfer.", Duration.ofMinutes(10));
+                + " bar, 10 Minuten lang bei laufendem Verdichter. Hinweis auf zu wenig Kältemittel oder einen "
+                + "vereisten Verdampfer." + erfahrung(Erfahrungswerte.NIEDERDRUCK), Duration.ofMinutes(10));
         heissgas.regel("Heißgastemperatur über " + (int) heissgasMax
-                + " °C, 5 Minuten lang (im November 2026 bei Frost bis 91 °C). Hinweis auf zu wenig Kältemittel; der "
-                + "Verdichter wird zu heiß.", Duration.ofMinutes(5));
+                + " °C, 5 Minuten lang. Hinweis auf zu wenig Kältemittel; der Verdichter wird zu heiß."
+                + erfahrung(Erfahrungswerte.HEISSGAS), Duration.ofMinutes(5));
         abtauung.regel("Eine Abtauung läuft länger als " + abtauungMinuten
-                + " Minuten (sonst 2 bis 6 Minuten). Verdampfer auf Eis und den Ablauf des Tauwassers prüfen.",
-                Duration.ofMinutes(abtauungMinuten));
+                + " Minuten. Verdampfer auf Eis und den Ablauf des Tauwassers prüfen."
+                + erfahrung(Erfahrungswerte.ABTAUUNG), Duration.ofMinutes(abtauungMinuten));
         spannung.regel("Spannung am Inverter unter " + (int) spannungMin + " oder über "
-                + (int) spannungMax + " V, 5 Minuten lang (2024 bis 2026 203 bis 245 V; der Inverter zeigt etwa "
-                + "11 V zu wenig an).", Duration.ofMinutes(5));
+                + (int) spannungMax + " V, 5 Minuten lang." + erfahrung(Erfahrungswerte.SPANNUNG),
+                Duration.ofMinutes(5));
         antwortquote.regel("Weniger als " + (int) antwortquoteMin
                 + " % der Anfragen beantwortet, 10 Minuten lang. Hinweis auf Probleme am CAN-Bus.",
                 Duration.ofMinutes(10));
         starts.regel("Mehr als " + startsProStundeMax
-                + " Verdichterstarts in der letzten Stunde (Takten). Bei Frost sind es sonst etwa 1 bis 1,5.",
+                + " Verdichterstarts in der letzten Stunde (Takten)." + erfahrung(Erfahrungswerte.STARTS),
                 Duration.ZERO);
     }
 

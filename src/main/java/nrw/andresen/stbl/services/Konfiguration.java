@@ -103,22 +103,21 @@ public class Konfiguration {
                     + "ein Start je Stunde, Abtauungen zählen nicht."),
             new Feld("warnung.heizungsdruck.abfall", WARNUNGEN, "Druckabfall in 24 Stunden höchstens", "bar",
                     Typ.ZAHL, "0.15", 0.05, 1, "Warnung, wenn das Mittel der letzten 24 Stunden um mehr als diesen "
-                    + "Wert unter dem der 24 Stunden davor liegt (Leck). Bisher höchstens 0,08 bar."),
+                    + "Wert unter dem der 24 Stunden davor liegt (Leck)."),
             new Feld("warnung.frost.aussentemp", WARNUNGEN, "Keine Wärme bei Frost: außen unter", "°C", Typ.ZAHL,
                     "2", -10, 10, "Warnung, wenn der Verdichter bei dieser mittleren Außentemperatur so lange "
                     + "nicht läuft wie unten eingestellt."),
             new Feld("warnung.frost.stunden", WARNUNGEN, "Keine Wärme bei Frost: Stunden ohne Lauf", "h", Typ.ZAHL,
-                    "4", 1, 24, "Bei Frost lief der Verdichter bisher nie länger als 2 Stunden nicht."),
+                    "4", 1, 24, "Warnung, wenn der Verdichter bei Frost so lange nicht läuft."),
             new Feld("warnung.niederdruck.min", WARNUNGEN, "Niederdruck mindestens", "bar", Typ.ZAHL, "2.5", 0.5, 8,
                     "Warnung, wenn der Niederdruck 10 Minuten lang bei laufendem Verdichter darunter liegt "
-                    + "(Kältemittel, Vereisung). Bisher mindestens 3,2 bar."),
+                    + "(Kältemittel, Vereisung)."),
             new Feld("warnung.heissgas.max", WARNUNGEN, "Heißgas höchstens", "°C", Typ.ZAHL, "110", 70, 140,
-                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt. Im November 2026 bei Frost bis 91 °C."),
+                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt."),
             new Feld("warnung.abtauung.minuten", WARNUNGEN, "Abtauung höchstens", "min", Typ.GANZZAHL, "15", 5, 60,
-                    "Warnung, wenn eine Abtauung länger dauert. Sonst dauert sie 2 bis 6 Minuten."),
+                    "Warnung, wenn eine Abtauung länger dauert."),
             new Feld("warnung.spannung.min", WARNUNGEN, "Spannung Inverter mindestens", "V", Typ.ZAHL, "195", 150,
-                    230, "Warnung, wenn die Spannung am Inverter 5 Minuten lang darunter liegt. Der Inverter zeigt "
-                    + "etwa 11 V zu wenig an."),
+                    230, "Warnung, wenn die Spannung am Inverter 5 Minuten lang darunter liegt."),
             new Feld("warnung.spannung.max", WARNUNGEN, "Spannung Inverter höchstens", "V", Typ.ZAHL, "255", 230,
                     280, "Warnung, wenn die Spannung am Inverter 5 Minuten lang darüber liegt."),
             new Feld("auswertung.start", AUSWERTUNG, "Vergleich Wärmebedarf ab", "", Typ.DATUM, "2023-07-01", 0, 0,
