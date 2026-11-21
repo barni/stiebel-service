@@ -92,6 +92,9 @@ public class Datenquellen {
             }
         }
         Map<String, Integer> tage = new HashMap<>();
+        tage.put("auswertung.haushalt.zaehler", stunden(werte, "auswertung.haushalt.alarm", 6));
+        tage.put("auswertung.aussentemp.entity", stunden(werte, "auswertung.aussentemp.alarm", 6));
+        tage.put("auswertung.pv.ertrag", stunden(werte, "auswertung.pv.alarm", 240));
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             String t = werte.getOrDefault("auswertung.geraet." + n + ".alarm", "");
             try {
@@ -103,6 +106,15 @@ public class Datenquellen {
         alarm = tage;
         entities = neu;
         letzte = zeiten;
+    }
+
+    private static int stunden(Map<String, String> werte, String name, int standard) {
+        String t = werte.getOrDefault(name, "");
+        try {
+            return t.isEmpty() ? standard : Integer.parseInt(t);
+        } catch (NumberFormatException e) {
+            return standard;
+        }
     }
 
     /**

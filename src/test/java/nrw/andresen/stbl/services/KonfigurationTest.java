@@ -344,6 +344,10 @@ public class KonfigurationTest {
         assertEquals(0, k.alarmStunden("klima"));
         org.junit.jupiter.api.Assertions.assertNull(k.alarmStunden("anders"));
         assertTrue(Konfiguration.SOFORT.contains("auswertung.geraet.2.alarm"));
+        // the sources without a device: the default of the field without an entry
+        assertEquals(6, k.stunden("auswertung.haushalt.alarm"));
+        assertEquals(240, k.stunden("auswertung.pv.alarm"));
+        assertTrue(Konfiguration.SOFORT.contains("auswertung.haushalt.alarm"));
         java.nio.file.Files.delete(datei);
     }
 }

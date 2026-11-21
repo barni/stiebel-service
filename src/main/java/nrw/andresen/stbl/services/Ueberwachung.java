@@ -634,19 +634,29 @@ public class Ueberwachung {
         // Home Assistant writes a value when it changes: the house meter and the outdoor temperature at least every
         // hour, a device counter only while it uses electricity (the wallbox stood still for up to 4.5 days)
         if (!leer(aussenEntity)) {
-            liste.add(aktuell("Außentemperatur aktuell", bucket(aussenBucket), "°C", aussenEntity, WERT_STILL,
-                    "Die Außentemperatur aus Home Assistant (" + aussenEntity + ") für Tagesübersicht, Zustand und "
-                            + "die Heizgradtage im Jahresvergleich."));
+            Duration still = still("auswertung.aussentemp.alarm", WERT_STILL);
+            if (!still.isZero()) {
+                liste.add(aktuell("Außentemperatur aktuell", bucket(aussenBucket), "°C", aussenEntity, still,
+                        "Die Außentemperatur aus Home Assistant (" + aussenEntity + ") für Tagesübersicht, Zustand "
+                                + "und die Heizgradtage im Jahresvergleich; Warnung nach " + still.toHours()
+                                + " Stunden ohne Wert, einstellbar."));
+            }
         }
         if (!leer(hauszaehler)) {
-            liste.add(aktuell("Hauszähler aktuell", bucket(haushaltBucket), "kWh", hauszaehler, WERT_STILL,
-                    "Der Netzbezug aus Home Assistant (" + hauszaehler + ") für den Jahresvergleich."));
+            Duration still = still("auswertung.haushalt.alarm", WERT_STILL);
+            if (!still.isZero()) {
+                liste.add(aktuell("Hauszähler aktuell", bucket(haushaltBucket), "kWh", hauszaehler, still,
+                        "Der Netzbezug aus Home Assistant (" + hauszaehler + ") für den Jahresvergleich; Warnung "
+                                + "nach " + still.toHours() + " Stunden ohne Wert, einstellbar."));
+            }
         }
         if (!leer(pvErtrag)) {
-            liste.add(aktuell("PV-Ertrag aktuell", bucket(haushaltBucket), "kWh", pvErtrag, GERAET_STILL,
-                    "Der Ertrag der PV-Anlage (" + pvErtrag + ") für den Verbrauch im Jahresvergleich. Im Winter "
-                            + "meldet er selten, deshalb erst nach " + GERAET_STILL.toDays() + " Tagen ohne Wert eine "
-                            + "Warnung."));
+            Duration still = still("auswertung.pv.alarm", GERAET_STILL);
+            if (!still.isZero()) {
+                liste.add(aktuell("PV-Ertrag aktuell", bucket(haushaltBucket), "kWh", pvErtrag, still,
+                        "Der Ertrag der PV-Anlage (" + pvErtrag + ") für den Verbrauch im Jahresvergleich; Warnung "
+                                + "nach " + still.toHours() + " Stunden ohne Wert, einstellbar."));
+            }
         }
         if (geraete != null) {
             for (Geraete.Geraet g : geraete.getListe()) {
@@ -666,6 +676,13 @@ public class Ueberwachung {
     static final Duration WERT_STILL = Duration.ofHours(6);
     static final Duration GERAET_STILL = Duration.ofDays(10);
     private static final java.util.regex.Pattern ENTITY = java.util.regex.Pattern.compile("[A-Za-z0-9_]{1,64}");
+
+    /**
+     * Hours from the setting, the given time without the configuration (tests)
+     */
+    private Duration still(String feld, Duration ohne) {
+        return konfiguration == null ? ohne : Duration.ofHours(konfiguration.stunden(feld));
+    }
 
     private static boolean leer(String s) {
         return s == null || s.isBlank();
