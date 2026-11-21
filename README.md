@@ -64,7 +64,7 @@ before you rely on it.
   month, year, 0, code). Shown on the status page with text for known codes (e.g. 8116 `INV H ROTORVEKTOR`) and as
   JSON from `/fehlerliste`, newest first.
 - **Comparison of the setting Wärmebedarf** (heat demand at design temperature): every 6 hours the service calculates
-  compressor starts, run time and heat per day from InfluxDB (since `auswertung.start`, default 2023-07-01) and groups
+  compressor starts, run time and heat per day from InfluxDB (since `auswertung.start`, default: the first stored value) and groups
   the days by daily mean outdoor temperature (below −5, −5 to 0, … 10 to 15 °C) and by the setting of that day. Shown
   on the status page and as JSON from `/waermebedarf`. Fewer starts at the same heat mean longer, more efficient runs.
   The rating compares the starts (better, worse, hardly any difference) and says "zu knapp?" only when the compressor
@@ -80,7 +80,7 @@ before you rely on it.
   compressor does not start (fault list INV H ROTORVEKTOR), the heat pump waits about 23 minutes. Found in the stored
   values (drop of the high pressure after a standstill, no run, next run 18–30 minutes later). Shown per season as
   count, per MWh of heat and per 1000 starts on days with 0–15 °C mean outdoor temperature (failed starts hardly
-  happen in frost), with the number of covered days. All seasons since `auswertung.fehlstarts.start` (default 2019-01-01)
+  happen in frost), with the number of covered days. All seasons since `auswertung.fehlstarts.start` (default: the first stored value)
   2 minutes after the start, then the current season every hour.
 - **Daily overview** on the status page and as JSON from `/tagesuebersicht`: compressor starts, run time, heat,
   estimated electric energy of the compressor inverter, efficiency and defrosts of today and yesterday, compared with
@@ -123,8 +123,15 @@ before you rely on it.
   then and counted in the rest of the comparison until both years have values; a new one counts 0 before. The
   service checks every 15 minutes that the house meter and the outdoor temperature from Home Assistant had a value in
   the last 6 hours and every device counter and the PV yield in the last 10 days, otherwise the warning about the service is raised.
+- **Heat pump model** (`waermepumpe.modell`: WPL 07, 09, 13 or 17 ACS classic) adds the values of its data sheet
+  (heat output, efficiency, flow) to the explanations; without it they are left out.
+- **Values of this installation:** once a day the service calculates from its own data of the last two years
+  what the installation reached so far (longest standstill, lowest low pressure and starts per hour at frost,
+  highest high pressure and hot gas, largest daily pressure drop, usual defrost length and inverter voltage) and
+  adds them to the explanations of the warnings and settings; the heat load at the design temperature comes from
+  the daily heat over the outdoor temperature. Nothing about one house is written into the code.
 - **Condition and ageing** on the page `/zustand` and as JSON from `/zustand/daten`: per heating season (July to June,
-  since `auswertung.zustand.start`, default 2022-07-01) the efficiency, starts, hours per start and defrosts at the
+  since `auswertung.zustand.start`, default: the first stored value) the efficiency, starts, hours per start and defrosts at the
   same outdoor temperature (0 to 5 °C and 5 to 10 °C), failed starts per 1000 mild starts and the heating pressure
   in winter. From the 10 minute means of the steady run from November to March: outdoor air minus evaporation
   temperature at 0 to 5 °C (refrigerant, dirty evaporator), condensation temperature minus flow (deposits in the
