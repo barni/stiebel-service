@@ -197,6 +197,7 @@ public final class KonfigurationSeite {
     static final List<Abschnitt> ABSCHNITTE = List.of(
             new Abschnitt("verbindung", "Wärmepumpe und Datenbank",
                     "Wie der Dienst die Wärmepumpe liest und wo er die Werte speichert.", List.of(
+                    new Teil("Wärmepumpe", List.of("waermepumpe.modell")),
                     new Teil("CAN-Adapter", List.of("USBtin.port", "USBtin.speed", "can.logall")),
                     new Teil("InfluxDB", List.of("influx.enabled", "influx.url", "influx.org", "influx.bucket")))),
             new Abschnitt("benachrichtigungen", "Benachrichtigungen", "Wohin die Warnungen gehen.", List.of(
@@ -313,7 +314,16 @@ public final class KonfigurationSeite {
                 .append("</label>")
                 .append("<div class=\"eingabe\">");
         String attribute = " id=\"" + id + "\" name=\"" + feld.name() + "\"" + (schreibbar ? "" : " disabled");
-        switch (feld.typ()) {
+        List<String> auswahl = Konfiguration.AUSWAHL.get(feld.name());
+        if (auswahl != null) {
+            String gewaehlt = eingabe != null ? eingabe : wert.datei();
+            html.append("<select").append(attribute).append(">");
+            for (String o : auswahl) {
+                html.append("<option value=\"").append(text(o)).append("\"").append(o.equals(gewaehlt) ? " selected" : "")
+                        .append(">").append(o.isEmpty() ? "nicht angegeben" : text(o)).append("</option>");
+            }
+            html.append("</select>");
+        } else switch (feld.typ()) {
             case SCHALTER -> {
                 boolean an = eingabe != null ? eingabe.equals("true") : Boolean.parseBoolean(wert.datei());
                 html.append("<select").append(attribute).append("><option value=\"true\"").append(an ? " selected" : "")

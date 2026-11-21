@@ -29,6 +29,9 @@ import static nrw.andresen.stbl.services.can.ElsterTable.*;
 @Component
 public class Waermepumpe {
 
+    @Autowired(required = false)
+    private Anlage anlage;
+
     @Autowired
     private CanBus can;
     // Specific heat capacity of water in kJ/(kg*K)
@@ -876,8 +879,8 @@ public class Waermepumpe {
                         "Unterhalb dieser Außentemperatur heizt nur noch der Heizstab. Standard −20 °C." + WPM),
                 new Einstellung("SilentLeistung", "Silent Leistung", "%", 0, this::getSilentLeistung,
                         "Begrenzung der Verdichterleistung im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
-                                + "PROGRAMME → SILENTPROGRAMM 1. 70 % ist die Voreinstellung beim Aktivieren, bei der "
-                                + "WPL 17 höchstens etwa 5,0 kW bei A−7/W35." + WPM),
+                                + "PROGRAMME → SILENTPROGRAMM 1. 70 % ist die Voreinstellung beim Aktivieren."
+                                + (anlage == null ? "" : anlage.silent()) + WPM),
                 new Einstellung("SilentLuefter", "Silent Lüfter", "%", 0, this::getSilentLuefter,
                         "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
                                 + "PROGRAMME → SILENTPROGRAMM 1." + WPM),

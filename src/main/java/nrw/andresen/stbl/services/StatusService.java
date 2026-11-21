@@ -46,6 +46,8 @@ public class StatusService {
     private Verlauf24h verlauf24h;
     @Autowired
     private Zustand zustand;
+    @Autowired
+    private Anlage anlage;
     // Course of the estimated real power: the apparent power of the inverter converted value by value
     public static final String WIRKLEISTUNG = "Wirkleistung";
 
@@ -585,19 +587,16 @@ public class StatusService {
                 .formula("Vorlauf − Rücklauf")
                 .row("Volumenstrom", "l/min", 1, "WasserVolumenstrom", wp::getVolumenstrom)
                 .info("Heizwasser, das durch die Wärmepumpe fließt (0x500), jede Minute abgefragt. Die Pumpe "
-                        + "regelt ihn so, dass die Soll-Spreizung erreicht wird; bei kleiner Leistung daher oft nur "
-                        + "8–10 l/min. Laut Anleitung WPL 17: mindestens 10 l/min (0,6 m³/h), nenn 22 l/min bei "
-                        + "A−7/W35, beim Abtauen etwa 30 l/min.")
+                        + "regelt ihn so, dass die Soll-Spreizung erreicht wird; bei kleiner Leistung fließt deshalb "
+                        + "wenig, beim Abtauen viel mehr." + anlage.volumenstrom())
                 .row("Wärmeleistung ≈", "kW", 2, "WaermeleistungBerechnet", wp::getWaermeleistung)
-                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt. Laut Anleitung kann die WPL 17 "
-                        + "bei A7/W35 2,6–8,5 kW und bei A−7/W35 3,0–7,8 kW; braucht das Haus weniger als das "
-                        + "Minimum, taktet sie.")
+                .info("Wärme, die die Wärmepumpe gerade an das Heizwasser abgibt. Braucht das Haus weniger als "
+                        + "ihre kleinste Leistung, taktet sie." + anlage.waermeleistung())
                 .formula(Waermepumpe.formelWaermeleistung())
                 .ersatz("–")
                 .row("Arbeitszahl ≈", "", 1, "ArbeitszahlGeschaetzt", wp::getArbeitszahl)
                 .info("Momentane Arbeitszahl (COP): abgegebene Wärme je eingesetzter elektrischer Leistung. Nur "
-                        + "während der Verdichter läuft. Datenblatt WPL 17: A7/W35 4,76, A2/W35 3,97, A−7/W35 2,92, "
-                        + "SCOP 4,48.")
+                        + "während der Verdichter läuft." + anlage.arbeitszahl())
                 .formula(Waermepumpe.formelArbeitszahl())
                 .ersatz("aus")
                 .row("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)

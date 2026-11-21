@@ -204,7 +204,7 @@ public class CanBusSeiteTest {
         assertTrue(html.contains("href=\"canbus?anzahl=100\">Filter aufheben</a>"));
         assertTrue(html.contains("Filter: 0x700 Fremdgerät · "));
         assertTrue(html.contains("2 von 4 gespeicherten Nachrichten"));
-        assertTrue(html.contains("href=\"canbus?knoten=0x500&amp;anzahl=100\" title=\"Außeneinheit WPL 17 ACS"));
+        assertTrue(html.contains("href=\"canbus?knoten=0x500&amp;anzahl=100\" title=\"Außeneinheit (Verdichter"));
         assertTrue(html.contains("\">0x500 Wärmepumpe</a>"));
         // The chosen node is marked and a second click removes the filter
         html = CanBusSeite.render(verbindung(true), List.of(), rahmen, 0x500, 100, JETZT);

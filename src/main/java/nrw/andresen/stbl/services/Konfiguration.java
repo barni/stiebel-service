@@ -247,6 +247,8 @@ public class Konfiguration {
                     "Passwort am Broker. Wird nie angezeigt; leer lassen, um es nicht zu ändern."),
             new Feld("mqtt.praefix", MQTT, "Thema", "", Typ.NAME, "stbl", 0, 0,
                     "Anfang der MQTT-Themen der Werte, zum Beispiel stbl/zustand und stbl/status."),
+            new Feld("waermepumpe.modell", CAN, "Modell der Wärmepumpe", "", Typ.TEXT, null, 0, 0,
+                    "Für die Werte aus dem Datenblatt (Leistung, Arbeitszahl, Durchfluss). Leer: ohne Datenblattwerte."),
             new Feld("USBtin.port", CAN, "Anschluss des USBtin", "", Typ.PFAD, null, 0, 0,
                     "Serielle Schnittstelle des CAN-Adapters, zum Beispiel /dev/ttyACM0."),
             new Feld("USBtin.speed", CAN, "Geschwindigkeit", "bit/s", Typ.GANZZAHL, null, 10000, 1000000,
@@ -256,13 +258,17 @@ public class Konfiguration {
                             + "die Antworten auf eigene Anfragen. Wirkt sofort beim Speichern, ohne Neustart."));
 
     // Settings the running service takes over when they are saved, without a restart
+    // Settings with a fixed list of values, shown as selection; the empty value means none
+    static final java.util.Map<String, List<String>> AUSWAHL = java.util.Map.of("waermepumpe.modell",
+            java.util.stream.Stream.concat(java.util.stream.Stream.of(""), Anlage.MODELLE.keySet().stream()).toList());
+
     // Numbers with more than three decimals, e.g. a price of 0.2873 € per kWh
     static final java.util.Map<String, Integer> NACHKOMMASTELLEN = java.util.Map.of("auswertung.strompreis", 4);
 
     // The thresholds of the warnings are compared at every check, the CAN filter is changed on the adapter, the price
     // only multiplies
     public static final Set<String> SOFORT = java.util.stream.Stream.concat(java.util.stream.Stream.of("can.logall",
-                    "auswertung.strompreis"),
+                    "auswertung.strompreis", "waermepumpe.modell"),
             FELDER.stream().map(Feld::name).filter(n -> n.startsWith("warnung."))).collect(
             java.util.stream.Collectors.toUnmodifiableSet());
 
@@ -392,6 +398,12 @@ public class Konfiguration {
         if (wert.isEmpty() && feld.standard() == null && feld.typ() != Typ.GEHEIM) {
             // Optional without a default of the service: the entry is commented out
             return "";
+        }
+        if (AUSWAHL.containsKey(feld.name())) {
+            if (!AUSWAHL.get(feld.name()).contains(wert)) {
+                throw new IllegalArgumentException("ist keiner der möglichen Werte");
+            }
+            return wert;
         }
         switch (feld.typ()) {
             case ZAHL, GANZZAHL -> {

@@ -20,6 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @MockitoSettings(strictness = Strictness.LENIENT)
 public class StatusServiceTest {
 
+    @org.mockito.Spy
+    private Anlage anlage = new Anlage();
+
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private Waermepumpe wp;
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
