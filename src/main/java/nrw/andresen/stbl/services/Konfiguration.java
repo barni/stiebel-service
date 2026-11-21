@@ -160,6 +160,10 @@ public class Konfiguration {
             new Feld("auswertung.geraet.1.vorher", AUSWERTUNG, "Gerät 1: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
                     + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
+            new Feld("auswertung.geraet.1.alarm", AUSWERTUNG, "Gerät 1: Warnung nach Stunden ohne Wert", "h",
+                    Typ.GANZZAHL, "240", 0, 8760, "Warnung, wenn der Zähler so viele Stunden keinen Wert liefert. Ein "
+                    + "Shelly meldet auch im Standby laufend, eine Wallbox ohne Ladung oft tagelang nicht. 0: keine "
+                    + "Warnung."),
             new Feld("auswertung.geraet.2.name", AUSWERTUNG, "Gerät 2: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 2."),
             new Feld("auswertung.geraet.2.zaehler", AUSWERTUNG, "Gerät 2: Entity des Zählers", "", Typ.NAME, "", 0,
@@ -171,6 +175,10 @@ public class Konfiguration {
             new Feld("auswertung.geraet.2.vorher", AUSWERTUNG, "Gerät 2: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
                     + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
+            new Feld("auswertung.geraet.2.alarm", AUSWERTUNG, "Gerät 2: Warnung nach Stunden ohne Wert", "h",
+                    Typ.GANZZAHL, "240", 0, 8760, "Warnung, wenn der Zähler so viele Stunden keinen Wert liefert. Ein "
+                    + "Shelly meldet auch im Standby laufend, eine Wallbox ohne Ladung oft tagelang nicht. 0: keine "
+                    + "Warnung."),
             new Feld("auswertung.geraet.3.name", AUSWERTUNG, "Gerät 3: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 3."),
             new Feld("auswertung.geraet.3.zaehler", AUSWERTUNG, "Gerät 3: Entity des Zählers", "", Typ.NAME, "", 0,
@@ -182,6 +190,10 @@ public class Konfiguration {
             new Feld("auswertung.geraet.3.vorher", AUSWERTUNG, "Gerät 3: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
                     + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
+            new Feld("auswertung.geraet.3.alarm", AUSWERTUNG, "Gerät 3: Warnung nach Stunden ohne Wert", "h",
+                    Typ.GANZZAHL, "240", 0, 8760, "Warnung, wenn der Zähler so viele Stunden keinen Wert liefert. Ein "
+                    + "Shelly meldet auch im Standby laufend, eine Wallbox ohne Ladung oft tagelang nicht. 0: keine "
+                    + "Warnung."),
             new Feld("auswertung.geraet.4.name", AUSWERTUNG, "Gerät 4: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 4."),
             new Feld("auswertung.geraet.4.zaehler", AUSWERTUNG, "Gerät 4: Entity des Zählers", "", Typ.NAME, "", 0,
@@ -193,6 +205,10 @@ public class Konfiguration {
             new Feld("auswertung.geraet.4.vorher", AUSWERTUNG, "Gerät 4: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
                     + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
+            new Feld("auswertung.geraet.4.alarm", AUSWERTUNG, "Gerät 4: Warnung nach Stunden ohne Wert", "h",
+                    Typ.GANZZAHL, "240", 0, 8760, "Warnung, wenn der Zähler so viele Stunden keinen Wert liefert. Ein "
+                    + "Shelly meldet auch im Standby laufend, eine Wallbox ohne Ladung oft tagelang nicht. 0: keine "
+                    + "Warnung."),
             new Feld("auswertung.geraet.5.name", AUSWERTUNG, "Gerät 5: Name", "", Typ.TEXT, "", 0, 0,
                     "Leer: kein Gerät 5."),
             new Feld("auswertung.geraet.5.zaehler", AUSWERTUNG, "Gerät 5: Entity des Zählers", "", Typ.NAME, "", 0,
@@ -204,6 +220,10 @@ public class Konfiguration {
             new Feld("auswertung.geraet.5.vorher", AUSWERTUNG, "Gerät 5: vor dem ersten Wert", "", Typ.SCHALTER,
                     "true", 0, 0, "An: Das Gerät lief schon vor seinem ersten Wert, von Hand oder vom Zähler, und "
                     + "steckte bis dahin ungemessen im Haushaltsstrom. Aus: Es gab es noch nicht, vorher zählt es 0."),
+            new Feld("auswertung.geraet.5.alarm", AUSWERTUNG, "Gerät 5: Warnung nach Stunden ohne Wert", "h",
+                    Typ.GANZZAHL, "240", 0, 8760, "Warnung, wenn der Zähler so viele Stunden keinen Wert liefert. Ein "
+                    + "Shelly meldet auch im Standby laufend, eine Wallbox ohne Ladung oft tagelang nicht. 0: keine "
+                    + "Warnung."),
             new Feld("influx.enabled", INFLUX, "InfluxDB verwenden", "", Typ.SCHALTER, "true", 0, 0,
                     "Aus: Es wird nichts gespeichert, Verläufe und Auswertungen fehlen auf der Statusseite."),
             new Feld("influx.url", INFLUX, "Adresse", "", Typ.URL, "", 0, 0,
@@ -269,8 +289,34 @@ public class Konfiguration {
 
     // The thresholds of the warnings are compared at every check, the CAN filter is changed on the adapter, the price
     // only multiplies
+    /**
+     * Hours without a value after which the counter of the device with this entity counts as overdue, from the file;
+     * 240 without an entry, 0 means no warning. Null if no device has this counter.
+     */
+    public Integer alarmStunden(String zaehler) {
+        Map<String, String> w = new java.util.HashMap<>();
+        for (Wert x : stand().werte()) {
+            w.put(x.feld().name(), x.datei() == null ? "" : x.datei().trim());
+        }
+        for (int n = 1; n <= 5; n++) {
+            if (zaehler != null && zaehler.equals(w.get("auswertung.geraet." + n + ".zaehler"))) {
+                String t = w.getOrDefault("auswertung.geraet." + n + ".alarm", "");
+                try {
+                    return t.isEmpty() ? STANDARD_ALARM_STUNDEN : Integer.parseInt(t);
+                } catch (NumberFormatException e) {
+                    return STANDARD_ALARM_STUNDEN;
+                }
+            }
+        }
+        return null;
+    }
+
+    static final int STANDARD_ALARM_STUNDEN = 240;
+
     public static final Set<String> SOFORT = java.util.stream.Stream.concat(java.util.stream.Stream.of("can.logall",
-                    "auswertung.strompreis", "waermepumpe.modell"),
+                    "auswertung.strompreis", "waermepumpe.modell", "auswertung.geraet.1.alarm",
+                    "auswertung.geraet.2.alarm", "auswertung.geraet.3.alarm", "auswertung.geraet.4.alarm",
+                    "auswertung.geraet.5.alarm"),
             FELDER.stream().map(Feld::name).filter(n -> n.startsWith("warnung."))).collect(
             java.util.stream.Collectors.toUnmodifiableSet());
 

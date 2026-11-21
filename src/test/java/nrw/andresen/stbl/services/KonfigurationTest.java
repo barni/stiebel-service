@@ -331,4 +331,19 @@ public class KonfigurationTest {
         assertTrue(html.matches("(?s).*<label for=\"warnung-heizungsdruck-min\">[^<]*<span class=\"sofort\".*"));
         assertFalse(html.matches("(?s).*<label for=\"mqtt-host\">[^<]*<span class=\"sofort\".*"));
     }
+
+    @Test
+    public void testAlarmTage() throws Exception {
+        java.nio.file.Path datei = java.nio.file.Files.createTempFile("stbl", ".properties");
+        java.nio.file.Files.writeString(datei, "auswertung.geraet.1.zaehler=wallbox_total\nauswertung.geraet.1.alarm=720\n"
+                + "auswertung.geraet.2.zaehler=ww_energie\nauswertung.geraet.3.zaehler=klima\nauswertung.geraet.3.alarm=0\n");
+        Konfiguration k = new Konfiguration(new MockEnvironment(), datei.toString());
+        assertEquals(720, k.alarmStunden("wallbox_total"));
+        // without an entry 240 hours, 0 means no warning, an unknown counter has none
+        assertEquals(240, k.alarmStunden("ww_energie"));
+        assertEquals(0, k.alarmStunden("klima"));
+        org.junit.jupiter.api.Assertions.assertNull(k.alarmStunden("anders"));
+        assertTrue(Konfiguration.SOFORT.contains("auswertung.geraet.2.alarm"));
+        java.nio.file.Files.delete(datei);
+    }
 }

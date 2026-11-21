@@ -59,6 +59,8 @@ public class Ueberwachung {
     private WaermebedarfVergleich vergleich;
     @Autowired
     private Geraete geraete;
+    @Autowired(required = false)
+    private Konfiguration konfiguration;
     // The values from Home Assistant the evaluations read, checked for new readings
     @Value("${auswertung.haushalt.bucket:}")
     private String haushaltBucket = "";
@@ -648,11 +650,13 @@ public class Ueberwachung {
         }
         if (geraete != null) {
             for (Geraete.Geraet g : geraete.getListe()) {
-                if (!g.zaehler().isEmpty()) {
+                Integer stunden = konfiguration == null ? null : konfiguration.alarmStunden(g.zaehler());
+                Duration still = stunden == null ? GERAET_STILL : Duration.ofHours(stunden);
+                if (!g.zaehler().isEmpty() && !still.isZero()) {
                     liste.add(aktuell("Zähler " + g.name() + " aktuell", bucket(haushaltBucket), "kWh", g.zaehler(),
-                            GERAET_STILL, "Der Zähler " + g.zaehler() + " für den Jahresvergleich. Er meldet nur, "
-                                    + "wenn Strom fließt, deshalb erst nach " + GERAET_STILL.toDays() + " Tagen ohne "
-                                    + "Wert eine Warnung (Shelly offline, Entity umbenannt)."));
+                            still, "Der Zähler " + g.zaehler() + " für den Jahresvergleich. Er meldet nur, wenn "
+                                    + "Strom fließt, deshalb erst nach " + still.toHours() + " Stunden ohne Wert "
+                                    + "eine Warnung (Shelly offline, Entity umbenannt); einstellbar je Gerät."));
                 }
             }
         }
