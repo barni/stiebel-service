@@ -493,8 +493,8 @@ public class StatusService {
                         Map.entry("Arbeitszahl ≈", "Wärme ÷ Strom des Tages. Wegen des geschätzten Stroms eher etwas zu hoch."),
                         Map.entry("Abtauungen", "Heute und gestern: vom Dienst erkannte Abtauungen (Kreislaufumkehr, etwa "
                                 + "2 Minuten). Vergleichstage: Wiederanläufe nach einer Pause unter "
-                                + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, weil die Erkennung erst "
-                                + "seit 25.09.2026 gespeichert wird.")))
+                                + Fehlstarts.MIN_STILLSTAND_START.toMinutes() + " Minuten, weil die Erkennung nicht "
+                                + "für alle Tage gespeichert ist.")))
                 .note("„Ø gleiche Temp.“: Mittel aller Tage seit " + vergleich.getStart().format(DATUM)
                         + ", deren Tagesmittel höchstens " + zahl(Tagesuebersicht.AEHNLICH_K, 1)
                         + " K von gestern abweicht" + (gleich == null ? "" : " (" + gleich.tage() + " Tage)")
@@ -541,35 +541,33 @@ public class StatusService {
                 .row("Hilfskessel-Soll", "°C", 1, "VorlaufSoll", wp::getVorlaufSoll)
                 .info("Temperatur, die der Heizungsregler (0x180) alle 10 s an die Wärmepumpe schreibt "
                         + "(HILFSKESSELSOLL, 0x01D7), abgefragt bei der Wärmepumpe (0x500). Folgt der Heizkurve, ist aber "
-                        + "nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: Am 16.11.2026 lag dieser bei etwa "
-                        + "33 °C, gut 6 K über diesem Wert. Gespeichert als VorlaufSoll.")
+                        + "nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: Der lag beobachtet etwa 6–7 K "
+                        + "darüber. Gespeichert als VorlaufSoll.")
                 .row("Anforderung", "", 0, "Anforderung", wp::getAnforderung)
                 .info("Anforderung, die der Manager alle 10 s an die Wärmepumpe schreibt (SPEICHERBEDARF, 0x005F). "
                         + "Die Wärmepumpe beantwortet keine Abfrage danach, der Wert wird deshalb auf dem Bus "
-                        + "mitgelesen, nur mit „Alle Nachrichten empfangen“. Am 15.11.2026 0 bei Stillstand und 512 "
-                        + "beim Heizen, andere Werte sind noch unbekannt.")
+                        + "mitgelesen, nur mit „Alle Nachrichten empfangen“. 0 bei Stillstand und 512 beim Heizen, "
+                        + "andere Werte sind unbekannt.")
                 .row("Vorlauf fein", "°C", 1, "VorlaufFein", wp::getVorlaufFein)
                 .info("Vorlauf in 0,1 K, den das Gerät 0x700 dem Manager alle 5 s meldet (0xFDF3), auf dem Bus "
-                        + "mitgelesen, nur mit „Alle Nachrichten empfangen“. Lag beim Heizen am 15.11.2026 bis 1 K über "
-                        + "dem groben Vorlauf, im Lauf vom 12. bis 17.11.2026 im Median 0,7 K darüber, immer innerhalb einer "
-                        + "Stufe. Danach regelt der Manager: das Regler-Integral folgt diesem Wert.")
+                        + "mitgelesen, nur mit „Alle Nachrichten empfangen“. Liegt beim Heizen meist knapp unter 1 K über "
+                        + "dem groben Vorlauf, der nur in Stufen von etwa 1,1 K gemeldet wird. Danach regelt der Manager: "
+                        + "das Regler-Integral folgt diesem Wert.")
                 .row("Rücklauf fein", "°C", 1, "RuecklaufFein", wp::getRuecklaufFein)
-                .info("Rücklauf in 0,1 K von 0x700 (0xFDF4), wie der feine Vorlauf mitgelesen. Im Lauf vom 12. bis "
-                        + "17.11.2026 im Median 0,3 K über dem groben Rücklauf.")
+                .info("Rücklauf in 0,1 K von 0x700 (0xFDF4), wie der feine Vorlauf mitgelesen. Weicht im Lauf meist "
+                        + "weniger als eine Stufe vom groben Rücklauf ab.")
                 .row("Rücklauf WPM", "°C", 1, "RuecklaufWPM", wp::getRuecklaufWpm)
                 .info("Rücklauf am Fühler des Wärmepumpenmanagers (0x180, 0x0016), den er dem Bedienteil alle 10 s "
-                        + "meldet, auf dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Lag am 16.11.2026 im "
-                        + "Stillstand etwa 1 K unter dem Rücklauf der Wärmepumpe. Denselben Wert schreibt der Manager "
-                        + "als Heizkreis-Isttemperatur (0x02CA) an die Wärmepumpe, am 16.11.2026 höchstens 0,2 K "
-                        + "abweichend.")
+                        + "meldet, auf dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Eigener Fühler, kann "
+                        + "vom Rücklauf der Wärmepumpe etwas abweichen. Denselben Wert schreibt der Manager als "
+                        + "Heizkreis-Isttemperatur (0x02CA) an die Wärmepumpe.")
                 .row("Spreizung fein ≈", "K", 1, null, wp::getSpreizungFein)
-                .info("Feiner Vorlauf minus feiner Rücklauf. Im Lauf vom 12. bis 17.11.2026 im Median 5,4 K, der "
-                        + "Sollwert ist 5 K.")
+                .info("Feiner Vorlauf minus feiner Rücklauf. Im Lauf etwa die Soll-Spreizung (unter Einstellungen).")
                 .formula("Vorlauf fein − Rücklauf fein")
                 .row("Pumpe PWM", "%", 0, "PumpePWM", wp::getPumpePwm)
                 .info("Wert, den der Manager an 0x700 schreibt (0xFE1B), gedeutet als PWM-Signal der Umwälzpumpe: "
                         + "100 im Stillstand, beim Heizen 55 bis 72, 0 beim Abtauen (volle Drehzahl). Je kleiner, desto "
-                        + "mehr Durchfluss, im Lauf vom 12. bis 17.11.2026 r = −0,99 zum Volumenstrom.")
+                        + "mehr Durchfluss, der Wert folgt dem Volumenstrom fast genau.")
                 .row("Regler-Integral", "", 0, "RegelIntegral", wp::getRegelIntegral)
                 .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
                         + "Steigt, solange der Vorlauf über dem Sollwert liegt (etwa 34 °C, mit der Heizkurve "
@@ -577,7 +575,8 @@ public class StatusService {
                         + "er davon entfernt ist. Bei -1000 springt das Integral auf 0, 40 bis 60 s später startet "
                         + "der Verdichter, kurz mit 40 Hz. Fällt es danach weiter, steigt die Frequenz-Anforderung und "
                         + "der Verdichter fährt von etwa 26 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +1000 "
-                        + "stoppt er, und das Integral springt wieder auf 0 (beobachtet am 16.11.2026 bei 8 °C).")
+                        + "stoppt er, und das Integral springt wieder auf 0. Wie hoch der Verdichter dabei höchstens "
+                        + "fährt, ergibt sich aus der Einstellung Wärmebedarf und der Außentemperatur.")
                 .row("Rücklauf", "°C", 1, "RuecklaufIstTemp", wp::getRuecklaufIstTemp)
                 .info("Temperatur des Wassers, das vom Heizkreis zur Wärmepumpe zurückkommt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
@@ -601,8 +600,8 @@ public class StatusService {
                 .ersatz("aus")
                 .row("Heizungsdruck", "bar", 2, "Heizungsdruck", wp::getHeizungsdruck)
                 .info("Wasserdruck im Heizkreis, gemessen im HM Trend und gemeldet vom Wärmepumpenmanager (0x180). "
-                        + "Warnung unter 1,3 und über 2,5 bar, zulässig sind laut Anleitung 3 bar; er sinkt um etwa "
-                        + "0,2 bar pro Jahr.")
+                        + "Die Warngrenzen stehen unter Warnungen, zulässig sind laut Anleitung 3 bar."
+                        + druckverlust())
                 .card("Kältekreis")
                 .row("Außentemperatur", "°C", 1, "Aussentemp", wp::getAussentemp)
                 .info("Außentemperatur am Fühler der Außeneinheit (0x500). Kann vom Außenfühler des "
@@ -610,7 +609,7 @@ public class StatusService {
                 .row("Außentemperatur WPM", "°C", 1, "AussentempWPM", wp::getAussentempWpm)
                 .info("Außentemperatur am Fühler des Wärmepumpenmanagers, nach der er die Heizkurve rechnet. Der "
                         + "Manager (0x180) schickt sie alle 5 s an alle (0x000C), auf dem Bus mitgelesen, nur mit „Alle "
-                        + "Nachrichten empfangen“. Am 16.11.2026 8,0 °C, der Fühler der Außeneinheit zeigte 7,4 °C.")
+                        + "Nachrichten empfangen“. Eigener Fühler, kann von dem der Außeneinheit etwas abweichen.")
                 .row("Hochdruck", "bar", 2, "Hochdruck", wp::getHochdruck)
                 .info("Absoluter Druck auf der Hochdruckseite des Kältekreises (0x500). Entspricht der "
                         + "Kondensationstemperatur, die etwa der Vorlauftemperatur folgt. Sensor bis 42 bar, "
@@ -640,8 +639,8 @@ public class StatusService {
                         + "viel kälter als die Außenluft das Kältemittel verdampfen muss, bereinigt um die Drehzahl. "
                         + "Sinkt, während Eis am Verdampfer wächst, nur der Abstand zur Referenz zählt.")
                 .row("Reserve bis Abtauung ≈", "K", 1, "AbtauReserve", wp::getAbtauReserve)
-                .info("Wie weit der kompensierte Taupunkt noch sinken darf, bis die Wärmepumpe abtaut. Alle fünf "
-                        + "Abtauungen in der Nacht zum 17.11.2026 starteten bei etwa 3,1 K unter der Referenz. Im "
+                .info("Wie weit der kompensierte Taupunkt noch sinken darf, bis die Wärmepumpe abtaut. Beobachtet "
+                        + "setzten die Abtauungen bei etwa 3,1 K unter der Referenz ein. Im "
                         + "Stillstand und beim Starten und Stoppen springt der kompensierte Wert, die Referenz folgt "
                         + "ihm erst ab 10 Minuten nach dem Start, deshalb erst ab 11 Minuten Lauf.")
                 .formula("Taupunkt kompensiert − Taupunkt Referenz + 3,1 K")
@@ -697,7 +696,8 @@ public class StatusService {
                 .card("Energie seit Inbetriebnahme")
                 .row("Stromaufnahme", "MWh", 3, "AufnahmeLeistung", wp::getAufnahmeLeistung)
                 .info("Elektrische Energie fürs Heizen laut Stromzähler der Wärmepumpe (0x514), aus Summe und "
-                        + "Tageswert zusammengesetzt. Der Zähler zählt rund 15–20 % zu wenig.")
+                        + "Tageswert zusammengesetzt. An einer WPL 17 ACS classic zählte er gegen den Hauszähler rund "
+                        + "15–20 % zu wenig.")
                 .row("Wärmeerzeugung", "MWh", 3, "AbgabeWaerme", wp::getAbgabeWaerme)
                 .info("Heizwärme laut Wärmezähler der Wärmepumpe (0x514), aus Summe und Tageswert zusammengesetzt. "
                         + "Stimmt auf etwa 6 % mit der Rechnung aus Durchfluss und Spreizung überein.")
@@ -950,5 +950,26 @@ public class StatusService {
         double min = w.stream().mapToDouble(Double::doubleValue).min().orElse(0);
         double max = w.stream().mapToDouble(Double::doubleValue).max().orElse(0);
         return " In den abgeschlossenen Saisons " + zahl(min, stellen) + "–" + zahl(max, stellen) + ".";
+    }
+
+    /**
+     * " Er sinkt um etwa 0,16 bar im Jahr …" from the refills the page Zustand found, empty without them
+     */
+    private String druckverlust() {
+        try {
+            Zustand.Ergebnis e = zustand.getErgebnis();
+            if (e == null) {
+                return "";
+            }
+            for (Zustand.Pruefung p : e.pruefungen()) {
+                if (p.name().startsWith("Druckverlust") && p.wert() != null) {
+                    return " Aus den Nachfüllungen in den eigenen Daten verliert die Anlage etwa "
+                            + zahl(p.wert(), 2) + " bar im Jahr.";
+                }
+            }
+        } catch (Exception ex) {
+            // without the evaluation no sentence
+        }
+        return "";
     }
 }

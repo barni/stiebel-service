@@ -114,7 +114,8 @@ public final class CanBusSeite {
         html.append(geraete.isEmpty() ? "<p class=\"note\">Noch keine Nachricht empfangen.</p>"
                         : tabelle(List.of("Gerät", "/min", "Zuletzt"), geraete)
                         + "<p class=\"note\">Ein Klick auf ein Gerät zeigt nur dessen Nachrichten, ein zweiter Klick "
-                        + "zeigt wieder alle.</p>")
+                        + "zeigt wieder alle. Die Bedeutung der Werte wurde an einer WPL 17 ACS classic mit WPM 3 "
+                        + "entschlüsselt; Beispielwerte stammen von dort und können bei anderen Anlagen anders sein.</p>")
                 .append("</article>");
 
         List<List<String>> werte = new ArrayList<>();

@@ -129,8 +129,8 @@ public class Konfiguration {
             new Feld("auswertung.aussentemp.bucket", AUSWERTUNG, "Bucket der Außentemperatur", "", Typ.NAME, "", 0,
                     0, "InfluxDB-Bucket mit der Außentemperatur aus Home Assistant. Leer: Bucket des Dienstes."),
             new Feld("auswertung.aussentemp.entity", AUSWERTUNG, "Entity der Außentemperatur", "", Typ.NAME, "", 0,
-                    0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, der erst "
-                    + "seit 09/2026 gespeichert wird."),
+                    0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, gespeichert "
+                    + "erst seit der Dienst läuft."),
             new Feld("auswertung.haushalt.bucket", AUSWERTUNG, "Bucket des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "InfluxDB-Bucket mit dem Hauszähler und den Zählern der Geräte aus Home Assistant. Leer: Bucket des "
                     + "Dienstes."),

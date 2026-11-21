@@ -1123,7 +1123,7 @@ public class Waermepumpe {
         return "Wärmeleistung ÷ Wirkleistung, Wirkleistung = Scheinleistung × (" + zahl(WIRKLEISTUNG_STEIGUNG)
                 + " − " + (int) WIRKLEISTUNG_OFFSET_W + " W ÷ Scheinleistung), Anteil begrenzt auf "
                 + zahl(WIRKLEISTUNGSANTEIL_MIN) + " bis " + zahl(WIRKLEISTUNGSANTEIL_MAX)
-                + " (Abgleich mit dem Hauszähler 2024/25)";
+                + " (ermittelt durch Abgleich mit einem Hauszähler an einer WPL 17 ACS classic)";
     }
 
     static String formelAbtauung() {
