@@ -23,8 +23,8 @@ public final class IndexBeschreibung {
             entry((short) 0x0016, "Rücklauftemperatur in °C, nur in Schritten von etwa 1,1 K. Der Kessel (0x180) misst "
                     + "an einem eigenen Fühler und zeigt oft 1 bis 2 K weniger."),
             entry((short) 0x01D7, "Hilfskessel-Soll in °C. Der Heizungsregler (0x180) schreibt ihn alle 10 s an die "
-                    + "Wärmepumpe, er folgt der Heizkurve. Nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: der "
-                    + "lag beobachtet etwa 6–7 K über diesem Wert."),
+                    + "Wärmepumpe, er folgt der Heizkurve und gleicht PUFFERSOLL (0x01D5). Im Pufferbetrieb regelt der "
+                    + "Manager den Rücklauffühler 0x0016 auf diesen Wert, siehe Regler-Integral 0x0917."),
             entry((short) 0x005F, "Anforderung des Managers an die Wärmepumpe, alle 10 s: 0 im Stillstand, 512 beim "
                     + "Heizen (gedeutet). Die Wärmepumpe beantwortet eine Abfrage nur mit 0x8000, deshalb mitgelesen."),
             entry((short) 0x0674, "Wasserdruck im Heizkreis in bar. Normal etwa 1,4 bis 2,3 bar, zulässig 3 bar."),
@@ -113,12 +113,12 @@ public final class IndexBeschreibung {
                     + "unbekannt): 100 im Stillstand. Beim Heizen 70 bis 72 bei 9,0 l/min, 66 bis 67 bei 11,1 l/min, "
                     + "57 bis 59 bei 13,5 l/min, 55 bis 56 bei 14,8 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
-                    + "(gedeutet). Steigt, solange der feine Vorlauf über dem Sollwert liegt, fällt darunter, umso schneller, "
-                    + "je größer die Abweichung. Der Sollwert folgt der Heizkurve, beobachtet etwa Hilfskessel-Soll plus "
-                    + "7 K. Bei -1000 Start: es springt auf 0 und fällt weiter, 40 bis "
+                    + "(gedeutet). Ändert sich im Pufferbetrieb beobachtet um etwa 40 je Minute und Kelvin, um das der "
+                    + "Rücklauffühler 0x0016 über dem Hilfskessel-/Puffer-Soll 0x01D7 liegt (darunter fällt es). Bei "
+                    + "-1000 Start: es springt auf 0 und fällt weiter, 40 bis "
                     + "60 s später läuft der Verdichter an, kurz mit 40 Hz, dann ab etwa 26 Hz mit der "
                     + "Frequenz-Anforderung. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
-                    + "noch, bis der Vorlauf unter den Sollwert fällt. Die Frequenz-Anforderung bei -1000 steigt, je kälter es "
+                    + "noch, solange der Rücklauffühler über dem Sollwert liegt. Die Frequenz-Anforderung bei -1000 steigt, je kälter es "
                     + "ist, und hängt von der Einstellung Wärmebedarf ab."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 29, etwa 0,7 bis 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),

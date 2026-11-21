@@ -121,7 +121,7 @@ before you rely on it.
   with earlier readings, e.g. read by hand, the counter goes on from them; a counter that starts again at 0 is
   counted on. A device that ran before its first reading (`.vorher`, default on) is part of the household until
   then and counted in the rest of the comparison until both years have values; a new one counts 0 before. The
-  service checks every 15 minutes that the house meter, the outdoor temperature, the PV yield and every device counter
+  service checks every minute that the house meter, the outdoor temperature, the PV yield and every device counter
   from Home Assistant had a value recently, otherwise the warning about the service is raised; the hours are set per
   source (`auswertung.haushalt.alarm` 2 h, `auswertung.aussentemp.alarm` 2 h, `auswertung.pv.alarm` 24 h,
   `auswertung.geraet.N.alarm` 240 h; 0 none), and the configuration page shows the last value of every source.
@@ -166,7 +166,7 @@ before you rely on it.
   when the expansion vessel loses its gas charge. Only for days with at least 12 h run time of the compressor.
 - **Version**, git commit and build time are written to the log at the start and shown on the status page together
   with the start time of the service.
-- **Check of the service** 30 s after the start and every 15 minutes: InfluxDB reachable, reading the bucket (and the
+- **Check of the service** 30 s after the start and then every minute (warning after 5 minutes of failure): InfluxDB reachable, reading the bucket (and the
   bucket of the outdoor temperature), writing, USBtin connected and answering, mail configured, Pushover (once set up)
   delivering.
 - **Mail** to `stbl.mail.to` when no CAN answer arrives for 2 minutes and the USB connection is restarted, when a

@@ -23,8 +23,8 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Checks the heat pump and the service every minute and sends a mail when a warning becomes active. Every 15 minutes
- * (and shortly after the start) the service checks whether InfluxDB, the USBtin and the mail work.
+ * Checks the heat pump and the service every minute and sends a mail when a warning becomes active, including
+ * whether InfluxDB, the USBtin and the mail work.
  */
 @Component
 public class Ueberwachung {
@@ -111,8 +111,6 @@ public class Ueberwachung {
     private final Deque<Messung> druckVerlauf = new ArrayDeque<>();
     // Last minute with the compressor running, at first the first check after the start of the service
     private Instant letzterLauf;
-    // Snapshot of all checks of the last run every 15 minutes, used for the warning about the service
-    private volatile List<Pruefung> pruefungen = List.of();
     // Checks over the network (InfluxDB reachable and readable) of the last run
     private volatile List<Pruefung> netz = List.of();
     // Last known value of each setting and the last changes as text, the newest first
@@ -176,7 +174,7 @@ public class Ueberwachung {
         starts = new Warnung("Viele Verdichterstarts", "", Duration.ZERO);
         dienst = new Warnung("Dienstprüfung fehlgeschlagen", "Eine Prüfung des Dienstes schlägt fehl, z. B. "
                 + "InfluxDB nicht erreichbar, Schreiben/Lesen nicht erlaubt oder ein Zähler aus Home Assistant "
-                + "liefert keine Werte mehr.", Duration.ofMinutes(15));
+                + "liefert keine Werte mehr.", Duration.ofMinutes(5));
         this.frostStunden = frostStunden;
         this.abtauungMinuten = abtauungMinuten;
         regelnSetzen();
@@ -368,7 +366,7 @@ public class Ueberwachung {
     }
 
     /**
-     * The checks over the network from the last run every 15 minutes, the others (writing to InfluxDB, USB adapter,
+     * The checks over the network from the last run every minute, the others (writing to InfluxDB, USB adapter,
      * mail, Pushover, MQTT) with the current state: they only read what the service already knows. Empty before
      * the first run 30 s after the start.
      */
@@ -526,7 +524,7 @@ public class Ueberwachung {
         }
         // Not for the mail (it would report itself) and MQTT: Home Assistant restarts after every update, the
         // connection comes back by itself
-        List<String> fehler = pruefungen.stream().filter(p -> !p.ok() && !p.name().equals("Mail")
+        List<String> fehler = getPruefungen().stream().filter(p -> !p.ok() && !p.name().equals("Mail")
                         && !p.name().equals(MQTT))
                 .map(p -> p.name() + ": " + p.text()).toList();
         melden(dienst, !fehler.isEmpty(), String.join("; ", fehler), jetzt);
@@ -600,10 +598,10 @@ public class Ueberwachung {
     }
 
     /**
-     * Checks InfluxDB over the network (if it is used) 30 s after the start and then every 15 minutes, and keeps a
-     * snapshot of all checks for the warning about the service
+     * Checks InfluxDB over the network (if it is used) 30 s after the start and then every minute, and keeps a
+     * snapshot of all checks for the warning about the service. A few small queries, each only the last value.
      */
-    @Scheduled(initialDelay = 30000, fixedRate = 900000)
+    @Scheduled(initialDelay = 30000, fixedRate = 60000)
     public void dienstPruefen() {
         List<Pruefung> liste = new ArrayList<>();
         if (influx.isAktiv()) {
@@ -611,8 +609,6 @@ public class Ueberwachung {
         }
         netz = List.copyOf(liste);
         geprueft = Instant.now();
-        liste.addAll(laufend());
-        pruefungen = liste;
     }
 
     private void influxPruefen(List<Pruefung> liste) {

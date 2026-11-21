@@ -606,4 +606,17 @@ public class JahresvergleichTest {
         assertEquals(520.0, z.verbrauch(), 1e-9);
         assertEquals(220.0, z.haushalt(), 1e-9);
     }
+
+    @org.junit.jupiter.api.Test
+    public void testJahresbalkenGegenVorjahr() {
+        java.util.List<String> namen = java.util.List.of("Heizung ≈", "Haushalt", "Wallbox", "Klimaanlage");
+        double[] vorjahr = {3000, 4000, 1000, 0};
+        double[] jahr = {3150, 3600, 900, 360};
+        assertEquals("; gegenüber 2025 +5,0 %", JahresvergleichSeite.gegenVorjahr(0, jahr, vorjahr, 2025, namen));
+        assertEquals("; gegenüber 2025 −10,0 %", JahresvergleichSeite.gegenVorjahr(2, jahr, vorjahr, 2025, namen));
+        // The air conditioning has no value the year before, it was part of the household then
+        assertEquals("; 2025 nicht gemessen", JahresvergleichSeite.gegenVorjahr(3, jahr, vorjahr, 2025, namen));
+        assertEquals("; gegenüber 2025 −10,0 % (2025 steckte Klimaanlage noch im Haushalt)",
+                JahresvergleichSeite.gegenVorjahr(1, jahr, vorjahr, 2025, namen));
+    }
 }

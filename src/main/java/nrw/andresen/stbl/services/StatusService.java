@@ -414,7 +414,7 @@ public class StatusService {
                     .info("Vergleich der Heizsaisons bei gleicher Außentemperatur, alle 6 Stunden neu berechnet.");
         }
         Rahmen.Signal dienst = SignalService.dienst(ueberwachung.getPruefungen(), null);
-        page.textArt("Dienst", dienst.wert(), dienst.art()).info("Prüfungen des Dienstes: Erreichbarkeit der InfluxDB alle 15 Minuten, "
+        page.textArt("Dienst", dienst.wert(), dienst.art()).info("Prüfungen des Dienstes: Erreichbarkeit der InfluxDB jede Minute, "
                 + "Schreiben, USB-Adapter, Mail, Pushover und MQTT laufend.");
         page.note("<a class=\"nav\" href=\"zustand\">Zustand und Alterung</a> · "
                 + "<a class=\"nav\" href=\"konfiguration#system\">System</a>");
@@ -538,11 +538,11 @@ public class StatusService {
                 .row("Vorlauf", "°C", 1, "VorlaufIstTemp", wp::getVorlaufIstTemp)
                 .info("Temperatur des Wassers, das von der Wärmepumpe zum Heizkreis fließt (0x514). Wird nur in "
                         + "Schritten von etwa 1,1 K gemeldet.")
-                .row("Hilfskessel-Soll", "°C", 1, "VorlaufSoll", wp::getVorlaufSoll)
-                .info("Temperatur, die der Heizungsregler (0x180) alle 10 s an die Wärmepumpe schreibt "
-                        + "(HILFSKESSELSOLL, 0x01D7), abgefragt bei der Wärmepumpe (0x500). Folgt der Heizkurve, ist aber "
-                        + "nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: Der lag beobachtet etwa 6–7 K "
-                        + "darüber. Gespeichert als VorlaufSoll.")
+                .row("Puffer-Soll", "°C", 1, "VorlaufSoll", wp::getVorlaufSoll)
+                .info("Sollwert aus der Heizkurve, den der Manager (0x180) alle 10 s an die Wärmepumpe schreibt "
+                        + "(HILFSKESSELSOLL, 0x01D7, gleich PUFFERSOLL 0x01D5), abgefragt bei der Wärmepumpe (0x500). "
+                        + "Im Pufferbetrieb regelt der Manager den Rücklauffühler am WPM (Rücklauf WPM) auf diesen Wert; "
+                        + "der Vorlauf liegt im Lauf entsprechend einige Kelvin darüber. Gespeichert als VorlaufSoll.")
                 .row("Anforderung", "", 0, "Anforderung", wp::getAnforderung)
                 .info("Anforderung, die der Manager alle 10 s an die Wärmepumpe schreibt (SPEICHERBEDARF, 0x005F). "
                         + "Die Wärmepumpe beantwortet keine Abfrage danach, der Wert wird deshalb auf dem Bus "
@@ -551,15 +551,15 @@ public class StatusService {
                 .row("Vorlauf fein", "°C", 1, "VorlaufFein", wp::getVorlaufFein)
                 .info("Vorlauf in 0,1 K, den das Gerät 0x700 dem Manager alle 5 s meldet (0xFDF3), auf dem Bus "
                         + "mitgelesen, nur mit „Alle Nachrichten empfangen“. Liegt beim Heizen meist knapp unter 1 K über "
-                        + "dem groben Vorlauf, der nur in Stufen von etwa 1,1 K gemeldet wird. Danach regelt der Manager: "
-                        + "das Regler-Integral folgt diesem Wert.")
+                        + "dem groben Vorlauf, der nur in Stufen von etwa 1,1 K gemeldet wird.")
                 .row("Rücklauf fein", "°C", 1, "RuecklaufFein", wp::getRuecklaufFein)
                 .info("Rücklauf in 0,1 K von 0x700 (0xFDF4), wie der feine Vorlauf mitgelesen. Weicht im Lauf meist "
                         + "weniger als eine Stufe vom groben Rücklauf ab.")
                 .row("Rücklauf WPM", "°C", 1, "RuecklaufWPM", wp::getRuecklaufWpm)
                 .info("Rücklauf am Fühler des Wärmepumpenmanagers (0x180, 0x0016), den er dem Bedienteil alle 10 s "
-                        + "meldet, auf dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Eigener Fühler, kann "
-                        + "vom Rücklauf der Wärmepumpe etwas abweichen. Denselben Wert schreibt der Manager als "
+                        + "meldet, auf dem Bus mitgelesen, nur mit „Alle Nachrichten empfangen“. Eigener Fühler, im "
+                        + "Pufferbetrieb der Rücklauffühler am Puffer: Auf ihn regelt der Manager (siehe Regler-Integral). "
+                        + "Kann vom Rücklauf der Wärmepumpe etwas abweichen. Denselben Wert schreibt der Manager als "
                         + "Heizkreis-Isttemperatur (0x02CA) an die Wärmepumpe.")
                 .row("Spreizung fein ≈", "K", 1, null, wp::getSpreizungFein)
                 .info("Feiner Vorlauf minus feiner Rücklauf. Im Lauf etwa die Soll-Spreizung (unter Einstellungen).")
@@ -570,9 +570,9 @@ public class StatusService {
                         + "mehr Durchfluss, der Wert folgt dem Volumenstrom fast genau.")
                 .row("Regler-Integral", "", 0, "RegelIntegral", wp::getRegelIntegral)
                 .info("Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt (0x0917). "
-                        + "Steigt, solange der Vorlauf über dem Sollwert liegt (etwa 34 °C, mit der Heizkurve "
-                        + "wandernd), und fällt darunter, umso schneller, je weiter "
-                        + "er davon entfernt ist. Bei -1000 springt das Integral auf 0, 40 bis 60 s später startet "
+                        + "Ändert sich gleichmäßig mit der Abweichung des Rücklauffühlers am WPM (Rücklauf WPM) vom "
+                        + "Puffer-Soll: beobachtet etwa 40 je Minute und Kelvin, darüber steigt es, darunter fällt es. "
+                        + "Bei -1000 springt das Integral auf 0, 40 bis 60 s später startet "
                         + "der Verdichter, kurz mit 40 Hz. Fällt es danach weiter, steigt die Frequenz-Anforderung und "
                         + "der Verdichter fährt von etwa 26 Hz hoch, steigt es, läuft er mit kleinster Drehzahl. Bei etwa +1000 "
                         + "stoppt er, und das Integral springt wieder auf 0. Wie hoch der Verdichter dabei höchstens "
@@ -843,7 +843,7 @@ public class StatusService {
         }
         page.note(ueberwachung.getGeprueft() == null ? "Erste Prüfung 30 s nach dem Start."
                         : influx.isAktiv() ? "Erreichbarkeit der InfluxDB geprüft " + zeitpunkt(ueberwachung.getGeprueft())
-                        + ", alle 15 Minuten; die übrigen Zeilen zeigen den aktuellen Stand." : "Aktueller Stand.")
+                        + ", jede Minute; die übrigen Zeilen zeigen den aktuellen Stand." : "Aktueller Stand.")
                 .card("Software der Geräte")
                 .text("Wärmepumpenmanager", wp.getSoftwareManager())
                 .info("Softwarenummer und -version des Wärmepumpenmanagers (0x180, 0x0199/0x019A), stündlich "
