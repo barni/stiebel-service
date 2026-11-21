@@ -54,7 +54,7 @@ public final class KonfigurationSeite {
     public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
                                 String meldung, String csrfName, String csrfToken, String testErgebnis,
                                 String system) {
-        return render(stand, eingabe, fehler, meldung, csrfName, csrfToken, testErgebnis, system, Map.of());
+        return render(stand, eingabe, fehler, meldung, csrfName, csrfToken, testErgebnis, system, Map.of(), Map.of());
     }
 
     /**
@@ -63,6 +63,16 @@ public final class KonfigurationSeite {
     public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
                                 String meldung, String csrfName, String csrfToken, String testErgebnis,
                                 String system, Map<String, String> erfahrung) {
+        return render(stand, eingabe, fehler, meldung, csrfName, csrfToken, testErgebnis, system, erfahrung, Map.of());
+    }
+
+    /**
+     * @param zuletzt per setting that names a source of data its last value, shown under the field
+     */
+    public static String render(Konfiguration.Stand stand, Map<String, String> eingabe, Map<String, String> fehler,
+                                String meldung, String csrfName, String csrfToken, String testErgebnis,
+                                String system, Map<String, String> erfahrung,
+                                Map<String, Datenquellen.Zuletzt> zuletzt) {
         StringBuilder html = new StringBuilder();
         html.append("<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">")
                 .append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
@@ -124,7 +134,7 @@ public final class KonfigurationSeite {
             for (Teil t : a.teile()) {
                 html.append(t.titel().isEmpty() ? "" : "<h3>" + text(t.titel()) + "</h3>");
                 if (t.felder().equals(GERAETE)) {
-                    html.append(geraete(nachName, eingabe, fehler, stand.schreibbar()));
+                    html.append(geraete(nachName, eingabe, fehler, stand.schreibbar(), zuletzt));
                     for (int n = 1; n <= Geraete.ANZAHL; n++) {
                         for (String teil : GERAETE_TEILE) {
                             gezeigt.add("auswertung.geraet." + n + "." + teil);
@@ -136,7 +146,8 @@ public final class KonfigurationSeite {
                 for (String name : t.felder()) {
                     Konfiguration.Wert wert = nachName.get(name);
                     if (wert != null) {
-                        html.append(feld(wert, eingabe.get(name), fehler.get(name), stand.schreibbar(), erfahrung.get(name)));
+                        html.append(feld(wert, eingabe.get(name), fehler.get(name), stand.schreibbar(), erfahrung.get(name),
+                                zuletzt.get(name)));
                         gezeigt.add(name);
                     }
                 }
@@ -156,7 +167,7 @@ public final class KonfigurationSeite {
         for (Konfiguration.Wert wert : stand.werte()) {
             if (!gezeigt.contains(wert.feld().name())) {
                 rest.append(feld(wert, eingabe.get(wert.feld().name()), fehler.get(wert.feld().name()),
-                        stand.schreibbar(), erfahrung.get(wert.feld().name())));
+                        stand.schreibbar(), erfahrung.get(wert.feld().name()), zuletzt.get(wert.feld().name())));
             }
         }
         if (!rest.isEmpty()) {
@@ -229,7 +240,8 @@ public final class KonfigurationSeite {
      * The devices as table, one row each: name, counter, readings before the counter, ran before the first value
      */
     private static String geraete(Map<String, Konfiguration.Wert> werte, Map<String, String> eingabe,
-                                  Map<String, String> fehler, boolean schreibbar) {
+                                  Map<String, String> fehler, boolean schreibbar,
+                                  Map<String, Datenquellen.Zuletzt> zuletzt) {
         StringBuilder html = new StringBuilder("<p class=\"hilfe\">Zum Beispiel ein Shelly an Klimaanlage oder "
                 + "Warmwasser: eigener Teil im Jahresvergleich, vom Haushaltsstrom abgezogen. Beide Spalten mit "
                 + "Werten sind Home-Assistant-Entities mit dem Zählerstand in kWh. „Werte vor Einbau Zähler“: Stände aus "
@@ -263,6 +275,7 @@ public final class KonfigurationSeite {
                 } else {
                     html.append("<input type=\"text\"").append(attribute).append(" value=\"").append(text(angezeigt))
                             .append("\">");
+                    html.append(zuletzt(zuletzt.get(name)));
                 }
                 html.append("</td>");
                 if (fehler.containsKey(name)) {
@@ -303,7 +316,7 @@ public final class KonfigurationSeite {
     }
 
     private static String feld(Konfiguration.Wert wert, String eingabe, String fehler, boolean schreibbar,
-                               String erfahrung) {
+                               String erfahrung, Datenquellen.Zuletzt zuletzt) {
         Konfiguration.Feld feld = wert.feld();
         String id = feld.name().replace('.', '-');
         String angezeigt = eingabe != null ? eingabe : Konfiguration.anzeige(feld, wert.datei());
@@ -353,6 +366,7 @@ public final class KonfigurationSeite {
             html.append(" ").append(text(erfahrung));
         }
         html.append("</p>");
+        html.append(zuletzt(zuletzt));
         if (fehler != null) {
             html.append("<p class=\"hilfe fehlertext\">").append(text(feld.label())).append(" ").append(text(fehler))
                     .append(".</p>");
@@ -364,6 +378,17 @@ public final class KonfigurationSeite {
                             : laufend.isEmpty() ? "einem leeren Wert" : "„" + text(laufend) + "“").append(".</p>");
         }
         return html.append("</div>").toString();
+    }
+
+    /**
+     * Line with the last value of a source, marked if it is overdue; empty without
+     */
+    static String zuletzt(Datenquellen.Zuletzt z) {
+        if (z == null) {
+            return "";
+        }
+        return "<p class=\"hilfe zuletzt" + (z.ok() ? "" : " fehlertext") + "\">" + (z.ok() ? "" : "⚠ ")
+                + text(z.text()) + "</p>";
     }
 
     private static String text(String text) {

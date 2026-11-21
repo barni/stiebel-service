@@ -211,6 +211,13 @@ public class CanBus {
         }
     }
 
+    /**
+     * Time of the last answer of the heat pump, null before the first
+     */
+    public Instant getLetzteAntwort() {
+        return letzteAntwort;
+    }
+
     public boolean isLogall() {
         return logall;
     }
