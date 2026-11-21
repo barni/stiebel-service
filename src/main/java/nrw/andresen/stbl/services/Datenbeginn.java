@@ -61,4 +61,12 @@ public class Datenbeginn {
                 + " |> filter(fn: (r) => r._measurement == \"WP_LeistungInverter\" and r._field == \"value\")"
                 + " |> first() |> keep(columns: [\"_time\", \"_value\"])";
     }
+
+    /**
+     * Day from the setting; empty means from the first stored value, until that is known two years back
+     */
+    static LocalDate ersterTag(String einstellung) {
+        return einstellung == null || einstellung.isBlank() ? LocalDate.now(ZoneId.of("Europe/Berlin")).minusYears(2)
+                : LocalDate.parse(einstellung.trim());
+    }
 }

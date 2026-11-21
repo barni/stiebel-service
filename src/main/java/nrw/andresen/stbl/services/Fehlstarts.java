@@ -61,7 +61,10 @@ public class Fehlstarts {
     private InfluxController influx;
     @Autowired
     private WaermebedarfVergleich vergleich;
-    private final LocalDate start;
+    private final String startEinstellung;
+    private volatile LocalDate start;
+    @Autowired(required = false)
+    private Datenbeginn datenbeginn;
     // Seasons before the current one do not change and are calculated once
     private volatile List<Saison> abgeschlossen;
     private volatile Saison laufend;
@@ -101,8 +104,9 @@ public class Fehlstarts {
         }
     }
 
-    public Fehlstarts(@Value("${auswertung.fehlstarts.start:2019-01-01}") String start) {
-        this.start = LocalDate.parse(start);
+    public Fehlstarts(@Value("${auswertung.fehlstarts.start:}") String start) {
+        this.startEinstellung = start;
+        this.start = Datenbeginn.ersterTag(start);
     }
 
     /**
@@ -117,6 +121,9 @@ public class Fehlstarts {
             LocalDate saisonStart = saisonStart(LocalDate.now(ZONE));
             Instant jetzt = Instant.now();
             if (abgeschlossen == null) {
+                if (datenbeginn != null) {
+                    start = datenbeginn.ab(startEinstellung, start);
+                }
                 List<Saison> saisons = saisons(ereignisse(start.atStartOfDay(ZONE).toInstant(),
                         saisonStart.atStartOfDay(ZONE).toInstant()), null);
                 abgeschlossen = saisons;

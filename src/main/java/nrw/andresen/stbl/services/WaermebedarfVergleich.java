@@ -49,7 +49,10 @@ public class WaermebedarfVergleich {
     private final Logger logger = LoggerFactory.getLogger(WaermebedarfVergleich.class);
     @Autowired
     private InfluxController influx;
-    private final LocalDate start;
+    private final String startEinstellung;
+    private volatile LocalDate start;
+    @Autowired(required = false)
+    private Datenbeginn datenbeginn;
     private final String temperaturBucket;
     private final String temperaturEntity;
     private volatile List<Gruppe> gruppen = List.of();
@@ -82,10 +85,11 @@ public class WaermebedarfVergleich {
      * @param temperaturEntity Home Assistant entity of the outdoor temperature (measurement °C), empty for the
      *                         value WP_Aussentemp of the heat pump, which is stored only since 2026-09-12
      */
-    public WaermebedarfVergleich(@Value("${auswertung.start:2023-07-01}") String start,
+    public WaermebedarfVergleich(@Value("${auswertung.start:}") String start,
                                  @Value("${auswertung.aussentemp.bucket:}") String temperaturBucket,
                                  @Value("${auswertung.aussentemp.entity:}") String temperaturEntity) {
-        this.start = LocalDate.parse(start);
+        this.startEinstellung = start;
+        this.start = Datenbeginn.ersterTag(start);
         this.temperaturBucket = temperaturBucket;
         this.temperaturEntity = temperaturEntity;
     }
@@ -99,6 +103,9 @@ public class WaermebedarfVergleich {
             return;
         }
         try {
+            if (datenbeginn != null) {
+                start = datenbeginn.ab(startEinstellung, start);
+            }
             tage = tage(start.atStartOfDay(ZONE).toInstant(), LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant());
             gruppen = vergleich(tage);
             berechnet = Instant.now();
