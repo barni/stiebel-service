@@ -21,6 +21,9 @@ public final class Zaehlerreihe {
     static final java.time.Duration HOCHRECHNEN = java.time.Duration.ofDays(62);
     // The rate is taken over at least this time before the last manual reading
     static final java.time.Duration RATE_UEBER = java.time.Duration.ofDays(28);
+    // A gap between the readings before and the counter up to this long counts without consumption, e.g. the hours
+    // between the last value of a series and fitting the counter; a longer one is not known
+    static final java.time.Duration LUECKE_MAX = java.time.Duration.ofDays(2);
     // Between the last manual reading and the first reading of the counter nothing was measured
     private Instant lueckeVon;
     private Instant lueckeBis;
@@ -49,7 +52,8 @@ public final class Zaehlerreihe {
             if (ende != null && !e.getKey().isAfter(ende)) {
                 continue;
             }
-            if (letzter == null && ende != null) {
+            if (letzter == null && ende != null
+                    && java.time.Duration.between(ende, e.getKey()).compareTo(LUECKE_MAX) > 0) {
                 lueckeVon = ende;
                 lueckeBis = e.getKey();
             }

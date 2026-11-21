@@ -20,21 +20,31 @@ public class ZaehlerreiheTest {
         Map<Instant, Double> davor = new TreeMap<>(Map.of(t("2025-01-01"), 100.0, t("2025-01-11"), 120.0,
                 t("2025-01-31"), 140.0));
         // The Shelly starts at 0 and goes on, once it starts again after a reset
-        Map<Instant, Double> shelly = new TreeMap<>(Map.of(t("2025-02-02"), 0.0, t("2025-02-03"), 2.0,
-                t("2025-02-04"), 3.0, t("2025-02-05"), 1.0, t("2025-02-06"), 2.5));
+        Map<Instant, Double> shelly = new TreeMap<>(Map.of(t("2025-02-03"), 0.0, t("2025-02-04"), 2.0,
+                t("2025-02-05"), 3.0, t("2025-02-06"), 1.0, t("2025-02-07"), 2.5));
         Zaehlerreihe r = new Zaehlerreihe(davor, shelly);
         assertEquals(t("2025-01-01"), r.getAnfang());
         // Interpolated between manual readings: 2 kWh per day
         assertEquals(110.0 - 100, r.stand(t("2025-01-06")), 1e-9);
         assertEquals(40.0, r.verbrauch(t("2025-01-01"), t("2025-01-31"), true), 1e-9);
-        // Between the last manual reading and the first of the Shelly unknown
+        // Between the last manual reading and the first of the Shelly (3 days) unknown
         assertNull(r.stand(t("2025-02-01")));
         assertNull(r.verbrauch(t("2025-01-15"), t("2025-02-04"), true));
         // Shelly: +2, +1, reset to 1 counts +1, +1.5
-        assertEquals(5.5, r.verbrauch(t("2025-02-02"), t("2025-02-06"), true), 1e-9);
+        assertEquals(5.5, r.verbrauch(t("2025-02-03"), t("2025-02-07"), true), 1e-9);
         // Shortly after the last reading the last value, later unknown
-        assertEquals(45.5, r.stand(t("2025-02-07")), 1e-9);
-        assertNull(r.stand(t("2025-02-10")));
+        assertEquals(45.5, r.stand(t("2025-02-08")), 1e-9);
+        assertNull(r.stand(t("2025-02-11")));
+    }
+
+    @Test
+    public void testKurzeLuecke() {
+        // The series before ends a few hours before the counter is fitted: no gap, the year stays known
+        Map<Instant, Double> davor = new TreeMap<>(Map.of(t("2026-01-01"), 60.0, t("2026-11-21"), 424.0));
+        Map<Instant, Double> shelly = new TreeMap<>(Map.of(Instant.parse("2026-11-21T16:12:00Z"), 0.003,
+                Instant.parse("2026-11-22T16:00:00Z"), 1.003));
+        Zaehlerreihe r = new Zaehlerreihe(davor, shelly);
+        assertEquals(365.0, r.verbrauch(t("2026-01-01"), Instant.parse("2026-11-22T16:00:00Z"), false), 1e-9);
     }
 
     @Test
