@@ -133,6 +133,9 @@ public class Konfiguration {
             new Feld("auswertung.aussentemp.entity", AUSWERTUNG, "Entity der Außentemperatur", "", Typ.NAME, "", 0,
                     0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, gespeichert "
                     + "erst seit der Dienst läuft."),
+            new Feld("auswertung.aussentemp.alarm", AUSWERTUNG, "Außentemperatur: Warnung nach Stunden ohne Wert",
+                    "h", Typ.GANZZAHL, "2", 0, 8760, "Warnung, wenn die Außentemperatur aus Home Assistant so lange "
+                    + "keinen Wert liefert. 0: keine Warnung."),
             new Feld("auswertung.haushalt.bucket", AUSWERTUNG, "Bucket des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "InfluxDB-Bucket mit dem Hauszähler und den Zählern der Geräte aus Home Assistant. Leer: Bucket des "
                     + "Dienstes."),
@@ -143,9 +146,15 @@ public class Konfiguration {
                     "Home-Assistant-Entity mit dem Gesamtertrag der eigenen PV-Anlage in kWh, etwa solar_yieldtotal. "
                     + "Damit zählt der im Haus verbrauchte PV-Strom zum Verbrauch und zum Haushalt. Leer: nur der "
                     + "Netzbezug."),
+            new Feld("auswertung.pv.alarm", AUSWERTUNG, "PV-Ertrag: Warnung nach Stunden ohne Wert", "h",
+                    Typ.GANZZAHL, "24", 0, 8760, "Warnung, wenn der PV-Ertrag so lange keinen Wert liefert. Nachts "
+                    + "meldet er nichts, im Winter bis zu 16 Stunden. 0: keine Warnung."),
             new Feld("auswertung.pv.einspeisung", AUSWERTUNG, "Entity der Einspeisung", "", Typ.NAME, "", 0, 0,
                     "Optional: Home-Assistant-Entity mit dem Zählerstand der Einspeisung ins Netz in kWh; sie wird "
                     + "vom PV-Ertrag abgezogen. Leer: der ganze Ertrag gilt als im Haus verbraucht."),
+            new Feld("auswertung.haushalt.alarm", AUSWERTUNG, "Hauszähler: Warnung nach Stunden ohne Wert", "h",
+                    Typ.GANZZAHL, "2", 0, 8760, "Warnung, wenn der Hauszähler so lange keinen Wert liefert. Ein "
+                    + "Smartmeter meldet meist alle paar Minuten. 0: keine Warnung."),
             new Feld("auswertung.strompreis", AUSWERTUNG, "Strompreis", "€/kWh", Typ.ZAHL, null, 0, 2,
                     "Arbeitspreis je kWh, zum Beispiel 0,2873, bis zu vier Nachkommastellen. Damit zeigt der Jahresvergleich auch die Kosten in Euro, "
                     + "ohne Grundpreis. Leer: keine Kosten."),
@@ -313,10 +322,25 @@ public class Konfiguration {
 
     static final int STANDARD_ALARM_STUNDEN = 240;
 
+    /**
+     * Hours from a setting such as auswertung.haushalt.alarm in the file, the default of the field without an entry
+     */
+    public int stunden(String feldName) {
+        Feld feld = FELDER.stream().filter(f -> f.name().equals(feldName)).findFirst().orElseThrow();
+        String t = stand().werte().stream().filter(w -> w.feld().name().equals(feldName)).map(Wert::datei)
+                .filter(java.util.Objects::nonNull).map(String::trim).findFirst().orElse("");
+        try {
+            return Integer.parseInt(t.isEmpty() ? feld.standard() : t);
+        } catch (NumberFormatException e) {
+            return Integer.parseInt(feld.standard());
+        }
+    }
+
     public static final Set<String> SOFORT = java.util.stream.Stream.concat(java.util.stream.Stream.of("can.logall",
                     "auswertung.strompreis", "waermepumpe.modell", "auswertung.geraet.1.alarm",
                     "auswertung.geraet.2.alarm", "auswertung.geraet.3.alarm", "auswertung.geraet.4.alarm",
-                    "auswertung.geraet.5.alarm"),
+                    "auswertung.geraet.5.alarm", "auswertung.haushalt.alarm", "auswertung.aussentemp.alarm",
+                    "auswertung.pv.alarm"),
             FELDER.stream().map(Feld::name).filter(n -> n.startsWith("warnung."))).collect(
             java.util.stream.Collectors.toUnmodifiableSet());
 

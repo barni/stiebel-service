@@ -231,9 +231,11 @@ public final class KonfigurationSeite {
             new Abschnitt("auswertung", "Auswertung", "Was die Seiten Jahr, Zustand und die Vergleiche lesen.", List.of(
                     new Teil("Ab wann ausgewertet wird", List.of("auswertung.start", "auswertung.fehlstarts.start",
                             "auswertung.zustand.start")),
-                    new Teil("Außentemperatur", List.of("auswertung.aussentemp.bucket", "auswertung.aussentemp.entity")),
+                    new Teil("Außentemperatur", List.of("auswertung.aussentemp.bucket", "auswertung.aussentemp.entity",
+                            "auswertung.aussentemp.alarm")),
                     new Teil("Hauszähler und PV", List.of("auswertung.haushalt.bucket", "auswertung.haushalt.zaehler",
-                            "auswertung.pv.ertrag", "auswertung.pv.einspeisung", "auswertung.strompreis")),
+                            "auswertung.haushalt.alarm", "auswertung.pv.ertrag", "auswertung.pv.alarm", "auswertung.pv.einspeisung",
+                            "auswertung.strompreis")),
                     new Teil("Geräte mit eigenem Zähler", GERAETE))));
 
     /**

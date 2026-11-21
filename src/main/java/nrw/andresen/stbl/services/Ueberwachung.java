@@ -202,11 +202,11 @@ public class Ueberwachung {
      * Texts and delays of the warnings that depend on a threshold
      */
     private void regelnSetzen() {
-        hochdruck.regel("Hochdruck im Kältekreis über " + (int) hochdruckMax
+        hochdruck.regel("Hochdruck im Kältekreis über " + kurz(hochdruckMax)
                 + " bar; der Hochdruckwächter der WPL ACS schaltet bei 45 bar ab. Meist fließt zu wenig Heizwasser "
                 + "durch die Wärmepumpe (Heizkreise zu, Luft, Pumpe)." + erfahrung(Erfahrungswerte.HOCHDRUCK),
                 Duration.ofMinutes(1));
-        spreizung.regel("Vorlauf mehr als " + (int) spreizungMax
+        spreizung.regel("Vorlauf mehr als " + kurz(spreizungMax)
                 + " K über dem Rücklauf, 5 Minuten lang bei laufendem Verdichter (Soll 5 K). Es fließt zu wenig "
                 + "Heizwasser durch die Wärmepumpe: Heizkreise, Entlüftung und Pumpe prüfen; dann steigen meist auch "
                 + "Vorlauf und Hochdruck stark an.", Duration.ofMinutes(5));
@@ -228,16 +228,16 @@ public class Ueberwachung {
         niederdruck.regel("Niederdruck im Kältekreis unter " + kurz(niederdruckMin)
                 + " bar, 10 Minuten lang bei laufendem Verdichter. Hinweis auf zu wenig Kältemittel oder einen "
                 + "vereisten Verdampfer." + erfahrung(Erfahrungswerte.NIEDERDRUCK), Duration.ofMinutes(10));
-        heissgas.regel("Heißgastemperatur über " + (int) heissgasMax
+        heissgas.regel("Heißgastemperatur über " + kurz(heissgasMax)
                 + " °C, 5 Minuten lang. Hinweis auf zu wenig Kältemittel; der Verdichter wird zu heiß."
                 + erfahrung(Erfahrungswerte.HEISSGAS), Duration.ofMinutes(5));
         abtauung.regel("Eine Abtauung läuft länger als " + abtauungMinuten
                 + " Minuten. Verdampfer auf Eis und den Ablauf des Tauwassers prüfen."
                 + erfahrung(Erfahrungswerte.ABTAUUNG), Duration.ofMinutes(abtauungMinuten));
-        spannung.regel("Spannung am Inverter unter " + (int) spannungMin + " oder über "
-                + (int) spannungMax + " V, 5 Minuten lang." + erfahrung(Erfahrungswerte.SPANNUNG),
+        spannung.regel("Spannung am Inverter unter " + kurz(spannungMin) + " oder über "
+                + kurz(spannungMax) + " V, 5 Minuten lang." + erfahrung(Erfahrungswerte.SPANNUNG),
                 Duration.ofMinutes(5));
-        antwortquote.regel("Weniger als " + (int) antwortquoteMin
+        antwortquote.regel("Weniger als " + kurz(antwortquoteMin)
                 + " % der Anfragen beantwortet, 10 Minuten lang. Hinweis auf Probleme am CAN-Bus.",
                 Duration.ofMinutes(10));
         starts.regel("Mehr als " + startsProStundeMax
@@ -634,19 +634,29 @@ public class Ueberwachung {
         // Home Assistant writes a value when it changes: the house meter and the outdoor temperature at least every
         // hour, a device counter only while it uses electricity (the wallbox stood still for up to 4.5 days)
         if (!leer(aussenEntity)) {
-            liste.add(aktuell("Außentemperatur aktuell", bucket(aussenBucket), "°C", aussenEntity, WERT_STILL,
-                    "Die Außentemperatur aus Home Assistant (" + aussenEntity + ") für Tagesübersicht, Zustand und "
-                            + "die Heizgradtage im Jahresvergleich."));
+            Duration still = still("auswertung.aussentemp.alarm", WERT_STILL);
+            if (!still.isZero()) {
+                liste.add(aktuell("Außentemperatur aktuell", bucket(aussenBucket), "°C", aussenEntity, still,
+                        "Die Außentemperatur aus Home Assistant (" + aussenEntity + ") für Tagesübersicht, Zustand "
+                                + "und die Heizgradtage im Jahresvergleich; Warnung nach " + still.toHours()
+                                + " Stunden ohne Wert, einstellbar."));
+            }
         }
         if (!leer(hauszaehler)) {
-            liste.add(aktuell("Hauszähler aktuell", bucket(haushaltBucket), "kWh", hauszaehler, WERT_STILL,
-                    "Der Netzbezug aus Home Assistant (" + hauszaehler + ") für den Jahresvergleich."));
+            Duration still = still("auswertung.haushalt.alarm", WERT_STILL);
+            if (!still.isZero()) {
+                liste.add(aktuell("Hauszähler aktuell", bucket(haushaltBucket), "kWh", hauszaehler, still,
+                        "Der Netzbezug aus Home Assistant (" + hauszaehler + ") für den Jahresvergleich; Warnung "
+                                + "nach " + still.toHours() + " Stunden ohne Wert, einstellbar."));
+            }
         }
         if (!leer(pvErtrag)) {
-            liste.add(aktuell("PV-Ertrag aktuell", bucket(haushaltBucket), "kWh", pvErtrag, GERAET_STILL,
-                    "Der Ertrag der PV-Anlage (" + pvErtrag + ") für den Verbrauch im Jahresvergleich. Im Winter "
-                            + "meldet er selten, deshalb erst nach " + GERAET_STILL.toDays() + " Tagen ohne Wert eine "
-                            + "Warnung."));
+            Duration still = still("auswertung.pv.alarm", Duration.ofHours(24));
+            if (!still.isZero()) {
+                liste.add(aktuell("PV-Ertrag aktuell", bucket(haushaltBucket), "kWh", pvErtrag, still,
+                        "Der Ertrag der PV-Anlage (" + pvErtrag + ") für den Verbrauch im Jahresvergleich; Warnung "
+                                + "nach " + still.toHours() + " Stunden ohne Wert, einstellbar."));
+            }
         }
         if (geraete != null) {
             for (Geraete.Geraet g : geraete.getListe()) {
@@ -663,9 +673,16 @@ public class Ueberwachung {
     }
 
     // Without a new value for this long a value from Home Assistant counts as missing
-    static final Duration WERT_STILL = Duration.ofHours(6);
+    static final Duration WERT_STILL = Duration.ofHours(2);
     static final Duration GERAET_STILL = Duration.ofDays(10);
     private static final java.util.regex.Pattern ENTITY = java.util.regex.Pattern.compile("[A-Za-z0-9_]{1,64}");
+
+    /**
+     * Hours from the setting, the given time without the configuration (tests)
+     */
+    private Duration still(String feld, Duration ohne) {
+        return konfiguration == null ? ohne : Duration.ofHours(konfiguration.stunden(feld));
+    }
 
     private static boolean leer(String s) {
         return s == null || s.isBlank();

@@ -324,7 +324,7 @@ public class StblController {
                     canBus.setLogall(Boolean.parseBoolean(wert.datei()));
                 } else if (name.equals("waermepumpe.modell")) {
                     anlage.setModell(wert.datei());
-                } else if (name.matches("auswertung\\.geraet\\.\\d\\.alarm")) {
+                } else if (name.startsWith("auswertung.") && name.endsWith(".alarm")) {
                     // Read from the file at every check, nothing to hand over
                     logger.info("Days without a value for " + name + " taken over: " + wert.datei());
                 } else if (name.equals("auswertung.strompreis")) {

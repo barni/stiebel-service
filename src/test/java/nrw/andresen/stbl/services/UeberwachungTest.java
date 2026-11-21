@@ -147,6 +147,9 @@ public class UeberwachungTest {
         assertTrue(druck.getRegel().startsWith("Heizungsdruck unter 1,30 bar"), druck.getRegel());
         assertTrue(u.schwelleSetzen("warnung.heizungsdruck.min", "1.1"));
         assertTrue(druck.getRegel().startsWith("Heizungsdruck unter 1,10 bar"), druck.getRegel());
+        // thresholds with decimals are shown with them
+        assertTrue(u.schwelleSetzen("warnung.spreizung.max", "7.5"));
+        assertTrue(u.getWarnungen().stream().anyMatch(w -> w.getRegel().startsWith("Vorlauf mehr als 7,5 K")));
         assertTrue(u.schwelleSetzen("warnung.abtauung.minuten", "20"));
         assertTrue(u.getWarnungen().stream().anyMatch(w -> w.getRegel().contains("länger als 20 Minuten")));
         // Not a threshold, or an empty value that means the default: only after a restart
