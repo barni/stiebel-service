@@ -902,13 +902,15 @@ public class StatusService {
         page.table(List.of("Saison", "Fehlstarts", "je MWh", "je 1000 Starts 0–15 °C", "Tage mit Daten"), zeilen,
                 true, Map.of(
                         "Saison", "Heizsaison von Juli bis Juni.",
-                        "Fehlstarts", "Erkannte Fehlstarts der Saison (Fehlerliste: INV H ROTORVEKTOR). Bisher 20–26 "
-                                + "pro Winter, auffällig wäre deutlich mehr als ~30.",
-                        "je MWh", "Fehlstarts je MWh erzeugter Wärme, unabhängig davon, wie oft die Anlage startet. "
-                                + "Bisher 1,0–1,9, auffällig wäre mehr als ~2,5.",
+                        "Fehlstarts", "Erkannte Fehlstarts der Saison (Fehlerliste: INV H ROTORVEKTOR)."
+                                + spanne(saisons, s -> (double) s.fehlstarts(), 0)
+                                + " Auffällig wäre ein deutlicher Anstieg gegenüber den Vorjahren.",
+                        "je MWh", "Fehlstarts je MWh erzeugter Wärme, unabhängig davon, wie oft die Anlage startet."
+                                + spanne(saisons, Fehlstarts.Saison::jeMWh, 1),
                         "je 1000 Starts 0–15 °C", "Nur Tage mit diesem Tagesmittel, bei Frost gibt es praktisch "
-                                + "keine Fehlstarts. Erst ab 03/2022 (Außentemperatur). Bisher 13–16, auffällig wäre "
-                                + "mehr als ~20.",
+                                + "keine Fehlstarts; leer, solange die Außentemperatur fehlt."
+                                + spanne(saisons, Fehlstarts.Saison::jeTausendMild, 1)
+                                + " Die Seite Zustand meldet einen Anstieg ab 25 % gegen die Vorjahre.",
                         "Tage mit Daten", "Tage mit vollständigen Werten. Wenige Tage heißt Lücken, dann sind die "
                                 + "Zahlen zu klein."));
         List<Instant> letzte = fehlstarts.getLetzte();
@@ -934,5 +936,20 @@ public class StatusService {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    /**
+     * " In den abgeschlossenen Saisons 20–26." from the seasons that are over, empty with fewer than two of them
+     */
+    static String spanne(List<Fehlstarts.Saison> saisons, java.util.function.Function<Fehlstarts.Saison, Double> wert,
+                         int stellen) {
+        List<Double> w = saisons.stream().filter(x -> !x.laufend()).map(wert).filter(java.util.Objects::nonNull)
+                .toList();
+        if (w.size() < 2) {
+            return "";
+        }
+        double min = w.stream().mapToDouble(Double::doubleValue).min().orElse(0);
+        double max = w.stream().mapToDouble(Double::doubleValue).max().orElse(0);
+        return " In den abgeschlossenen Saisons " + zahl(min, stellen) + "–" + zahl(max, stellen) + ".";
     }
 }

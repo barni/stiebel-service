@@ -113,4 +113,16 @@ public class FehlstartsTest {
         assertEquals(false, Fehlstarts.mild(temperatur, Instant.parse("2026-07-01T12:00:00Z")));
         assertEquals(false, Fehlstarts.mild(temperatur, Instant.parse("2026-03-01T12:00:00Z")));
     }
+
+    @Test
+    public void testSpanne() {
+        java.util.List<Fehlstarts.Saison> s = java.util.List.of(
+                new Fehlstarts.Saison("2023/24", 3000, 20, false, 13.0, 360, 1500, 20, 360),
+                new Fehlstarts.Saison("2024/25", 3100, 26, false, 14.0, 360, 1600, 24, 360),
+                new Fehlstarts.Saison("2025/26", 3200, 99, true, 2.0, 50, 300, 5, 50));
+        // the running season does not count
+        org.junit.jupiter.api.Assertions.assertEquals(" In den abgeschlossenen Saisons 20–26.",
+                StatusService.spanne(s, x -> (double) x.fehlstarts(), 0));
+        org.junit.jupiter.api.Assertions.assertEquals("", StatusService.spanne(s.subList(1, 3), x -> (double) x.fehlstarts(), 0));
+    }
 }
