@@ -723,7 +723,8 @@ public class StatusService {
                 page.text(einstellung.label(), text).info(einstellung.info());
             } else {
                 page.row(einstellung.label(), einstellung.unit(), einstellung.decimals(),
-                        "Einstellung_" + einstellung.name(), einstellung.wert(), stunde).info(einstellung.info());
+                        "Einstellung_" + einstellung.name(), einstellung.wert(), stunde).info(einstellung.info()
+                        + zusatz(einstellung));
             }
         }
         page.note("Stündlich vom Wärmepumpenmanager gelesen, eine Änderung wird per Mail gemeldet."
@@ -917,5 +918,21 @@ public class StatusService {
                 + (letzte.isEmpty() ? "" : " Zuletzt erkannt: " + String.join(", ", letzte.stream()
                 .map(t -> Fehlerliste.ZEITFORMAT.format(t.atZone(ZoneId.systemDefault()))).toList()) + ".")
                 + " Stand " + zeitpunkt(fehlstarts.getBerechnet()) + ".");
+    }
+
+    /**
+     * What the own data say about a setting, e.g. the heat load of the house next to Wärmebedarf; empty without
+     */
+    private String zusatz(Waermepumpe.Einstellung einstellung) {
+        if (!einstellung.name().equals("Waermebedarf")) {
+            return "";
+        }
+        try {
+            Double auslegung = wp.getAuslegungstemperatur().getValue();
+            String satz = auslegung == null ? null : vergleich.heizlastSatz(auslegung);
+            return satz == null ? "" : " " + satz;
+        } catch (Exception e) {
+            return "";
+        }
     }
 }

@@ -864,8 +864,10 @@ public class Waermepumpe {
                 new Einstellung("Auslegungstemperatur", "Auslegungstemperatur", "°C", 1, this::getAuslegungstemperatur,
                         "Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Standard −15 °C." + WPM),
                 new Einstellung("Waermebedarf", "Wärmebedarf", "kW", 1, this::getWaermebedarf,
-                        "Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
-                                + "hochregelt. Standard 15 kW, gemessen ~6,4 kW bei −7 °C." + WPM),
+                        "Heizlast des Hauses bei der Auslegungstemperatur. Daraus rechnet der Wärmepumpenmanager bei "
+                                + "jeder Außentemperatur, wie weit der Verdichter höchstens hochregelt. Zu hoch "
+                                + "eingestellt fährt er nach jedem Start weit über den Bedarf und taktet, zu niedrig "
+                                + "reicht die Leistung bei Kälte nicht. Standard 15 kW." + WPM),
                 new Einstellung("SollSpreizung", "Soll-Spreizung", "K", 1, this::getSollSpreizung,
                         "Gewünschter Unterschied zwischen Vor- und Rücklauf." + WPM),
                 new Einstellung("Bivalenztemperatur", "Bivalenztemperatur", "°C", 1, this::getBivalenztemperatur,
