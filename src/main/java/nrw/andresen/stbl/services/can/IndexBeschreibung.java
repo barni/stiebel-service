@@ -11,8 +11,8 @@ import static java.util.Map.entry;
 public final class IndexBeschreibung {
 
     // For the values from ha-stiebel-control that did not change on this installation
-    private static final String KONSTANT = " Auf dieser Anlage am 16.11.2026 über Stunden mit Heizen und Stillstand "
-            + "unverändert, misst hier also nichts und wird nicht mehr abgefragt.";
+    private static final String KONSTANT = " An der Anlage, an der das entschlüsselt wurde, über Stunden mit Heizen und "
+            + "Stillstand unverändert, misst dort also nichts und wird nicht abgefragt.";
 
     private static final Map<Short, String> BESCHREIBUNG = Map.ofEntries(
             // Heating circuit
@@ -24,7 +24,7 @@ public final class IndexBeschreibung {
                     + "an einem eigenen Fühler und zeigt oft 1 bis 2 K weniger."),
             entry((short) 0x01D7, "Hilfskessel-Soll in °C. Der Heizungsregler (0x180) schreibt ihn alle 10 s an die "
                     + "Wärmepumpe, er folgt der Heizkurve. Nicht der Vorlauf-Soll, auf den die Wärmepumpe regelt: der "
-                    + "lag am 16.11.2026 bei etwa 33 °C, dieser Wert bei 26,5 °C."),
+                    + "lag beobachtet etwa 6–7 K über diesem Wert."),
             entry((short) 0x005F, "Anforderung des Managers an die Wärmepumpe, alle 10 s: 0 im Stillstand, 512 beim "
                     + "Heizen (gedeutet). Die Wärmepumpe beantwortet eine Abfrage nur mit 0x8000, deshalb mitgelesen."),
             entry((short) 0x0674, "Wasserdruck im Heizkreis in bar. Normal etwa 1,4 bis 2,3 bar, zulässig 3 bar."),
@@ -48,7 +48,7 @@ public final class IndexBeschreibung {
             entry((short) 0x07F3, "Soll-Überhitzung des Kältemittels am Verdampferaustritt in K."),
             entry((short) 0x07F4, "Ist-Überhitzung des Kältemittels am Verdampferaustritt in K."),
             entry((short) 0xC281, "Soll-Drehzahl des Lüfters der Außeneinheit in Hz. Im Stillstand steht sie alle 4 Minuten etwa "
-                    + "1 Minute auf 4 Hz, der Lüfter dreht dabei meist nicht (16.11.2026)."),
+                    + "1 Minute auf 4 Hz, der Lüfter dreht dabei meist nicht."),
             entry((short) 0xC283, "Ist-Drehzahl des Lüfters der Außeneinheit in Hz."),
             entry((short) 0x0833, "Leistung des Lüfters der Außeneinheit in %, etwa 7,5 % je Hz."),
             entry((short) 0x06B1, "Spannung am Inverter in V. Zeigt etwa 11 V weniger als am Hauszähler."),
@@ -114,16 +114,17 @@ public final class IndexBeschreibung {
                     + "57 bis 59 bei 13,5 l/min, 55 bis 56 bei 14,8 l/min: je kleiner, desto mehr Durchfluss."),
             entry((short) 0x0917, "Integral der Regelabweichung, das der Manager alle 10 s an die Wärmepumpe schreibt "
                     + "(gedeutet). Steigt, solange der feine Vorlauf über dem Sollwert liegt, fällt darunter, umso schneller, "
-                    + "je größer die Abweichung. Der Sollwert folgt der Heizkurve, etwa Hilfskessel-Soll plus 7 K: 34,2 °C "
-                    + "bei 7 bis 8 °C draußen, 34,4 °C bei 6 °C (16.11.2026). Bei -1000 Start: es springt auf 0 und fällt weiter, 40 bis "
+                    + "je größer die Abweichung. Der Sollwert folgt der Heizkurve, beobachtet etwa Hilfskessel-Soll plus "
+                    + "7 K. Bei -1000 Start: es springt auf 0 und fällt weiter, 40 bis "
                     + "60 s später läuft der Verdichter an, kurz mit 40 Hz, dann ab etwa 26 Hz mit der "
                     + "Frequenz-Anforderung. Bei etwa +1000 Stopp, dabei springt es ebenfalls auf 0 und steigt im Stillstand "
-                    + "noch, bis der Vorlauf unter den Sollwert fällt (16.11.2026)."),
+                    + "noch, bis der Vorlauf unter den Sollwert fällt. Die Frequenz-Anforderung bei -1000 steigt, je kälter es "
+                    + "ist, und hängt von der Einstellung Wärmebedarf ab."),
             entry((short) 0xFE07, "Von 0x700: 0 im Stillstand, beim Heizen 17 bis 29, etwa 0,7 bis 0,8 × Verdichterdrehzahl. "
                     + "Vielleicht Leistung in %, noch nicht entschlüsselt."),
             entry((short) 0x07A8, "Status-Wort des Verdichters (VERDICHTER, in ha-stiebel-control für die WPL13E "
                     + "0x0008 Stillstand, 0x0221/0x0228 Betrieb). Hier 8 (0x008) im Stillstand, 24 (0x018) beim Heizen, "
-                    + "264 (0x108) beim Abtauen am 16.11.2026 um 19:34: Bit 0x010 heißt Heizen, Bit 0x100 Abtauen, "
+                    + "264 (0x108) beim Abtauen: Bit 0x010 heißt Heizen, Bit 0x100 Abtauen, "
                     + "Bit 0x008 ist immer gesetzt. Gespeichert als WP_Roh_07A8."),
             entry((short) 0x0A36, "Die Wärmepumpe schreibt ihn etwa jede Sekunde an den Manager, er springt zwischen "
                     + "zwei Werten: 349 bis 388 beim Heizen, im Stillstand langsam fallend bis etwa 280. In "
@@ -135,29 +136,29 @@ public final class IndexBeschreibung {
             // Other traffic on the bus
             entry((short) 0x0126, "Uhrzeit, Minute. Der Manager sendet sie jede Minute als Rundruf und an das "
                     + "Bedienteil."),
-            entry((short) 0x005E, "Teilvorrang Warmwasser, Rundruf des Managers, immer 0: Warmwasser macht hier die "
-                    + "eigene WWK 300."),
+            entry((short) 0x005E, "Teilvorrang Warmwasser, Rundruf des Managers; 0, wenn die Wärmepumpe kein "
+                    + "Warmwasser bereitet."),
             entry((short) 0x002C, "Mischerlaufzeit, der Manager schreibt sie an die Wärmepumpe, immer 0."),
             entry((short) 0x02CA, "Der Manager schreibt ihn alle 10 s an die Wärmepumpe, direkt vor dem "
                     + "Regler-Integral: Ist-Temperatur des Heizkreises in 0,1 °C (HKISTTEMP in "
-                    + "OneESP32ToRuleThemAll). Keine Materialnummer. Im Stillstand am 16.11.2026 gleich dem Rücklauf "
-                    + "WPM (254 = 25,4 °C), beim Heizen bis 30,7 °C, am 16.11.2026 nie mehr als 0,2 K vom Rücklauf WPM "
-                    + "entfernt. Deshalb nicht eigens gespeichert."),
+                    + "OneESP32ToRuleThemAll). Keine Materialnummer. Im Stillstand gleich dem Rücklauf WPM (z. B. 254 = "
+                    + "25,4 °C), beim Heizen beobachtet nie mehr als 0,2 K davon entfernt. Deshalb nicht eigens "
+                    + "gespeichert."),
             entry((short) 0x0199, "Softwarenummer des Geräts, stündlich vom Manager (0x180) und von der Außeneinheit "
-                    + "(0x500) gelesen: 390 und 446 (Bus-Scan 16.11.2026). Beim Abgleich schreibt der Manager 331 an "
+                    + "(0x500) gelesen, z. B. 390 und 446. Beim Abgleich schreibt der Manager 331 an "
                     + "die Wärmepumpe und die Wärmepumpe meldet 70, also wohl eine andere Zählung."),
             entry((short) 0x019A, "Softwareversion des Geräts: Manager 11, Außeneinheit 2, beim Abgleich ebenso."),
             // Found by the bus scan on 2026-11-16
             entry((short) 0x080A, "Taupunkt Referenz in 0,1 °C (0x500), kein Messwert: der höchste kompensierte "
                     + "Taupunkt seit der letzten Abtauung, also der sauberste Zustand des Verdampfers. Nach einer "
                     + "Abtauung -40 °C, ab 10 Minuten nach dem Start übernimmt sie den kompensierten Wert genau und "
-                    + "folgt ihm danach nur nach oben (-7,7 bis -11,8 °C am 17.11.2026). Gespeichert als "
+                    + "folgt ihm danach nur nach oben. Gespeichert als "
                     + "WP_TaupunktReferenz."),
-            entry((short) 0x080B, "Taupunkt kompensiert in 0,1 °C (0x500), sinkt mit wachsendem Eis. Alle fünf "
-                    + "Abtauungen am 17.11.2026 starteten, als er 3,1 K unter der Referenz lag. Gespeichert als "
+            entry((short) 0x080B, "Taupunkt kompensiert in 0,1 °C (0x500), sinkt mit wachsendem Eis. Beobachtet "
+                    + "starteten die Abtauungen, als er etwa 3,1 K unter der Referenz lag. Gespeichert als "
                     + "WP_TaupunktKompensiert, die Reserve bis zur Abtauung als WP_AbtauReserve."),
             entry((short) 0x080D, "Gefilterter Verdampferdruck in 0,01 bar (0x500). Folgt dem Niederdruck, bleibt "
-                    + "aber bei Abtauung und Stillstand stehen. Am 16./17.11.2026 gespeichert, dann nicht mehr abgefragt."),
+                    + "aber bei Abtauung und Stillstand stehen. Nicht abgefragt."),
             entry((short) 0x0820, "Verdampfertemperatur vor der Kompensation in 0,1 °C (0x500), gleich 0x07A9. Nicht "
                     + "mehr abgefragt."),
             entry((short) 0x0821, "Verdampfertemperatur nach der Kompensation in 0,1 °C (0x500), gleich 0x07A9. Nicht "
@@ -183,22 +184,22 @@ public final class IndexBeschreibung {
             entry((short) 0x06C5, "An der Außeneinheit (0x500): 4260 beim Heizen, 2500 bei Abtauung und Stillstand. "
                     + "Bedeutung offen, gespeichert als WP_Roh_500_06C5."),
             entry((short) 0x0822, "Vorlauf der Außeneinheit in 0,1 °C (0x500), aber nur in den groben Stufen von "
-                    + "0x01D6 (16.11.2026: 332 bei 33,2 °C). Deshalb nicht abgefragt, fein ist nur 0xFDF3."),
+                    + "0x01D6 (z. B. 332 bei 33,2 °C). Deshalb nicht abgefragt, fein ist nur 0xFDF3."),
             entry((short) 0x0823, "Rücklauf der Außeneinheit in 0,1 °C (0x500), aber nur in den groben Stufen von "
-                    + "0x0016 (16.11.2026: 285 bei 28,5 °C). Deshalb nicht abgefragt, fein ist nur 0xFDF4."),
-            entry((short) 0x01BF, "Außentemperatur der Sommer/Winter-Umschaltung in 0,1 °C, 18 °C. Einstellung, "
+                    + "0x0016 (z. B. 285 bei 28,5 °C). Deshalb nicht abgefragt, fein ist nur 0xFDF4."),
+            entry((short) 0x01BF, "Außentemperatur der Sommer/Winter-Umschaltung in 0,1 °C. Einstellung, "
                     + "stündlich gelesen."),
-            entry((short) 0x0A00, "Außentemperatur für den Frostschutz in 0,1 °C, 4 °C. Einstellung, stündlich "
+            entry((short) 0x0A00, "Außentemperatur für den Frostschutz in 0,1 °C. Einstellung, stündlich "
                     + "gelesen."),
-            entry((short) 0x01E8, "Maximale Heiztemperatur in 0,1 °C, 65 °C. Einstellung, stündlich gelesen."),
+            entry((short) 0x01E8, "Maximale Heiztemperatur in 0,1 °C. Einstellung, stündlich gelesen."),
             entry((short) 0x1480, "Heizprogramm 1 Montag bis Freitag: oberes Byte Beginn, unteres Ende in "
-                    + "Viertelstunden, 0x185A = 06:00 bis 22:30. Einstellung, stündlich gelesen."),
-            entry((short) 0x1490, "Heizprogramm 1 Samstag und Sonntag: 0x1E5C = 07:30 bis 23:00. Einstellung, "
+                    + "Viertelstunden, z. B. 0x185A = 06:00 bis 22:30. Einstellung, stündlich gelesen."),
+            entry((short) 0x1490, "Heizprogramm 1 Samstag und Sonntag, wie Montag bis Freitag kodiert. Einstellung, "
                     + "stündlich gelesen."),
-            entry((short) 0x0074, "EVU-Sperre aktiv, der Manager (0x480) antwortet 1, auch beim Heizen (Bus-Scan "
-                    + "16.11.2026). Vermutlich die Belegung des EVU-Kontakts, keine aktive Sperre."),
-            entry((short) 0xFDAC, "EVU-Einstellung der Wärmepumpe, der Manager (0x480) antwortet 2 (Bus-Scan "
-                    + "16.11.2026). Vermutlich Konfiguration."),
+            entry((short) 0x0074, "EVU-Sperre aktiv, der Manager (0x480) antwortete beim Bus-Scan 1, auch beim "
+                    + "Heizen. Vermutlich die Belegung des EVU-Kontakts, keine aktive Sperre."),
+            entry((short) 0xFDAC, "EVU-Einstellung der Wärmepumpe, der Manager (0x480) antwortete beim Bus-Scan 2. "
+                    + "Vermutlich Konfiguration."),
             entry((short) 0x06AF, "Das Bedienteil schreibt jede Minute 1 an den Manager, vermutlich ein Lebenszeichen."),
             entry((short) 0x0692, "Der Manager schreibt ihn jede Minute an das Bedienteil: 1 beim Heizen, 0 im "
                     + "Stillstand, vermutlich für die Anzeige."),
@@ -226,17 +227,17 @@ public final class IndexBeschreibung {
             entry((short) 0x01DC, "Wärmeertrag heute, Wh-Anteil (ha-stiebel-control). Hier immer 0." + KONSTANT),
             entry((short) 0x0053, "Heizkreispumpe (ha-stiebel-control). Hier immer 0." + KONSTANT),
             entry((short) 0x01D2, "Pumpenstatus als Bitfeld (ha-stiebel-control): 4352 (0x1100), solange die "
-                    + "Umwälzpumpe läuft, 4096 (0x1000) im Stillstand (17.11.2026), Bit 0x0100 ist also die Pumpe. "
+                    + "Umwälzpumpe läuft, 4096 (0x1000) im Stillstand, Bit 0x0100 ist also die Pumpe. "
                     + "Das zeigt auch der Volumenstrom, deshalb nicht abgefragt."),
             entry((short) 0x0059, "Status des Heizkreises (ha-stiebel-control). Hier immer 0." + KONSTANT),
             entry((short) 0xFDAE, "Status der Wärmepumpe als Bitfeld (ha-stiebel-control). Der Manager 0x480 antwortet "
                     + "0x8000 (nicht verfügbar). Beim Abgleich schreibt der Manager 0 an die Wärmepumpe."),
             entry((short) 0xFDB4, "Sommerbetrieb (ha-stiebel-control). Der Manager 0x480 antwortet immer 1, auch beim "
                     + "Heizen." + KONSTANT),
-            entry((short) 0x0101, "Legionellenschutz aktiv. Der Manager 0x480 antwortet 0x8000 (nicht verfügbar). "
-                    + "Warmwasser macht hier die eigene WWK 300."),
+            entry((short) 0x0101, "Legionellenschutz aktiv. Der Manager 0x480 antwortet 0x8000 (nicht verfügbar), "
+                    + "wenn die Wärmepumpe kein Warmwasser bereitet."),
             entry((short) 0x4E8B, "Das Bedienteil schreibt 1 an den Manager, gesehen rund um einen Abgleich "
-                    + "(16.11.2026). Bedeutung unbekannt."),
+                    + "Bedeutung unbekannt."),
             // Rare block the manager requests from the heat pump after a sync, values from 2026-11-16 19:08 at 40 Hz
             entry((short) 0xC24C, "Seltener Block, den der Manager nach einem Abgleich bei der Wärmepumpe abfragt: 35 "
                     + "(gleich 0x4ED7). Bedeutung unbekannt."),
@@ -259,8 +260,7 @@ public final class IndexBeschreibung {
             entry((short) 0xFFFE, "Systemnachricht (Art 6 und 7), danach Abgleich: die Wärmepumpe schreibt ihre "
                     + "Stammdaten an den Manager, der Manager schreibt seine Softwarenummer und fragt Laufzeiten und "
                     + "Software ab, dann schickt er Datum und Uhrzeit an alle. Mal melden sich alle Geräte (auch der "
-                    + "Mischer 0x601), mal stößt die Wärmepumpe allein an. Kein fester Takt: am 16.11.2026 um 10:41, "
-                    + "16:19 und 16:32 Uhr."),
+                    + "Mischer 0x601), mal stößt die Wärmepumpe allein an. Kein fester Takt, an einem Tag z. B. dreimal."),
             entry((short) 0x079F, "Stützstelle des Niederdruckfühlers, unteres Ende: 100 = 1,00 bar."),
             entry((short) 0x07A0, "Stützstelle des Niederdruckfühlers, oberes Ende: 1700 = 17,00 bar. Messbereich also "
                     + "1 bis 17 bar."),
@@ -271,7 +271,7 @@ public final class IndexBeschreibung {
             entry((short) 0x07F2, "Betriebsart der Wärmepumpe, beim Abgleich gemeldet: 3 beim Heizen, 0 im Stillstand."),
             entry((short) 0x0067, "Sonderkreis-Status, beim Abgleich gemeldet: 3 beim Heizen, 0 im Stillstand."),
             entry((short) 0x0061, "Heißt „Abtauung aktiv“, ist es aber nicht: geht etwa 20 s vor dem Verdichterstart "
-                    + "von 0 auf 512 (Test 2026-09-23). Beim Abgleich 512 beim Heizen, 0 im Stillstand."),
+                    + "von 0 auf 512. Beim Abgleich 512 beim Heizen, 0 im Stillstand."),
             entry((short) 0x02C2, "Anzahl der Startversuche des Verdichters, beim Abgleich 0."),
             entry((short) 0x0001, "Fehlermeldung der Wärmepumpe, 0 = keine."),
             entry((short) 0x01F2, "Fehlerart der Wärmepumpe, 0 = keine."),
@@ -347,7 +347,7 @@ public final class IndexBeschreibung {
     public static String beschreibung(short index) {
         String text = BESCHREIBUNG.get(index);
         if (text == null && SCAN_ROHWERTE.contains(index)) {
-            return "Beim Bus-Scan am 16.11.2026 mit einem Wert gefunden, Bedeutung unbekannt. Wird jede Minute "
+            return "Beim Bus-Scan mit einem Wert gefunden, Bedeutung unbekannt. Wird jede Minute "
                     + "abgefragt und roh als WP_Roh_Gerät_Index gespeichert, um zu sehen, ob und wie er sich mit dem "
                     + "Betrieb ändert.";
         }

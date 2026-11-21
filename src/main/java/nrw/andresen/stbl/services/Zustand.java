@@ -76,7 +76,7 @@ public class Zustand {
             {6.79, -5}, {7.99, 0}, {9.34, 5}, {10.86, 10}, {12.55, 15}, {14.43, 20}, {16.5, 25}, {18.9, 30},
             {21.4, 35}, {24.2, 40}, {27.3, 45}, {30.6, 50}};
     // Pressure of the heating circuit since this time for the refills
-    private static final Instant DRUCK_AB = Instant.parse("2019-01-01T00:00:00Z");
+
 
     private final Logger logger = LoggerFactory.getLogger(Zustand.class);
     @Autowired
@@ -89,7 +89,10 @@ public class Zustand {
     private EmailService mail;
     // Last rating per check (0 unauffällig, 1 beobachten, 2 auffällig), also stored as WP_Zustand_<check>
     private final Map<String, Integer> stufen = new ConcurrentHashMap<>();
-    private final LocalDate start;
+    private final String startEinstellung;
+    private volatile LocalDate start;
+    @Autowired(required = false)
+    private Datenbeginn datenbeginn;
     // Seasons that are over do not change and are read only once
     private final Map<String, Saison> fertig = new ConcurrentHashMap<>();
     private volatile Ergebnis ergebnis;
@@ -201,8 +204,9 @@ public class Zustand {
         }
     }
 
-    public Zustand(@Value("${auswertung.zustand.start:2022-07-01}") String start) {
-        this.start = LocalDate.parse(start);
+    public Zustand(@Value("${auswertung.zustand.start:}") String start) {
+        this.startEinstellung = start;
+        this.start = Datenbeginn.ersterTag(start);
     }
 
     /**
@@ -220,6 +224,9 @@ public class Zustand {
             return;
         }
         try {
+            if (datenbeginn != null) {
+                start = datenbeginn.ab(startEinstellung, start);
+            }
             LocalDate heute = LocalDate.now(ZONE);
             List<Saison> saisons = new ArrayList<>();
             boolean unvollstaendig = false;
@@ -229,8 +236,11 @@ public class Zustand {
             List<Nachfuellung> nachfuellungen = List.of();
             boolean nachfuellungenDa = true;
             try {
-                nachfuellungen = nachfuellungen(vergleich.mittelwerte("WP_Heizungsdruck", "1h", DRUCK_AB,
-                        Instant.now()));
+                // The refills over all stored data, also before the first season
+                LocalDate druckAb = datenbeginn == null || datenbeginn.getBeginn() == null ? start
+                        : datenbeginn.getBeginn();
+                nachfuellungen = nachfuellungen(vergleich.mittelwerte("WP_Heizungsdruck", "1h",
+                        druckAb.atStartOfDay(ZONE).toInstant(), Instant.now()));
             } catch (Exception e) {
                 logger.warn("Refills of the heating circuit could not be read, tried again later: " + e.getMessage());
                 unvollstaendig = true;

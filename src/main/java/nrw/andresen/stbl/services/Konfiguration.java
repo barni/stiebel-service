@@ -103,35 +103,36 @@ public class Konfiguration {
                     + "ein Start je Stunde, Abtauungen zählen nicht."),
             new Feld("warnung.heizungsdruck.abfall", WARNUNGEN, "Druckabfall in 24 Stunden höchstens", "bar",
                     Typ.ZAHL, "0.15", 0.05, 1, "Warnung, wenn das Mittel der letzten 24 Stunden um mehr als diesen "
-                    + "Wert unter dem der 24 Stunden davor liegt (Leck). Bisher höchstens 0,08 bar."),
+                    + "Wert unter dem der 24 Stunden davor liegt (Leck)."),
             new Feld("warnung.frost.aussentemp", WARNUNGEN, "Keine Wärme bei Frost: außen unter", "°C", Typ.ZAHL,
                     "2", -10, 10, "Warnung, wenn der Verdichter bei dieser mittleren Außentemperatur so lange "
                     + "nicht läuft wie unten eingestellt."),
             new Feld("warnung.frost.stunden", WARNUNGEN, "Keine Wärme bei Frost: Stunden ohne Lauf", "h", Typ.ZAHL,
-                    "4", 1, 24, "Bei Frost lief der Verdichter bisher nie länger als 2 Stunden nicht."),
+                    "4", 1, 24, "Warnung, wenn der Verdichter bei Frost so lange nicht läuft."),
             new Feld("warnung.niederdruck.min", WARNUNGEN, "Niederdruck mindestens", "bar", Typ.ZAHL, "2.5", 0.5, 8,
                     "Warnung, wenn der Niederdruck 10 Minuten lang bei laufendem Verdichter darunter liegt "
-                    + "(Kältemittel, Vereisung). Bisher mindestens 3,2 bar."),
+                    + "(Kältemittel, Vereisung)."),
             new Feld("warnung.heissgas.max", WARNUNGEN, "Heißgas höchstens", "°C", Typ.ZAHL, "110", 70, 140,
-                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt. Im November 2026 bei Frost bis 91 °C."),
+                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt."),
             new Feld("warnung.abtauung.minuten", WARNUNGEN, "Abtauung höchstens", "min", Typ.GANZZAHL, "15", 5, 60,
-                    "Warnung, wenn eine Abtauung länger dauert. Sonst dauert sie 2 bis 6 Minuten."),
+                    "Warnung, wenn eine Abtauung länger dauert."),
             new Feld("warnung.spannung.min", WARNUNGEN, "Spannung Inverter mindestens", "V", Typ.ZAHL, "195", 150,
-                    230, "Warnung, wenn die Spannung am Inverter 5 Minuten lang darunter liegt. Der Inverter zeigt "
-                    + "etwa 11 V zu wenig an."),
+                    230, "Warnung, wenn die Spannung am Inverter 5 Minuten lang darunter liegt."),
             new Feld("warnung.spannung.max", WARNUNGEN, "Spannung Inverter höchstens", "V", Typ.ZAHL, "255", 230,
                     280, "Warnung, wenn die Spannung am Inverter 5 Minuten lang darüber liegt."),
-            new Feld("auswertung.start", AUSWERTUNG, "Vergleich Wärmebedarf ab", "", Typ.DATUM, "2023-07-01", 0, 0,
-                    "Erster Tag für den Vergleich der Einstellung Wärmebedarf und die Tagesübersicht."),
-            new Feld("auswertung.fehlstarts.start", AUSWERTUNG, "Fehlstarts ab", "", Typ.DATUM, "2019-01-01", 0, 0,
-                    "Erster Tag für die Fehlstarts je Heizsaison."),
-            new Feld("auswertung.zustand.start", AUSWERTUNG, "Zustand ab", "", Typ.DATUM, "2022-07-01", 0, 0,
-                    "Erste Heizsaison für den Zustand und die Alterung. Vorher fehlt meist die Außentemperatur."),
+            new Feld("auswertung.start", AUSWERTUNG, "Vergleich Wärmebedarf ab", "", Typ.DATUM, null, 0, 0,
+                    "Erster Tag für den Vergleich der Einstellung Wärmebedarf, die Tagesübersicht und die Heizlast. "
+                    + "Leer: ab dem ersten gespeicherten Wert."),
+            new Feld("auswertung.fehlstarts.start", AUSWERTUNG, "Fehlstarts ab", "", Typ.DATUM, null, 0, 0,
+                    "Erster Tag für die Fehlstarts je Heizsaison. Leer: ab dem ersten gespeicherten Wert."),
+            new Feld("auswertung.zustand.start", AUSWERTUNG, "Zustand ab", "", Typ.DATUM, null, 0, 0,
+                    "Erste Heizsaison für den Zustand und die Alterung. Leer: ab dem ersten gespeicherten Wert; "
+                    + "Saisons ohne Außentemperatur bleiben leer."),
             new Feld("auswertung.aussentemp.bucket", AUSWERTUNG, "Bucket der Außentemperatur", "", Typ.NAME, "", 0,
                     0, "InfluxDB-Bucket mit der Außentemperatur aus Home Assistant. Leer: Bucket des Dienstes."),
             new Feld("auswertung.aussentemp.entity", AUSWERTUNG, "Entity der Außentemperatur", "", Typ.NAME, "", 0,
-                    0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, der erst "
-                    + "seit 09/2026 gespeichert wird."),
+                    0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, gespeichert "
+                    + "erst seit der Dienst läuft."),
             new Feld("auswertung.haushalt.bucket", AUSWERTUNG, "Bucket des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "InfluxDB-Bucket mit dem Hauszähler und den Zählern der Geräte aus Home Assistant. Leer: Bucket des "
                     + "Dienstes."),
@@ -248,6 +249,8 @@ public class Konfiguration {
                     "Passwort am Broker. Wird nie angezeigt; leer lassen, um es nicht zu ändern."),
             new Feld("mqtt.praefix", MQTT, "Thema", "", Typ.NAME, "stbl", 0, 0,
                     "Anfang der MQTT-Themen der Werte, zum Beispiel stbl/zustand und stbl/status."),
+            new Feld("waermepumpe.modell", CAN, "Modell der Wärmepumpe", "", Typ.TEXT, null, 0, 0,
+                    "Für die Werte aus dem Datenblatt (Leistung, Arbeitszahl, Durchfluss). Leer: ohne Datenblattwerte."),
             new Feld("USBtin.port", CAN, "Anschluss des USBtin", "", Typ.PFAD, null, 0, 0,
                     "Serielle Schnittstelle des CAN-Adapters, zum Beispiel /dev/ttyACM0."),
             new Feld("USBtin.speed", CAN, "Geschwindigkeit", "bit/s", Typ.GANZZAHL, null, 10000, 1000000,
@@ -257,13 +260,17 @@ public class Konfiguration {
                             + "die Antworten auf eigene Anfragen. Wirkt sofort beim Speichern, ohne Neustart."));
 
     // Settings the running service takes over when they are saved, without a restart
+    // Settings with a fixed list of values, shown as selection; the empty value means none
+    static final java.util.Map<String, List<String>> AUSWAHL = java.util.Map.of("waermepumpe.modell",
+            java.util.stream.Stream.concat(java.util.stream.Stream.of(""), Anlage.MODELLE.keySet().stream()).toList());
+
     // Numbers with more than three decimals, e.g. a price of 0.2873 € per kWh
     static final java.util.Map<String, Integer> NACHKOMMASTELLEN = java.util.Map.of("auswertung.strompreis", 4);
 
     // The thresholds of the warnings are compared at every check, the CAN filter is changed on the adapter, the price
     // only multiplies
     public static final Set<String> SOFORT = java.util.stream.Stream.concat(java.util.stream.Stream.of("can.logall",
-                    "auswertung.strompreis"),
+                    "auswertung.strompreis", "waermepumpe.modell"),
             FELDER.stream().map(Feld::name).filter(n -> n.startsWith("warnung."))).collect(
             java.util.stream.Collectors.toUnmodifiableSet());
 
@@ -393,6 +400,12 @@ public class Konfiguration {
         if (wert.isEmpty() && feld.standard() == null && feld.typ() != Typ.GEHEIM) {
             // Optional without a default of the service: the entry is commented out
             return "";
+        }
+        if (AUSWAHL.containsKey(feld.name())) {
+            if (!AUSWAHL.get(feld.name()).contains(wert)) {
+                throw new IllegalArgumentException("ist keiner der möglichen Werte");
+            }
+            return wert;
         }
         switch (feld.typ()) {
             case ZAHL, GANZZAHL -> {

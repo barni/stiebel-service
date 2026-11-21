@@ -29,6 +29,9 @@ import static nrw.andresen.stbl.services.can.ElsterTable.*;
 @Component
 public class Waermepumpe {
 
+    @Autowired(required = false)
+    private Anlage anlage;
+
     @Autowired
     private CanBus can;
     // Specific heat capacity of water in kJ/(kg*K)
@@ -864,8 +867,10 @@ public class Waermepumpe {
                 new Einstellung("Auslegungstemperatur", "Auslegungstemperatur", "°C", 1, this::getAuslegungstemperatur,
                         "Tiefste Außentemperatur, für die die Anlage ausgelegt ist. Standard −15 °C." + WPM),
                 new Einstellung("Waermebedarf", "Wärmebedarf", "kW", 1, this::getWaermebedarf,
-                        "Heizlast des Hauses bei Auslegungstemperatur. Begrenzt, wie stark die Wärmepumpe bei Kälte "
-                                + "hochregelt. Standard 15 kW, gemessen ~6,4 kW bei −7 °C." + WPM),
+                        "Heizlast des Hauses bei der Auslegungstemperatur. Daraus rechnet der Wärmepumpenmanager bei "
+                                + "jeder Außentemperatur, wie weit der Verdichter höchstens hochregelt. Zu hoch "
+                                + "eingestellt fährt er nach jedem Start weit über den Bedarf und taktet, zu niedrig "
+                                + "reicht die Leistung bei Kälte nicht. Standard 15 kW." + WPM),
                 new Einstellung("SollSpreizung", "Soll-Spreizung", "K", 1, this::getSollSpreizung,
                         "Gewünschter Unterschied zwischen Vor- und Rücklauf." + WPM),
                 new Einstellung("Bivalenztemperatur", "Bivalenztemperatur", "°C", 1, this::getBivalenztemperatur,
@@ -874,8 +879,8 @@ public class Waermepumpe {
                         "Unterhalb dieser Außentemperatur heizt nur noch der Heizstab. Standard −20 °C." + WPM),
                 new Einstellung("SilentLeistung", "Silent Leistung", "%", 0, this::getSilentLeistung,
                         "Begrenzung der Verdichterleistung im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
-                                + "PROGRAMME → SILENTPROGRAMM 1. 70 % ist die Voreinstellung beim Aktivieren, bei der "
-                                + "WPL 17 höchstens etwa 5,0 kW bei A−7/W35." + WPM),
+                                + "PROGRAMME → SILENTPROGRAMM 1. 70 % ist die Voreinstellung beim Aktivieren."
+                                + (anlage == null ? "" : anlage.silent()) + WPM),
                 new Einstellung("SilentLuefter", "Silent Lüfter", "%", 0, this::getSilentLuefter,
                         "Begrenzung der Lüfterdrehzahl im leisen Silent-Betrieb, wirkt nur in den Zeiten von "
                                 + "PROGRAMME → SILENTPROGRAMM 1." + WPM),
@@ -1118,7 +1123,7 @@ public class Waermepumpe {
         return "Wärmeleistung ÷ Wirkleistung, Wirkleistung = Scheinleistung × (" + zahl(WIRKLEISTUNG_STEIGUNG)
                 + " − " + (int) WIRKLEISTUNG_OFFSET_W + " W ÷ Scheinleistung), Anteil begrenzt auf "
                 + zahl(WIRKLEISTUNGSANTEIL_MIN) + " bis " + zahl(WIRKLEISTUNGSANTEIL_MAX)
-                + " (Abgleich mit dem Hauszähler 2024/25)";
+                + " (ermittelt durch Abgleich mit einem Hauszähler an einer WPL 17 ACS classic)";
     }
 
     static String formelAbtauung() {

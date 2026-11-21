@@ -141,4 +141,22 @@ public class WaermebedarfVergleichTest {
         assertEquals("kaum Unterschied", WaermebedarfVergleich.bewertung(alt, gruppe(7.5, 9, 23, 17.5, 95)));
         assertEquals("–", WaermebedarfVergleich.bewertung(null, alt));
     }
+
+    @Test
+    public void testHeizlast() {
+        java.util.List<WaermebedarfVergleich.Tag> tage = new java.util.ArrayList<>();
+        java.time.LocalDate d = java.time.LocalDate.of(2025, 11, 1);
+        // 40 heating days from −4 to 11.6 °C with heat 4.59 − 0.26·T kW, plus warm days that do not count
+        for (int i = 0; i < 40; i++) {
+            double t = -4 + i * 0.4;
+            tage.add(new WaermebedarfVergleich.Tag(d.plusDays(i), t, 5, 10, (4.59 - 0.26 * t) * 24, 7.5, 3));
+        }
+        tage.add(new WaermebedarfVergleich.Tag(d.plusDays(50), 18, 1, 1, 50, 7.5, 0));
+        org.junit.jupiter.api.Assertions.assertEquals(6.41, WaermebedarfVergleich.heizlast(tage, -7), 1e-6);
+        // too few days or too small a span: no value
+        org.junit.jupiter.api.Assertions.assertNull(WaermebedarfVergleich.heizlast(tage.subList(0, 20), -7));
+        org.junit.jupiter.api.Assertions.assertNull(WaermebedarfVergleich.heizlast(tage.subList(0, 30).stream()
+                .map(x -> new WaermebedarfVergleich.Tag(x.datum(), 5 + x.aussentemp() / 10, 5, 10, 80, 7.5, 3))
+                .toList(), -7));
+    }
 }

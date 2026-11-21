@@ -114,7 +114,8 @@ public final class CanBusSeite {
         html.append(geraete.isEmpty() ? "<p class=\"note\">Noch keine Nachricht empfangen.</p>"
                         : tabelle(List.of("Gerät", "/min", "Zuletzt"), geraete)
                         + "<p class=\"note\">Ein Klick auf ein Gerät zeigt nur dessen Nachrichten, ein zweiter Klick "
-                        + "zeigt wieder alle.</p>")
+                        + "zeigt wieder alle. Die Bedeutung der Werte wurde an einer WPL 17 ACS classic mit WPM 3 "
+                        + "entschlüsselt; Beispielwerte stammen von dort und können bei anderen Anlagen anders sein.</p>")
                 .append("</article>");
 
         List<List<String>> werte = new ArrayList<>();
@@ -413,7 +414,7 @@ public final class CanBusSeite {
     static final Map<Integer, String> KNOTEN_ERKLAERUNG = Map.of(
             0x180, "Wärmepumpenmanager WPM3 im HM Trend, Heizungsregler (Betriebsstatus, Heizungsdruck).",
             0x480, "Wärmepumpenmanager WPM3, Steuerung der Wärmepumpe, fragt die Außeneinheit 0x500 ab.",
-            0x500, "Außeneinheit WPL 17 ACS (Verdichter, Kältekreis, Inverter, Lüfter).",
+            0x500, "Außeneinheit (Verdichter, Kältekreis, Inverter, Lüfter).",
             0x514, "Außeneinheit, Zugang für externe Abfragen mit Zählern, Laufzeiten und Einstellungen.",
             0x100, "Bedieneinheit des WPM3 (Elster-Name FES_COMFORT): bekommt vom Manager jede Minute die Uhrzeit und "
                     + "fragt den Kessel nach Außen- und Rücklauftemperatur. Nur mit „Alle Nachrichten empfangen“ zu "

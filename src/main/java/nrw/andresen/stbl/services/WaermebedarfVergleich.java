@@ -49,7 +49,10 @@ public class WaermebedarfVergleich {
     private final Logger logger = LoggerFactory.getLogger(WaermebedarfVergleich.class);
     @Autowired
     private InfluxController influx;
-    private final LocalDate start;
+    private final String startEinstellung;
+    private volatile LocalDate start;
+    @Autowired(required = false)
+    private Datenbeginn datenbeginn;
     private final String temperaturBucket;
     private final String temperaturEntity;
     private volatile List<Gruppe> gruppen = List.of();
@@ -82,10 +85,11 @@ public class WaermebedarfVergleich {
      * @param temperaturEntity Home Assistant entity of the outdoor temperature (measurement °C), empty for the
      *                         value WP_Aussentemp of the heat pump, which is stored only since 2026-09-12
      */
-    public WaermebedarfVergleich(@Value("${auswertung.start:2023-07-01}") String start,
+    public WaermebedarfVergleich(@Value("${auswertung.start:}") String start,
                                  @Value("${auswertung.aussentemp.bucket:}") String temperaturBucket,
                                  @Value("${auswertung.aussentemp.entity:}") String temperaturEntity) {
-        this.start = LocalDate.parse(start);
+        this.startEinstellung = start;
+        this.start = Datenbeginn.ersterTag(start);
         this.temperaturBucket = temperaturBucket;
         this.temperaturEntity = temperaturEntity;
     }
@@ -99,6 +103,9 @@ public class WaermebedarfVergleich {
             return;
         }
         try {
+            if (datenbeginn != null) {
+                start = datenbeginn.ab(startEinstellung, start);
+            }
             tage = tage(start.atStartOfDay(ZONE).toInstant(), LocalDate.now(ZONE).atStartOfDay(ZONE).toInstant());
             gruppen = vergleich(tage);
             berechnet = Instant.now();
@@ -109,6 +116,59 @@ public class WaermebedarfVergleich {
 
     public List<Gruppe> getGruppen() {
         return gruppen;
+    }
+
+    // Days up to this daily mean count for the heat load; above it the house hardly needs heating
+    static final double HEIZLAST_BIS = 12;
+    static final int HEIZLAST_MIN_TAGE = 30;
+    static final double HEIZLAST_MIN_SPANNE = 8;
+
+    /**
+     * Heat load of the house from the stored days: a straight line through the daily heat (kW = kWh/24) over the
+     * daily mean outdoor temperature of the heating days
+     *
+     * @param tage    days with heat and outdoor temperature
+     * @param aussen  outdoor temperature to evaluate, e.g. the design temperature
+     * @return heat load in kW, null with fewer than 30 heating days or less than 8 K between the coldest and the
+     * warmest of them
+     */
+    static Double heizlast(List<Tag> tage, double aussen) {
+        List<Tag> h = tage.stream().filter(t -> t.aussentemp() < HEIZLAST_BIS && t.waermeKWh() > 0).toList();
+        if (h.size() < HEIZLAST_MIN_TAGE) {
+            return null;
+        }
+        double min = h.stream().mapToDouble(Tag::aussentemp).min().orElse(0);
+        double max = h.stream().mapToDouble(Tag::aussentemp).max().orElse(0);
+        if (max - min < HEIZLAST_MIN_SPANNE) {
+            return null;
+        }
+        double mx = h.stream().mapToDouble(Tag::aussentemp).average().orElse(0);
+        double my = h.stream().mapToDouble(t -> t.waermeKWh() / 24).average().orElse(0);
+        double sxy = 0;
+        double sxx = 0;
+        for (Tag t : h) {
+            sxy += (t.aussentemp() - mx) * (t.waermeKWh() / 24 - my);
+            sxx += (t.aussentemp() - mx) * (t.aussentemp() - mx);
+        }
+        double b = sxy / sxx;
+        return my + b * (aussen - mx);
+    }
+
+    /**
+     * Sentence on the heat load at the design temperature from the own data, null while there are too few days
+     */
+    public String heizlastSatz(double auslegung) {
+        List<Tag> t = tage;
+        Double kw = heizlast(t, auslegung);
+        if (kw == null) {
+            return null;
+        }
+        long heiztage = t.stream().filter(x -> x.aussentemp() < HEIZLAST_BIS && x.waermeKWh() > 0).count();
+        LocalDate ab = t.stream().map(Tag::datum).min(LocalDate::compareTo).orElse(null);
+        return "Aus den eigenen Daten (" + heiztage + " Heiztage" + (ab == null ? "" : " seit "
+                + ab.format(java.time.format.DateTimeFormatter.ofPattern("MM/yyyy"))) + ") braucht das Haus bei "
+                + String.format(java.util.Locale.GERMANY, "%.0f", auslegung) + " °C etwa "
+                + String.format(java.util.Locale.GERMANY, "%.1f", kw) + " kW.";
     }
 
     /**
