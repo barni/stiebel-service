@@ -248,10 +248,10 @@ public final class KonfigurationSeite {
                 + "der Zeit, bevor es den Zähler gab, etwa händisch abgelesen; der Zähler setzt danach fort. „Vor dem "
                 + "ersten Wert“: „lief schon“, wenn das Gerät vor seinem ersten Wert (von Hand oder vom Zähler) "
                 + "ungemessen im Haushalt steckte; „gab es noch nicht“ etwa für eine neue Wallbox, vorher zählt sie "
-                + "0. „Warnung nach Tagen ohne Wert“: so lange darf der Zähler schweigen, 0 heißt keine Warnung; "
-                + "eine Wallbox steht oft tagelang, ein Warmwasserspeicher heizt täglich.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
+                + "0. „Warnung nach Stunden ohne Wert“: so lange darf der Zähler schweigen, 0 heißt keine Warnung; "
+                + "ein Shelly meldet auch im Standby laufend, eine Wallbox ohne Ladung oft tagelang nicht.</p><div class=\"tbl\"><table class=\"geraete\"><thead><tr><th></th><th>Name</th>"
                 + "<th>Zähler</th><th>Werte vor Einbau Zähler</th><th>Vor dem ersten Wert</th>"
-                + "<th>Warnung nach Tagen ohne Wert</th></tr></thead><tbody>");
+                + "<th>Warnung nach Stunden ohne Wert</th></tr></thead><tbody>");
         List<String> meldungen = new ArrayList<>();
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             html.append("<tr><td>").append(n).append("</td>");

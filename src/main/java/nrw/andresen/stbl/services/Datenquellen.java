@@ -50,7 +50,7 @@ public class Datenquellen {
     private CanBus canBus;
     private volatile Map<String, Instant> letzte = Map.of();
     private volatile Map<String, String> entities = Map.of();
-    // Days a device counter may be silent, by setting name; 0 means no warning
+    // Hours a device counter may be silent, by setting name; 0 means no warning
     private volatile Map<String, Integer> alarm = Map.of();
 
     /**
@@ -95,9 +95,9 @@ public class Datenquellen {
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             String t = werte.getOrDefault("auswertung.geraet." + n + ".alarm", "");
             try {
-                tage.put("auswertung.geraet." + n + ".zaehler", t.isEmpty() ? 10 : Integer.parseInt(t));
+                tage.put("auswertung.geraet." + n + ".zaehler", t.isEmpty() ? 240 : Integer.parseInt(t));
             } catch (NumberFormatException e) {
-                tage.put("auswertung.geraet." + n + ".zaehler", 10);
+                tage.put("auswertung.geraet." + n + ".zaehler", 240);
             }
         }
         alarm = tage;
@@ -126,7 +126,7 @@ public class Datenquellen {
         Map<String, Instant> l = letzte;
         for (String name : entities.keySet()) {
             Integer tage = alarm.get(name);
-            Duration max = tage == null ? maxAlter(name) : tage <= 0 ? null : Duration.ofDays(tage);
+            Duration max = tage == null ? maxAlter(name) : tage <= 0 ? null : Duration.ofHours(tage);
             m.put(name, zuletzt(l.get(name), jetzt, max));
         }
         Instant antwort = canBus.getLetzteAntwort();

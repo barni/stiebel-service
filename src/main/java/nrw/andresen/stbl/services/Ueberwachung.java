@@ -650,13 +650,13 @@ public class Ueberwachung {
         }
         if (geraete != null) {
             for (Geraete.Geraet g : geraete.getListe()) {
-                Integer tage = konfiguration == null ? null : konfiguration.alarmTage(g.zaehler());
-                Duration still = tage == null ? GERAET_STILL : Duration.ofDays(tage);
+                Integer stunden = konfiguration == null ? null : konfiguration.alarmStunden(g.zaehler());
+                Duration still = stunden == null ? GERAET_STILL : Duration.ofHours(stunden);
                 if (!g.zaehler().isEmpty() && !still.isZero()) {
                     liste.add(aktuell("Zähler " + g.name() + " aktuell", bucket(haushaltBucket), "kWh", g.zaehler(),
                             still, "Der Zähler " + g.zaehler() + " für den Jahresvergleich. Er meldet nur, wenn "
-                                    + "Strom fließt, deshalb erst nach " + still.toDays() + " Tagen ohne Wert eine "
-                                    + "Warnung (Shelly offline, Entity umbenannt); einstellbar je Gerät."));
+                                    + "Strom fließt, deshalb erst nach " + still.toHours() + " Stunden ohne Wert "
+                                    + "eine Warnung (Shelly offline, Entity umbenannt); einstellbar je Gerät."));
                 }
             }
         }
