@@ -948,7 +948,8 @@ public final class JahresvergleichSeite {
                 }
                 double w = t[k] / max * breite;
                 String titel = jahr + (prognose ? " (Prognose)" : "") + ": " + namen.get(k) + " " + zahl(t[k], 0)
-                        + " kWh von " + zahl(summe, 0) + " kWh";
+                        + " kWh von " + zahl(summe, 0) + " kWh"
+                        + (i == 0 ? "" : gegenVorjahr(k, t, jahre.get(i - 1), jahreszahlen.get(i - 1), namen));
                 svg.append(String.format(Locale.ROOT, "<rect class=\"teil %s%s\" x=\"%.1f\" y=\"%.1f\" "
                         + "width=\"%.1f\" height=\"%d\" data-wert=\"%s\"></rect>", klassen.get(k),
                         prognose ? " prognose" : "", x, y + 4, Math.max(1, w - 2), zeile - 10, text(titel)));
@@ -977,6 +978,29 @@ public final class JahresvergleichSeite {
                 + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten; "
                 + "% gegenüber dem Vorjahr; ein Gerät vor seinem ersten Messwert steckt im Haushalt"
                 + "</span></p>" + svg + "</svg></div></article></section>";
+    }
+
+    /**
+     * Change of one part of the yearly bar against the year before, for its tooltip: "; gegenüber 2024 +5,2 %".
+     * A device without a value the year before was part of the household then, so its household is not comparable.
+     */
+    static String gegenVorjahr(int k, double[] jahr, double[] vorjahr, int vorjahrZahl, List<String> namen) {
+        if (vorjahr[k] <= 0) {
+            return "; " + vorjahrZahl + " nicht gemessen";
+        }
+        String text = "; gegenüber " + vorjahrZahl + " " + prozent((jahr[k] / vorjahr[k] - 1) * 100);
+        if (k == 1) {
+            List<String> neu = new ArrayList<>();
+            for (int g = 2; g < jahr.length; g++) {
+                if (jahr[g] > 0 && vorjahr[g] <= 0) {
+                    neu.add(namen.get(g));
+                }
+            }
+            if (!neu.isEmpty()) {
+                text += " (" + vorjahrZahl + " steckte " + String.join(" und ", neu) + " noch im Haushalt)";
+            }
+        }
+        return text;
     }
 
     private static double summe(double[] werte) {
