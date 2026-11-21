@@ -134,7 +134,7 @@ public class Konfiguration {
                     0, "Home-Assistant-Entity der Außentemperatur. Leer: der eigene Wert der Wärmepumpe, gespeichert "
                     + "erst seit der Dienst läuft."),
             new Feld("auswertung.aussentemp.alarm", AUSWERTUNG, "Außentemperatur: Warnung nach Stunden ohne Wert",
-                    "h", Typ.GANZZAHL, "6", 0, 8760, "Warnung, wenn die Außentemperatur aus Home Assistant so lange "
+                    "h", Typ.GANZZAHL, "2", 0, 8760, "Warnung, wenn die Außentemperatur aus Home Assistant so lange "
                     + "keinen Wert liefert. 0: keine Warnung."),
             new Feld("auswertung.haushalt.bucket", AUSWERTUNG, "Bucket des Hauszählers", "", Typ.NAME, "", 0, 0,
                     "InfluxDB-Bucket mit dem Hauszähler und den Zählern der Geräte aus Home Assistant. Leer: Bucket des "
@@ -147,13 +147,13 @@ public class Konfiguration {
                     + "Damit zählt der im Haus verbrauchte PV-Strom zum Verbrauch und zum Haushalt. Leer: nur der "
                     + "Netzbezug."),
             new Feld("auswertung.pv.alarm", AUSWERTUNG, "PV-Ertrag: Warnung nach Stunden ohne Wert", "h",
-                    Typ.GANZZAHL, "240", 0, 8760, "Warnung, wenn der PV-Ertrag so lange keinen Wert liefert. Im "
-                    + "Winter meldet er an trüben Tagen selten. 0: keine Warnung."),
+                    Typ.GANZZAHL, "24", 0, 8760, "Warnung, wenn der PV-Ertrag so lange keinen Wert liefert. Nachts "
+                    + "meldet er nichts, im Winter bis zu 16 Stunden. 0: keine Warnung."),
             new Feld("auswertung.pv.einspeisung", AUSWERTUNG, "Entity der Einspeisung", "", Typ.NAME, "", 0, 0,
                     "Optional: Home-Assistant-Entity mit dem Zählerstand der Einspeisung ins Netz in kWh; sie wird "
                     + "vom PV-Ertrag abgezogen. Leer: der ganze Ertrag gilt als im Haus verbraucht."),
             new Feld("auswertung.haushalt.alarm", AUSWERTUNG, "Hauszähler: Warnung nach Stunden ohne Wert", "h",
-                    Typ.GANZZAHL, "6", 0, 8760, "Warnung, wenn der Hauszähler so lange keinen Wert liefert. Ein "
+                    Typ.GANZZAHL, "2", 0, 8760, "Warnung, wenn der Hauszähler so lange keinen Wert liefert. Ein "
                     + "Smartmeter meldet meist alle paar Minuten. 0: keine Warnung."),
             new Feld("auswertung.strompreis", AUSWERTUNG, "Strompreis", "€/kWh", Typ.ZAHL, null, 0, 2,
                     "Arbeitspreis je kWh, zum Beispiel 0,2873, bis zu vier Nachkommastellen. Damit zeigt der Jahresvergleich auch die Kosten in Euro, "

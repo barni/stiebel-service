@@ -121,8 +121,10 @@ before you rely on it.
   with earlier readings, e.g. read by hand, the counter goes on from them; a counter that starts again at 0 is
   counted on. A device that ran before its first reading (`.vorher`, default on) is part of the household until
   then and counted in the rest of the comparison until both years have values; a new one counts 0 before. The
-  service checks every 15 minutes that the house meter and the outdoor temperature from Home Assistant had a value in
-  the last 6 hours and every device counter and the PV yield in the last 10 days, otherwise the warning about the service is raised.
+  service checks every 15 minutes that the house meter, the outdoor temperature, the PV yield and every device counter
+  from Home Assistant had a value recently, otherwise the warning about the service is raised; the hours are set per
+  source (`auswertung.haushalt.alarm` 2 h, `auswertung.aussentemp.alarm` 2 h, `auswertung.pv.alarm` 24 h,
+  `auswertung.geraet.N.alarm` 240 h; 0 none), and the configuration page shows the last value of every source.
 - **Heat pump model** (`waermepumpe.modell`: WPL 07, 09, 13 or 17 ACS classic) adds the values of its data sheet
   (heat output, efficiency, flow) to the explanations; without it they are left out.
 - **Values of this installation:** once a day the service calculates from its own data of the last two years

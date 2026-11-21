@@ -92,9 +92,9 @@ public class Datenquellen {
             }
         }
         Map<String, Integer> tage = new HashMap<>();
-        tage.put("auswertung.haushalt.zaehler", stunden(werte, "auswertung.haushalt.alarm", 6));
-        tage.put("auswertung.aussentemp.entity", stunden(werte, "auswertung.aussentemp.alarm", 6));
-        tage.put("auswertung.pv.ertrag", stunden(werte, "auswertung.pv.alarm", 240));
+        tage.put("auswertung.haushalt.zaehler", stunden(werte, "auswertung.haushalt.alarm", 2));
+        tage.put("auswertung.aussentemp.entity", stunden(werte, "auswertung.aussentemp.alarm", 2));
+        tage.put("auswertung.pv.ertrag", stunden(werte, "auswertung.pv.alarm", 24));
         for (int n = 1; n <= Geraete.ANZAHL; n++) {
             String t = werte.getOrDefault("auswertung.geraet." + n + ".alarm", "");
             try {

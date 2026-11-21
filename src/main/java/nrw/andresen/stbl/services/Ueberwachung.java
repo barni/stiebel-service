@@ -651,7 +651,7 @@ public class Ueberwachung {
             }
         }
         if (!leer(pvErtrag)) {
-            Duration still = still("auswertung.pv.alarm", GERAET_STILL);
+            Duration still = still("auswertung.pv.alarm", Duration.ofHours(24));
             if (!still.isZero()) {
                 liste.add(aktuell("PV-Ertrag aktuell", bucket(haushaltBucket), "kWh", pvErtrag, still,
                         "Der Ertrag der PV-Anlage (" + pvErtrag + ") für den Verbrauch im Jahresvergleich; Warnung "
@@ -673,7 +673,7 @@ public class Ueberwachung {
     }
 
     // Without a new value for this long a value from Home Assistant counts as missing
-    static final Duration WERT_STILL = Duration.ofHours(6);
+    static final Duration WERT_STILL = Duration.ofHours(2);
     static final Duration GERAET_STILL = Duration.ofDays(10);
     private static final java.util.regex.Pattern ENTITY = java.util.regex.Pattern.compile("[A-Za-z0-9_]{1,64}");
 
