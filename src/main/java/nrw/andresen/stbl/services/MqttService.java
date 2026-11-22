@@ -80,8 +80,10 @@ public class MqttService {
             new Entitaet("waerme_heute", "Wärme heute", "sensor", "kWh", "energy", "total_increasing", null, 1),
             new Entitaet("starts_heute", "Starts heute", "sensor", null, null, "total_increasing",
                     "mdi:restart", 0),
-            // Forecast of the year from the year comparison, calculated every hour
-            new Entitaet("prognose_jahr", "Strom Prognose Jahr", "sensor", "kWh", null, null, "mdi:chart-line", 0),
+            // Forecast of the year from the year comparison, calculated every hour; prognose_jahr is the whole
+            // house, named so because it sits under the device of the heat pump (the key stays for the entity ID)
+            new Entitaet("prognose_jahr", "Haus gesamt Strom Prognose Jahr", "sensor", "kWh", null, null,
+                    "mdi:chart-line", 0),
             new Entitaet("prognose_heizung", "Heizung Prognose Jahr (geschätzt)", "sensor", "kWh", null, null,
                     "mdi:chart-line", 0),
             new Entitaet("warnungen", "Warnungen", "sensor", null, null, null, "mdi:alert-outline", null),
