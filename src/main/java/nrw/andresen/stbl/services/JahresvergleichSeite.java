@@ -865,9 +865,11 @@ public final class JahresvergleichSeite {
         // Parts: heating, household, then the devices
         List<String> klassen = new ArrayList<>(List.of("heizung", "haushalt"));
         List<String> namen = new ArrayList<>(List.of("Heizung ≈", "Haushalt"));
+        boolean[] vorherDa = new boolean[2 + anzahl];
         for (int k = 0; k < anzahl; k++) {
             klassen.add("g" + k);
             namen.add(v.geraete().get(k).name());
+            vorherDa[2 + k] = v.geraete().get(k).vorherDa();
         }
         int teile = klassen.size();
         List<double[]> jahre = new ArrayList<>();
@@ -949,7 +951,8 @@ public final class JahresvergleichSeite {
                 double w = t[k] / max * breite;
                 String titel = jahr + (prognose ? " (Prognose)" : "") + ": " + namen.get(k) + " " + zahl(t[k], 0)
                         + " kWh von " + zahl(summe, 0) + " kWh"
-                        + (i == 0 ? "" : gegenVorjahr(k, t, jahre.get(i - 1), jahreszahlen.get(i - 1), namen));
+                        + (i == 0 ? "" : gegenVorjahr(k, t, jahre.get(i - 1), jahreszahlen.get(i - 1), namen,
+                        vorherDa));
                 svg.append(String.format(Locale.ROOT, "<rect class=\"teil %s%s\" x=\"%.1f\" y=\"%.1f\" "
                         + "width=\"%.1f\" height=\"%d\" data-wert=\"%s\"></rect>", klassen.get(k),
                         prognose ? " prognose" : "", x, y + 4, Math.max(1, w - 2), zeile - 10, text(titel)));
@@ -976,23 +979,27 @@ public final class JahresvergleichSeite {
                 : "Netzbezug") + " je Jahr</h2>"
                 + "<p class=\"legende\">" + legende + "<span>"
                 + v.jahr() + " heller: bis " + DATUM.format(v.bis()) + " gemessen, der Rest ist die Prognose unten; "
-                + "% gegenüber dem Vorjahr; ein Gerät vor seinem ersten Messwert steckt im Haushalt"
+                + "% gegenüber dem Vorjahr; ein Gerät, das es schon gab, steckt vor seinem ersten Messwert im Haushalt"
                 + "</span></p>" + svg + "</svg></div></article></section>";
     }
 
     /**
      * Change of one part of the yearly bar against the year before, for its tooltip: "; gegenüber 2024 +5,2 %".
-     * A device without a value the year before was part of the household then, so its household is not comparable.
+     * A device that already ran but had no value the year before was part of the household then, so the household
+     * is not comparable; a device that came new (setting auswertung.geraet.N.vorher=false) did not exist then.
+     *
+     * @param vorherDa per part: the device ran before its first reading (only read for the devices, index 2 on)
      */
-    static String gegenVorjahr(int k, double[] jahr, double[] vorjahr, int vorjahrZahl, List<String> namen) {
+    static String gegenVorjahr(int k, double[] jahr, double[] vorjahr, int vorjahrZahl, List<String> namen,
+                               boolean[] vorherDa) {
         if (vorjahr[k] <= 0) {
-            return "; " + vorjahrZahl + " nicht gemessen";
+            return "; " + vorjahrZahl + (k >= 2 && !vorherDa[k] ? " noch nicht vorhanden" : " nicht gemessen");
         }
         String text = "; gegenüber " + vorjahrZahl + " " + prozent((jahr[k] / vorjahr[k] - 1) * 100);
         if (k == 1) {
             List<String> neu = new ArrayList<>();
             for (int g = 2; g < jahr.length; g++) {
-                if (jahr[g] > 0 && vorjahr[g] <= 0) {
+                if (jahr[g] > 0 && vorjahr[g] <= 0 && vorherDa[g]) {
                     neu.add(namen.get(g));
                 }
             }

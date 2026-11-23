@@ -612,11 +612,21 @@ public class JahresvergleichTest {
         java.util.List<String> namen = java.util.List.of("Heizung ≈", "Haushalt", "Wallbox", "Klimaanlage");
         double[] vorjahr = {3000, 4000, 1000, 0};
         double[] jahr = {3150, 3600, 900, 360};
-        assertEquals("; gegenüber 2025 +5,0 %", JahresvergleichSeite.gegenVorjahr(0, jahr, vorjahr, 2025, namen));
-        assertEquals("; gegenüber 2025 −10,0 %", JahresvergleichSeite.gegenVorjahr(2, jahr, vorjahr, 2025, namen));
-        // The air conditioning has no value the year before, it was part of the household then
-        assertEquals("; 2025 nicht gemessen", JahresvergleichSeite.gegenVorjahr(3, jahr, vorjahr, 2025, namen));
+        boolean[] vorherDa = {false, false, false, true};
+        assertEquals("; gegenüber 2025 +5,0 %",
+                JahresvergleichSeite.gegenVorjahr(0, jahr, vorjahr, 2025, namen, vorherDa));
+        assertEquals("; gegenüber 2025 −10,0 %",
+                JahresvergleichSeite.gegenVorjahr(2, jahr, vorjahr, 2025, namen, vorherDa));
+        // The air conditioning ran before but has no value the year before, it was part of the household then
+        assertEquals("; 2025 nicht gemessen",
+                JahresvergleichSeite.gegenVorjahr(3, jahr, vorjahr, 2025, namen, vorherDa));
         assertEquals("; gegenüber 2025 −10,0 % (2025 steckte Klimaanlage noch im Haushalt)",
-                JahresvergleichSeite.gegenVorjahr(1, jahr, vorjahr, 2025, namen));
+                JahresvergleichSeite.gegenVorjahr(1, jahr, vorjahr, 2025, namen, vorherDa));
+        // Came new (vorher=false): it did not exist the year before and was no part of the household
+        boolean[] neu = {false, false, false, false};
+        assertEquals("; 2025 noch nicht vorhanden",
+                JahresvergleichSeite.gegenVorjahr(3, jahr, vorjahr, 2025, namen, neu));
+        assertEquals("; gegenüber 2025 −10,0 %",
+                JahresvergleichSeite.gegenVorjahr(1, jahr, vorjahr, 2025, namen, neu));
     }
 }
