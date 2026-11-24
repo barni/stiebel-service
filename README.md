@@ -154,7 +154,10 @@ before you rely on it.
   answer rate below `warnung.antwortquote.min` % (default 90) for 10 minutes, more than `warnung.starts.proStunde`
   compressor starts within an hour (default 3), high pressure of the refrigerant circuit above
   `warnung.hochdruck.max` (default 38 bar), spread above `warnung.spreizung.max` (default 10 K) for 5 minutes while
-  the compressor runs (too little water flow), a failed check of the service.
+  the compressor runs (too little water flow), hot gas above `warnung.heissgas.max` (default 105 °C, the WPL 17
+  limits it itself from 110 °C) for 5 minutes, a failed check of the service. The hot gas mail names superheat and
+  EXV opening: too little refrigerant only if the superheat is more than 5 K above its setpoint while the EXV is at
+  least 80 % open, otherwise high load (e.g. full speed in frost before a defrost).
 - **Settings** of the heat pump manager, read every hour from 0x514 and stored as `WP_Einstellung_<name>`: design
   temperature, heat demand, spread, bivalence, heating limit, silent mode, comfort and eco temperature, heating curve,
   curve distance, room influence, standstill and minimum run time, controller dynamics, heating program 1 (weekdays

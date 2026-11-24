@@ -112,8 +112,9 @@ public class Konfiguration {
             new Feld("warnung.niederdruck.min", WARNUNGEN, "Niederdruck mindestens", "bar", Typ.ZAHL, "2.5", 0.5, 8,
                     "Warnung, wenn der Niederdruck 10 Minuten lang bei laufendem Verdichter darunter liegt "
                     + "(Kältemittel, Vereisung)."),
-            new Feld("warnung.heissgas.max", WARNUNGEN, "Heißgas höchstens", "°C", Typ.ZAHL, "110", 70, 140,
-                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt."),
+            new Feld("warnung.heissgas.max", WARNUNGEN, "Heißgas höchstens", "°C", Typ.ZAHL, "105", 70, 140,
+                    "Warnung, wenn die Heißgastemperatur 5 Minuten lang darüber liegt; die WPL 17 begrenzt sie "
+                    + "selbst ab 110 °C."),
             new Feld("warnung.abtauung.minuten", WARNUNGEN, "Abtauung höchstens", "min", Typ.GANZZAHL, "15", 5, 60,
                     "Warnung, wenn eine Abtauung länger dauert."),
             new Feld("warnung.spannung.min", WARNUNGEN, "Spannung Inverter mindestens", "V", Typ.ZAHL, "195", 150,
