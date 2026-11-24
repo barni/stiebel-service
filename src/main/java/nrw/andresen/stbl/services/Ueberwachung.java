@@ -39,6 +39,12 @@ public class Ueberwachung {
     private static final double ABFALL_HYSTERESE_BAR = 0.05;
     // A mean needs values for this share of its time span, e.g. not right after a start of the service
     private static final double MIN_ABDECKUNG = 0.8;
+    // Too little refrigerant: the superheat stays this far above its setpoint although the EXV is this far open.
+    // With a hot gas of 101 °C at 100 Hz on 2026-11-23 the superheat was on its setpoint and the EXV 37 % open.
+    static final double UEBERHITZUNG_UEBER_SOLL_K = 5;
+    static final double EXV_WEIT_OFFEN_PROZENT = 80;
+    // Values for the text of a warning must be this fresh
+    private static final Duration MAX_ALTER_TEXT = Duration.ofMinutes(5);
 
     private final Logger logger = LoggerFactory.getLogger(Ueberwachung.class);
     @Autowired
@@ -140,7 +146,7 @@ public class Ueberwachung {
                         @Value("${warnung.frost.stunden:4}") double frostStunden,
                         @Value("${warnung.heizungsdruck.abfall:0.15}") double druckAbfallMax,
                         @Value("${warnung.niederdruck.min:2.5}") double niederdruckMin,
-                        @Value("${warnung.heissgas.max:110}") double heissgasMax,
+                        @Value("${warnung.heissgas.max:105}") double heissgasMax,
                         @Value("${warnung.abtauung.minuten:15}") int abtauungMinuten,
                         @Value("${warnung.spannung.min:195}") double spannungMin,
                         @Value("${warnung.spannung.max:255}") double spannungMax) {
@@ -227,8 +233,12 @@ public class Ueberwachung {
                 + " bar, 10 Minuten lang bei laufendem Verdichter. Hinweis auf zu wenig Kältemittel oder einen "
                 + "vereisten Verdampfer." + erfahrung(Erfahrungswerte.NIEDERDRUCK), Duration.ofMinutes(10));
         heissgas.regel("Heißgastemperatur über " + kurz(heissgasMax)
-                + " °C, 5 Minuten lang. Hinweis auf zu wenig Kältemittel; der Verdichter wird zu heiß."
-                + erfahrung(Erfahrungswerte.HEISSGAS), Duration.ofMinutes(5));
+                + " °C, 5 Minuten lang. Die Wärmepumpe begrenzt sie selbst (BEGRENZUNG_HEISSGASTEMPERATUR, bei der "
+                + "WPL 17 110 °C). Zu wenig Kältemittel ist wahrscheinlich, wenn zugleich die Überhitzung mehr als "
+                + kurz(UEBERHITZUNG_UEBER_SOLL_K) + " K über dem Soll liegt und das Expansionsventil mindestens "
+                + kurz(EXV_WEIT_OFFEN_PROZENT) + " % offen ist; sonst ist es hohe Last, etwa Vollgas bei Frost "
+                + "mit vereistem Verdampfer kurz vor einer Abtauung." + erfahrung(Erfahrungswerte.HEISSGAS),
+                Duration.ofMinutes(5));
         abtauung.regel("Eine Abtauung läuft länger als " + abtauungMinuten
                 + " Minuten. Verdampfer auf Eis und den Ablauf des Tauwassers prüfen."
                 + erfahrung(Erfahrungswerte.ABTAUUNG), Duration.ofMinutes(abtauungMinuten));
@@ -471,7 +481,11 @@ public class Ueberwachung {
         }
         try {
             double grad = wp.getHeissgasTemp().getValue();
-            melden(heissgas, grad > heissgasMax, "Heißgas " + kurz(grad) + " °C", jetzt);
+            String text = grad > heissgasMax
+                    ? heissgasText(grad, wert(wp::getVerdichterDrehzahl), wert(wp::getIstUeberhitzung),
+                    wert(wp::getSollUeberhitzung), wert(wp::getOeffnungsgradExv))
+                    : "Heißgas " + kurz(grad) + " °C";
+            melden(heissgas, grad > heissgasMax, text, jetzt);
         } catch (Exception e) {
             // no current value, keep the state
         }
@@ -765,6 +779,45 @@ public class Ueberwachung {
             return new Pruefung("USB-Adapter", false, "keine Antwort der Wärmepumpe", erklaerung);
         }
         return new Pruefung("USB-Adapter", true, "OK", erklaerung);
+    }
+
+    /**
+     * Text of the hot gas warning: with superheat and EXV it tells too little refrigerant (superheat far above its
+     * setpoint although the EXV is wide open) from high load (superheat on its setpoint, e.g. full speed in frost).
+     * Unknown values are left out.
+     */
+    static String heissgasText(double grad, Double hz, Double ueberhitzung, Double ueberhitzungSoll, Double exv) {
+        StringBuilder text = new StringBuilder("Heißgas " + kurz(grad) + " °C");
+        if (hz != null) {
+            text.append(" bei ").append(kurz(hz)).append(" Hz");
+        }
+        if (ueberhitzung == null || ueberhitzungSoll == null || exv == null) {
+            return text.toString();
+        }
+        text.append(", Überhitzung ").append(kurz(ueberhitzung)).append(" K (Soll ").append(kurz(ueberhitzungSoll))
+                .append(" K), Expansionsventil ").append(kurz(exv)).append(" % offen: ");
+        if (ueberhitzung > ueberhitzungSoll + UEBERHITZUNG_UEBER_SOLL_K && exv >= EXV_WEIT_OFFEN_PROZENT) {
+            text.append("Verdacht auf zu wenig Kältemittel, Kundendienst prüfen lassen.");
+        } else {
+            text.append("Kältekreis regelt normal, hohe Last.");
+        }
+        return text.toString();
+    }
+
+    /**
+     * Current value of the heat pump for the text of a warning, or null if unknown or older than five minutes
+     */
+    private static Double wert(java.util.concurrent.Callable<ValueContainer<Double>> abfrage) {
+        try {
+            ValueContainer<Double> c = abfrage.call();
+            if (c == null || c.getValue() == null || c.getTimestamp() == null
+                    || c.getTimestamp().isBefore(Instant.now().minus(MAX_ALTER_TEXT))) {
+                return null;
+            }
+            return c.getValue();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private static String zahl(double wert) {

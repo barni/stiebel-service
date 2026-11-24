@@ -174,4 +174,17 @@ public class UeberwachungTest {
         assertFalse(Ueberwachung.aktuellPruefung("x", null, jetzt, Duration.ofHours(6), "").ok());
         assertEquals("5 h", Ueberwachung.dauer(Duration.ofHours(5)));
     }
+
+    @org.junit.jupiter.api.Test
+    public void testHeissgasText() {
+        // 2026-11-23 20:34: full speed in frost, superheat on its setpoint, EXV 37 %
+        assertEquals("Heißgas 100,8 °C bei 100 Hz, Überhitzung 6,6 K (Soll 6,4 K), Expansionsventil 37,3 % offen: "
+                + "Kältekreis regelt normal, hohe Last.", Ueberwachung.heissgasText(100.8, 100.0, 6.6, 6.4, 37.3));
+        assertEquals("Heißgas 104 °C bei 70 Hz, Überhitzung 14 K (Soll 6,4 K), Expansionsventil 100 % offen: "
+                + "Verdacht auf zu wenig Kältemittel, Kundendienst prüfen lassen.",
+                Ueberwachung.heissgasText(104.0, 70.0, 14.0, 6.4, 100.0));
+        // High superheat alone, with the EXV still able to open, is no refrigerant warning
+        assertTrue(Ueberwachung.heissgasText(104.0, 70.0, 14.0, 6.4, 50.0).endsWith("hohe Last."));
+        assertEquals("Heißgas 101 °C", Ueberwachung.heissgasText(101.0, null, 6.6, null, 37.0));
+    }
 }
