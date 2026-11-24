@@ -201,18 +201,20 @@ public final class Uebersicht {
                 .append(t(verlaufJson(z.start(), z.ende(), reihen))).append("\"><span class=\"zl-achse-name\">Leistung kW ≈</span>"
                 + "<div class=\"zl-strom\" data-plot><svg viewBox=\"0 0 1000 60\" preserveAspectRatio=\"none\" aria-hidden=\"true\">"
                 + "<line x1=\"0\" x2=\"1000\" y1=\"31\" y2=\"31\"/><line x1=\"0\" x2=\"1000\" y1=\"4\" y2=\"4\"/>");
+        // Upper end of the scale from the highest value of the day, so full speed in frost (3 kW) is not cut off
+        double oben = stromSkalaW(z.stromW());
         if (z.stromW().length > 0) {
             StringBuilder flaeche = new StringBuilder("0,58");
             for (int i = 0; i < z.stromW().length; i++) {
                 double x = (z.stromZeit()[i] - z.start()) * 1000 / spanne;
-                double y = 58 - Math.min(1100, Math.max(0, z.stromW()[i])) / 1000 * 54;
+                double y = 58 - Math.min(oben, Math.max(0, z.stromW()[i])) / oben * 54;
                 flaeche.append(String.format(Locale.ROOT, " %.1f,%.1f", Math.max(0, Math.min(1000, x)), y));
             }
             flaeche.append(" 1000,58");
             html.append("<polygon points=\"").append(flaeche).append("\"/>");
         }
-        html.append("</svg><span class=\"zl-mark\" style=\"top:0\">1 kW</span><span class=\"zl-mark\" "
-                + "style=\"top:44%\">0,5</span>");
+        html.append("</svg><span class=\"zl-mark\" style=\"top:0\">").append(kw(oben)).append(" kW</span>"
+                + "<span class=\"zl-mark\" style=\"top:44%\">").append(kw(oben / 2)).append("</span>");
         for (long a : z.abtauungen()) {
             html.append("<span class=\"zl-abtau\" data-wert=\"Abtauung ").append(UHR.format(Instant.ofEpochMilli(a).atZone(zone)))
                     .append("\" style=\"left:").append(String.format(Locale.ROOT, "%.2f", (a - z.start()) * 100 / spanne))
@@ -241,6 +243,32 @@ public final class Uebersicht {
             html.append("<p class=\"zl-satz\">").append(t(z.zusammenfassung())).append("</p>");
         }
         return html.append("</section>").toString();
+    }
+
+    /**
+     * Upper end of the power band in W: the next of 1, 1.5, 2, 3, 4, 5 … kW above the highest value, at least 1 kW,
+     * so the labels at the top and in the middle stay round numbers
+     */
+    static double stromSkalaW(double[] watt) {
+        double max = 0;
+        for (double w : watt) {
+            if (!Double.isNaN(w)) {
+                max = Math.max(max, w);
+            }
+        }
+        for (double kw : new double[]{1, 1.5, 2, 3, 4, 5, 6, 8, 10}) {
+            if (max <= kw * 1000) {
+                return kw * 1000;
+            }
+        }
+        return Math.ceil(max / 5000) * 5000;
+    }
+
+    /**
+     * kW without decimals where not needed, e.g. "1", "0,75" or "1,5"
+     */
+    private static String kw(double watt) {
+        return String.format(Locale.GERMANY, "%.2f", watt / 1000).replaceAll(",?0+$", "");
     }
 
     /**
