@@ -127,6 +127,16 @@ public class UebersichtTest {
                 List.of(start + 12 * 60 * MIN), List.of(new Uebersicht.Linie("Vorlauf", "vorlauf", zeit,
                 new double[]{33, 34, 35, Double.NaN})), satz), ZONE);
         assertTrue(html.contains("<polygon points=\"0,58"));
+        // Power scale: at least 1 kW, above that from the highest value so nothing is cut off
+        assertTrue(html.contains(">1 kW</span>") && html.contains(">0,5</span>"));
+        assertEquals(1000, Uebersicht.stromSkalaW(new double[]{0, 650, Double.NaN}), 1e-9);
+        assertEquals(1500, Uebersicht.stromSkalaW(new double[]{1100}), 1e-9);
+        assertEquals(4000, Uebersicht.stromSkalaW(new double[]{900, 3129}), 1e-9);
+        String voll = Uebersicht.zeitleiste(new Uebersicht.Zeitleiste(start, ende, zeit, new double[]{0, 3000, 1500, 0},
+                List.of(), List.of(), null), ZONE);
+        assertTrue(voll.contains(">3 kW</span>") && voll.contains(">1,5</span>"));
+        // 3000 W of 3 kW is the top line of the band (y = 4)
+        assertTrue(voll.contains(",4.0 "));
         assertTrue(html.contains("class=\"zl-abtau\" data-wert=\"Abtauung 03:00\" style=\"left:50.00%\""));
         // Values under the pointer: electricity and lines with their times, the gap as null
         assertTrue(html.contains("class=\"zl-raster\" data-verlauf=\"{&quot;von&quot;:" + start));
